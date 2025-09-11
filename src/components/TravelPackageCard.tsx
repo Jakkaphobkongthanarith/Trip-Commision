@@ -2,6 +2,7 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Clock, Users, Star } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface TravelPackage {
   id: string;
@@ -25,6 +26,7 @@ interface TravelPackageCardProps {
 }
 
 const TravelPackageCard: React.FC<TravelPackageCardProps> = ({ package: pkg }) => {
+  const navigate = useNavigate();
   const discount = pkg.originalPrice ? Math.round(((pkg.originalPrice - pkg.price) / pkg.originalPrice) * 100) : 0;
   const availableSpots = pkg.maxPeople - pkg.currentBookings;
   
@@ -107,8 +109,9 @@ const TravelPackageCard: React.FC<TravelPackageCardProps> = ({ package: pkg }) =
           size="sm" 
           className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg group-hover:shadow-xl transition-shadow"
           disabled={availableSpots === 0}
+          onClick={() => navigate(`/packages/${pkg.id}`)}
         >
-          {availableSpots > 0 ? "จองทันที" : "เต็มแล้ว"}
+          {availableSpots > 0 ? "ดูรายละเอียด" : "เต็มแล้ว"}
         </Button>
       </CardFooter>
     </Card>
