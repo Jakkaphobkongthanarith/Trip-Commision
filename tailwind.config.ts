@@ -57,6 +57,22 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Travel theme colors
+        travel: {
+          sky: "hsl(var(--sky-blue))",
+          ocean: "hsl(var(--ocean-blue))",
+          orange: "hsl(var(--warm-orange))",
+          green: "hsl(var(--nature-green))",
+        },
+      },
+      backgroundImage: {
+        'sunset-gradient': 'var(--sunset-gradient)',
+        'sky-gradient': 'var(--sky-gradient)',
+      },
+      boxShadow: {
+        'card': 'var(--card-shadow)',
+        'card-hover': 'var(--card-shadow-hover)',
+        'hero': 'var(--hero-shadow)',
       },
       borderRadius: {
         lg: "var(--radius)",
