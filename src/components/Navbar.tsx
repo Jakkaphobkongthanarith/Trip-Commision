@@ -1,7 +1,31 @@
 import { Button } from "@/components/ui/button";
-import { Plane } from "lucide-react";
+import { Plane, LogOut } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 const Navbar = () => {
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const handleSignOut = async () => {
+    const { error } = await signOut();
+    if (error) {
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถออกจากระบบได้",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "ออกจากระบบสำเร็จ",
+        description: "ขอบคุณที่ใช้บริการ",
+      });
+      navigate("/");
+    }
+  };
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
       <div className="container mx-auto px-6 py-4 flex items-center justify-between">
@@ -13,12 +37,36 @@ const Navbar = () => {
         </div>
         
         <div className="flex items-center space-x-4">
-          <Button variant="ghost" className="text-foreground hover:text-primary">
-            ลงทะเบียน
-          </Button>
-          <Button variant="default" className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-hero">
-            เข้าสู่ระบบ
-          </Button>
+          {user ? (
+            <div className="flex items-center space-x-4">
+              <span className="text-foreground">สวัสดี, {user.email}</span>
+              <Button 
+                variant="ghost" 
+                onClick={handleSignOut}
+                className="text-foreground hover:text-primary"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                ออกจากระบบ
+              </Button>
+            </div>
+          ) : (
+            <>
+              <Button 
+                variant="ghost" 
+                onClick={() => navigate("/auth")}
+                className="text-foreground hover:text-primary"
+              >
+                ลงทะเบียน
+              </Button>
+              <Button 
+                variant="default" 
+                onClick={() => navigate("/auth")}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-hero"
+              >
+                เข้าสู่ระบบ
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </nav>
