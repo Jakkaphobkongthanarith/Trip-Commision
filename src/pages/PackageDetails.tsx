@@ -2,24 +2,29 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { mockPackages } from "@/data/mockPackages";
-import { 
-  MapPin, 
-  Clock, 
-  Users, 
-  Star, 
-  Calendar, 
+import {
+  MapPin,
+  Clock,
+  Users,
+  Star,
+  Calendar,
   ArrowLeft,
   Phone,
   Mail,
   CreditCard,
   Shield,
-  Check
+  Check,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -34,10 +39,10 @@ const PackageDetails = () => {
     email: "",
     phone: "",
     specialRequests: "",
-    numberOfPeople: 1
+    numberOfPeople: 1,
   });
 
-  const packageData = mockPackages.find(pkg => pkg.id === id);
+  const packageData = mockPackages.find((pkg) => pkg.id === id);
 
   if (!packageData) {
     return (
@@ -52,12 +57,18 @@ const PackageDetails = () => {
     );
   }
 
-  const discount = packageData.originalPrice ? 
-    Math.round(((packageData.originalPrice - packageData.price) / packageData.originalPrice) * 100) : 0;
+  const discount = packageData.originalPrice
+    ? Math.round(
+        ((packageData.originalPrice - packageData.price) /
+          packageData.originalPrice) *
+          100
+      )
+    : 0;
   const availableSpots = packageData.maxPeople - packageData.currentBookings;
 
   const handleBookingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    debugger;
     toast({
       title: "การจองสำเร็จ!",
       description: `คุณได้จองแพคเกจ "${packageData.title}" เรียบร้อยแล้ว`,
@@ -70,8 +81,8 @@ const PackageDetails = () => {
       {/* Header */}
       <header className="bg-background border-b sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             onClick={() => navigate("/")}
             className="mb-4"
           >
@@ -100,14 +111,18 @@ const PackageDetails = () => {
               <div className="absolute top-4 right-4 bg-background/80 backdrop-blur-sm rounded-full px-3 py-2 flex items-center gap-1">
                 <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                 <span className="font-medium">{packageData.rating}</span>
-                <span className="text-muted-foreground">({packageData.reviewCount})</span>
+                <span className="text-muted-foreground">
+                  ({packageData.reviewCount})
+                </span>
               </div>
             </div>
 
             {/* Package Info */}
             <div className="space-y-4">
               <div>
-                <h1 className="text-3xl font-bold text-foreground mb-2">{packageData.title}</h1>
+                <h1 className="text-3xl font-bold text-foreground mb-2">
+                  {packageData.title}
+                </h1>
                 <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <MapPin className="h-4 w-4" />
@@ -148,15 +163,17 @@ const PackageDetails = () => {
               <Separator />
 
               <div>
-                <h2 className="text-xl font-bold mb-4">สิ่งที่รวมอยู่ในแพคเกจ</h2>
+                <h2 className="text-xl font-bold mb-4">
+                  สิ่งที่รวมอยู่ในแพคเกจ
+                </h2>
                 <div className="grid md:grid-cols-2 gap-3">
                   {[
                     "ที่พักตามโปรแกรม",
-                    "อาหารตามโปรแกรม", 
+                    "อาหารตามโปรแกรม",
                     "รถโค้ชปรับอากาศ",
                     "ไกด์ท้องถิ่น",
                     "ประกันการเดินทาง",
-                    "ค่าเข้าสถานที่ท่องเที่ยว"
+                    "ค่าเข้าสถานที่ท่องเที่ยว",
                   ].map((item, index) => (
                     <div key={index} className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-600" />
@@ -208,10 +225,12 @@ const PackageDetails = () => {
                         min="1"
                         max={availableSpots}
                         value={bookingData.numberOfPeople}
-                        onChange={(e) => setBookingData({
-                          ...bookingData,
-                          numberOfPeople: parseInt(e.target.value) || 1
-                        })}
+                        onChange={(e) =>
+                          setBookingData({
+                            ...bookingData,
+                            numberOfPeople: parseInt(e.target.value) || 1,
+                          })
+                        }
                       />
                     </div>
 
@@ -221,7 +240,10 @@ const PackageDetails = () => {
                       <div className="flex justify-between">
                         <span>ราคารวม</span>
                         <span className="font-bold">
-                          ฿{(packageData.price * bookingData.numberOfPeople).toLocaleString()}
+                          ฿
+                          {(
+                            packageData.price * bookingData.numberOfPeople
+                          ).toLocaleString()}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm text-muted-foreground">
@@ -230,8 +252,8 @@ const PackageDetails = () => {
                       </div>
                     </div>
 
-                    <Button 
-                      className="w-full" 
+                    <Button
+                      className="w-full"
                       size="lg"
                       onClick={() => setShowBookingForm(true)}
                       disabled={availableSpots === 0}
@@ -247,10 +269,12 @@ const PackageDetails = () => {
                         id="fullName"
                         required
                         value={bookingData.fullName}
-                        onChange={(e) => setBookingData({
-                          ...bookingData,
-                          fullName: e.target.value
-                        })}
+                        onChange={(e) =>
+                          setBookingData({
+                            ...bookingData,
+                            fullName: e.target.value,
+                          })
+                        }
                       />
                     </div>
 
@@ -261,10 +285,12 @@ const PackageDetails = () => {
                         type="email"
                         required
                         value={bookingData.email}
-                        onChange={(e) => setBookingData({
-                          ...bookingData,
-                          email: e.target.value
-                        })}
+                        onChange={(e) =>
+                          setBookingData({
+                            ...bookingData,
+                            email: e.target.value,
+                          })
+                        }
                       />
                     </div>
 
@@ -274,10 +300,12 @@ const PackageDetails = () => {
                         id="phone"
                         required
                         value={bookingData.phone}
-                        onChange={(e) => setBookingData({
-                          ...bookingData,
-                          phone: e.target.value
-                        })}
+                        onChange={(e) =>
+                          setBookingData({
+                            ...bookingData,
+                            phone: e.target.value,
+                          })
+                        }
                       />
                     </div>
 
@@ -287,10 +315,12 @@ const PackageDetails = () => {
                         id="requests"
                         placeholder="เช่น อาหารเจ, ที่พักแยกชาย-หญิง"
                         value={bookingData.specialRequests}
-                        onChange={(e) => setBookingData({
-                          ...bookingData,
-                          specialRequests: e.target.value
-                        })}
+                        onChange={(e) =>
+                          setBookingData({
+                            ...bookingData,
+                            specialRequests: e.target.value,
+                          })
+                        }
                       />
                     </div>
 
