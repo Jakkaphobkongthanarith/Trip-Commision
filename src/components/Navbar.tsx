@@ -3,6 +3,7 @@ import { Plane, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import NotificationBell from "./NotificationBell";
 
 const Navbar = () => {
   const { user, signOut } = useAuth();
@@ -39,6 +40,7 @@ const Navbar = () => {
         <div className="flex items-center space-x-4">
           {user ? (
             <div className="flex items-center space-x-4">
+              <NotificationBell />
               <span className="text-foreground">สวัสดี, {user.email}</span>
               <Button 
                 variant="ghost" 
