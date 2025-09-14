@@ -16,14 +16,24 @@ export const useUserRole = () => {
       }
 
       try {
+        // Prefer RPC to avoid RLS issues and missing-row errors
+        const { data: roleData, error: roleError } = await supabase.rpc('get_current_user_role');
+        if (!roleError && roleData) {
+          setUserRole(roleData as string);
+          return;
+        }
+
+        // Fallback to direct table query
         const { data, error } = await supabase
           .from('user_roles')
           .select('role')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
-        if (!error && data) {
-          setUserRole(data.role);
+        if (!error && data?.role) {
+          setUserRole(data.role as string);
+        } else {
+          setUserRole('');
         }
       } catch (err) {
         console.error('Error fetching user role:', err);
