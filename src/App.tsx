@@ -9,6 +9,8 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import PackageDetails from "./pages/PackageDetails";
 import AdvertiserDashboard from "./pages/AdvertiserDashboard";
+import MemberManagement from "./pages/MemberManagement";
+import AdminDashboard from "./pages/AdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -27,6 +29,16 @@ const App = () => (
             <Route path="/advertiser" element={
               <ProtectedRoute>
                 <AdvertiserDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/members" element={
+              <ProtectedRoute>
+                <MemberManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin" element={
+              <ProtectedRoute>
+                <AdminDashboard />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

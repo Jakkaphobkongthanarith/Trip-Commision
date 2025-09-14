@@ -1,14 +1,16 @@
 import { Button } from "@/components/ui/button";
-import { Plane, LogOut } from "lucide-react";
+import { Plane, LogOut, BarChart3, Users, Settings } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useUserRole } from "@/hooks/useUserRole";
 import NotificationBell from "./NotificationBell";
 
 const Navbar = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { userRole } = useUserRole();
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -41,6 +43,40 @@ const Navbar = () => {
           {user ? (
             <div className="flex items-center space-x-4">
               <NotificationBell />
+              
+              {/* Role-based navigation buttons */}
+              {userRole === 'advertiser' && (
+                <>
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => navigate("/advertiser")}
+                    className="text-foreground hover:text-primary"
+                  >
+                    <BarChart3 className="h-4 w-4 mr-2" />
+                    แดชบอร์ด
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => navigate("/members")}
+                    className="text-foreground hover:text-primary"
+                  >
+                    <Users className="h-4 w-4 mr-2" />
+                    จัดการสมาชิก
+                  </Button>
+                </>
+              )}
+              
+              {userRole === 'manager' && (
+                <Button 
+                  variant="ghost" 
+                  onClick={() => navigate("/admin")}
+                  className="text-foreground hover:text-primary"
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  จัดการระบบ
+                </Button>
+              )}
+              
               <span className="text-foreground">สวัสดี, {user.email}</span>
               <Button 
                 variant="ghost" 
