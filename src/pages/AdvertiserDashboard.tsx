@@ -56,25 +56,43 @@ const AdvertiserDashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      fetchUserRole();
-      fetchCommissions();
-      fetchReviews();
-      fetchUpcomingTrips();
-    }
+    let isCancelled = false;
+    const run = async () => {
+      if (!user) return;
+      setLoading(true);
+      await Promise.allSettled([
+        fetchUserRole(),
+        fetchCommissions(),
+        fetchReviews(),
+        fetchUpcomingTrips(),
+      ]);
+      if (!isCancelled) setLoading(false);
+    };
+    run();
+    return () => { isCancelled = true; };
   }, [user]);
 
   const fetchUserRole = async () => {
     if (!user) return;
 
-    const { data } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .single();
+    try {
+      const { data: roleData, error: roleError } = await supabase.rpc('get_current_user_role');
+      if (!roleError && roleData) {
+        setUserRole(roleData as string);
+        return;
+      }
 
-    if (data) {
-      setUserRole(data.role);
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!error && data?.role) {
+        setUserRole(data.role as string);
+      }
+    } catch (e) {
+      console.error('Error fetching user role:', e);
     }
   };
 
@@ -179,11 +197,6 @@ const AdvertiserDashboard = () => {
     }
   };
 
-  useEffect(() => {
-    if (commissions.length > 0 || reviews.length > 0 || upcomingTrips.length > 0) {
-      setLoading(false);
-    }
-  }, [commissions, reviews, upcomingTrips]);
 
   if (!user) {
     return <Navigate to="/auth" replace />;
