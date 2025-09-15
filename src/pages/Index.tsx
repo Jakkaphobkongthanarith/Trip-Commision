@@ -3,9 +3,24 @@ import Navbar from "@/components/Navbar";
 import SearchBar from "@/components/SearchBar";
 import TravelPackageCard from "@/components/TravelPackageCard";
 import { mockPackages } from "@/data/mockPackages";
+import { Button } from "@/components/ui/button";
+import { X } from "lucide-react";
 
 const Index = () => {
   const [packages] = useState(mockPackages);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+
+  const filteredPackages = selectedTag 
+    ? packages.filter(pkg => pkg.tags.includes(selectedTag))
+    : packages;
+
+  const handleTagClick = (tag: string) => {
+    setSelectedTag(tag);
+  };
+
+  const clearFilter = () => {
+    setSelectedTag(null);
+  };
 
   return (
     <div className="min-h-screen bg-sky-gradient">
@@ -46,13 +61,36 @@ const Index = () => {
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               เลือกจากแพคเกจท่องเที่ยวคุณภาพสูงที่คัดสรรมาเป็นพิเศษ พร้อมส่วนลดและโปรโมชั่นสุดพิเศษ
             </p>
+            {selectedTag && (
+              <div className="flex items-center justify-center gap-2 mt-4">
+                <span className="text-muted-foreground">กำลังแสดงแพคเกจที่มีแท็ก:</span>
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  onClick={clearFilter}
+                  className="gap-2"
+                >
+                  {selectedTag}
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {packages.map((pkg) => (
-              <TravelPackageCard key={pkg.id} package={pkg} />
+            {filteredPackages.map((pkg) => (
+              <TravelPackageCard key={pkg.id} package={pkg} onTagClick={handleTagClick} />
             ))}
           </div>
+          
+          {selectedTag && filteredPackages.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground text-lg">ไม่มีแพคเกจท่องเที่ยวที่มีแท็ก "{selectedTag}"</p>
+              <Button variant="outline" onClick={clearFilter} className="mt-4">
+                ดูแพคเกจทั้งหมด
+              </Button>
+            </div>
+          )}
         </div>
       </section>
 

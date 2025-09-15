@@ -77,7 +77,14 @@ const Navbar = () => {
                 </Button>
               )}
               
-              <span className="text-foreground">สวัสดี, {user.email}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-foreground">สวัสดี, {user.email}</span>
+                {userRole && (
+                  <span className="text-sm text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                    ลอคอินในฐานะ {userRole === 'customer' ? 'นักท่องเที่ยว' : userRole === 'advertiser' ? 'คนกลาง' : 'ผู้จัดการ'}
+                  </span>
+                )}
+              </div>
               <Button 
                 variant="ghost" 
                 onClick={handleSignOut}

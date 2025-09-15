@@ -23,9 +23,10 @@ interface TravelPackage {
 
 interface TravelPackageCardProps {
   package: TravelPackage;
+  onTagClick?: (tag: string) => void;
 }
 
-const TravelPackageCard: React.FC<TravelPackageCardProps> = ({ package: pkg }) => {
+const TravelPackageCard: React.FC<TravelPackageCardProps> = ({ package: pkg, onTagClick }) => {
   const navigate = useNavigate();
   const discount = pkg.originalPrice ? Math.round(((pkg.originalPrice - pkg.price) / pkg.originalPrice) * 100) : 0;
   const availableSpots = pkg.maxPeople - pkg.currentBookings;
@@ -73,7 +74,12 @@ const TravelPackageCard: React.FC<TravelPackageCardProps> = ({ package: pkg }) =
         
         <div className="flex flex-wrap gap-1">
           {pkg.tags.slice(0, 3).map((tag) => (
-            <Badge key={tag} variant="secondary" className="text-xs">
+            <Badge 
+              key={tag} 
+              variant="secondary" 
+              className="text-xs cursor-pointer hover:bg-secondary/80 transition-colors"
+              onClick={() => onTagClick?.(tag)}
+            >
               {tag}
             </Badge>
           ))}
