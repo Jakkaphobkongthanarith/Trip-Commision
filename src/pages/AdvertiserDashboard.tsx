@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { DollarSign, Star, Calendar, TrendingUp } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { th } from 'date-fns/locale';
+import Navbar from '@/components/Navbar';
 
 interface Commission {
   id: string;
@@ -216,7 +217,8 @@ const AdvertiserDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-sunset-start to-sunset-end">
-      <div className="container mx-auto p-6">
+      <Navbar />
+      <div className="container mx-auto p-6 pt-24">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">แดชบอร์ดคนกลาง</h1>
           <p className="text-white/80">ภาพรวมและสถิติของคุณ</p>

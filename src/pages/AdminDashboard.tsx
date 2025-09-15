@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Search, Users, Trash2, Shield, UserCheck, UserX } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import Navbar from '@/components/Navbar';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -183,8 +184,9 @@ const AdminDashboard = () => {
   const stats = getRoleStats();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sunset-start to-sunset-end pt-20">
-      <div className="container mx-auto p-6">
+    <div className="min-h-screen bg-gradient-to-br from-sunset-start to-sunset-end">
+      <Navbar />
+      <div className="container mx-auto p-6 pt-24">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">จัดการระบบ</h1>
           <p className="text-white/80">จัดการผู้ใช้และระบบทั้งหมด</p>
