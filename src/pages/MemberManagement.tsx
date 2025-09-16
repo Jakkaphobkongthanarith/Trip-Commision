@@ -6,9 +6,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
-import { Search, Users, UserCheck, UserX } from 'lucide-react';
+import { Search, Users, UserCheck, UserX, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Navbar from '@/components/Navbar';
 
@@ -27,10 +29,11 @@ const MemberManagement = () => {
   const { toast } = useToast();
   const [members, setMembers] = useState<Member[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user && userRole === 'advertiser') {
+    if (user && (userRole === 'advertiser' || userRole === 'manager')) {
       fetchMembers();
     }
   }, [user, userRole]);
@@ -78,10 +81,57 @@ const MemberManagement = () => {
     }
   };
 
-  const filteredMembers = members.filter(member =>
-    member.display_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    member.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleDeleteMember = async (userId: string, displayName: string) => {
+    try {
+      // Only allow deleting advertiser role
+      const memberToDelete = members.find(m => m.user_id === userId);
+      if (memberToDelete?.role !== 'advertiser') {
+        toast({
+          title: "ข้อผิดพลาด",
+          description: "สามารถลบเฉพาะบัญชี 'คนกลาง' เท่านั้น",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('Error deleting member:', error);
+        toast({
+          title: "ข้อผิดพลาด",
+          description: "ไม่สามารถลบสมาชิกได้",
+          variant: "destructive",
+        });
+      } else {
+        setMembers(members.filter(m => m.user_id !== userId));
+        toast({
+          title: "สำเร็จ",
+          description: `ลบบัญชี ${displayName} เรียบร้อยแล้ว`,
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting member:', error);
+      toast({
+        title: "ข้อผิดพลาด",
+        description: "เกิดข้อผิดพลาดในระบบ",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const filteredMembers = members.filter(member => {
+    const matchesSearch = member.display_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      member.role?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesRole = roleFilter === 'all' || member.role === roleFilter;
+    
+    return matchesSearch && matchesRole;
+  });
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
@@ -113,7 +163,7 @@ const MemberManagement = () => {
     return <Navigate to="/auth" replace />;
   }
 
-  if (userRole !== 'advertiser') {
+  if (userRole !== 'advertiser' && userRole !== 'manager') {
     return <Navigate to="/" replace />;
   }
 
@@ -176,14 +226,27 @@ const MemberManagement = () => {
           <CardHeader>
             <CardTitle>รายชื่อสมาชิก</CardTitle>
             <CardDescription>ข้อมูลสมาชิกที่ลงทะเบียนในระบบ</CardDescription>
-            <div className="flex items-center space-x-2">
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="ค้นหาด้วยชื่อหรืออีเมล..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="max-w-sm"
-              />
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <Search className="h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="ค้นหาด้วยชื่อหรืออีเมล..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="max-w-sm"
+                />
+              </div>
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="กรองตามบทบาท" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">ทั้งหมด</SelectItem>
+                  <SelectItem value="customer">นักท่องเที่ยว</SelectItem>
+                  <SelectItem value="advertiser">คนกลาง</SelectItem>
+                  <SelectItem value="manager">ผู้จัดการ</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </CardHeader>
           <CardContent>
@@ -197,7 +260,7 @@ const MemberManagement = () => {
                     <TableHead>อีเมล</TableHead>
                     <TableHead>ตำแหน่ง</TableHead>
                     <TableHead>วันที่สมัคร</TableHead>
-                    <TableHead>การจัดการ</TableHead>
+                    {userRole === 'manager' && <TableHead>การจัดการ</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -215,11 +278,43 @@ const MemberManagement = () => {
                       <TableCell>
                         {new Date(member.created_at).toLocaleDateString('th-TH')}
                       </TableCell>
-                      <TableCell>
-                        <Button variant="outline" size="sm">
-                          ดูรายละเอียด
-                        </Button>
-                      </TableCell>
+                      {userRole === 'manager' && (
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button variant="outline" size="sm">
+                              ดูรายละเอียด
+                            </Button>
+                            {member.role === 'advertiser' && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="destructive" size="sm">
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    ลบ
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>ยืนยันการลบบัญชี</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      คุณแน่ใจหรือไม่ที่จะลบบัญชี "{member.display_name || member.email}" 
+                                      การกระทำนี้ไม่สามารถย้อนกลับได้
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      onClick={() => handleDeleteMember(member.user_id, member.display_name || member.email || 'ผู้ใช้')}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      ลบบัญชี
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                          </div>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
