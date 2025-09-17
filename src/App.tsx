@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import PackageDetails from "./pages/PackageDetails";
+import PackageList from "./pages/PackageList";
 import AdvertiserDashboard from "./pages/AdvertiserDashboard";
 import MemberManagement from "./pages/MemberManagement";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -25,6 +26,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/packages" element={<PackageList />} />
             <Route path="/packages/:id" element={<PackageDetails />} />
             <Route path="/advertiser" element={
               <ProtectedRoute>

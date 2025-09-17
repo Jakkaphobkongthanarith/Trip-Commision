@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Plane, LogOut, BarChart3, Users, Settings } from "lucide-react";
+import { Plane, LogOut, BarChart3, Users, Settings, Package } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -43,6 +43,15 @@ const Navbar = () => {
         </div>
         
         <div className="flex items-center space-x-4">
+          <Button 
+            variant="ghost" 
+            onClick={() => navigate("/packages")}
+            className="text-foreground hover:text-primary"
+          >
+            <Package className="h-4 w-4 mr-2" />
+            แพคเกจทั้งหมด
+          </Button>
+          
           {user ? (
             <div className="flex items-center space-x-4">
               <NotificationBell />

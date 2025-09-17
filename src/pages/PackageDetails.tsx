@@ -145,7 +145,12 @@ const PackageDetails = () => {
 
               <div className="flex flex-wrap gap-2">
                 {packageData.tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="text-sm">
+                  <Badge 
+                    key={tag} 
+                    variant="secondary" 
+                    className="text-sm cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                    onClick={() => navigate(`/packages?tag=${encodeURIComponent(tag)}`)}
+                  >
                     {tag}
                   </Badge>
                 ))}
