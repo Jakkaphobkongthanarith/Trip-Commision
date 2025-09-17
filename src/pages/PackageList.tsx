@@ -13,10 +13,18 @@ const PackageList = () => {
   const navigate = useNavigate();
   const [packages] = useState(mockPackages);
   const selectedTag = searchParams.get('tag');
+  const searchQuery = searchParams.get('search');
+  const locationFilter = searchParams.get('location');
+  const dateFilter = searchParams.get('date');
 
-  const filteredPackages = selectedTag
-    ? packages.filter(pkg => pkg.tags.includes(selectedTag))
-    : packages;
+  const filteredPackages = packages.filter(pkg => {
+    if (selectedTag && !pkg.tags.includes(selectedTag)) return false;
+    if (searchQuery && !pkg.title.toLowerCase().includes(searchQuery.toLowerCase()) && 
+        !pkg.description.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (locationFilter && !pkg.location.toLowerCase().includes(locationFilter.toLowerCase())) return false;
+    if (dateFilter && pkg.date !== dateFilter) return false;
+    return true;
+  });
 
   const handleTagClick = (tag: string) => {
     navigate(`/packages?tag=${encodeURIComponent(tag)}`);

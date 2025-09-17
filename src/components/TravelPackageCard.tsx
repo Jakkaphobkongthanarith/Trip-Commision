@@ -33,7 +33,7 @@ const TravelPackageCard: React.FC<TravelPackageCardProps> = ({ package: pkg, onT
   
   return (
     <Card className="group overflow-hidden bg-card border border-border/50 hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1">
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-hidden cursor-pointer" onClick={() => navigate(`/packages/${pkg.id}`)}>
         <img
           src={pkg.image}
           alt={pkg.title}

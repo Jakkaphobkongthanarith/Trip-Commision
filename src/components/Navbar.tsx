@@ -79,24 +79,14 @@ const Navbar = () => {
               )}
               
               {userRole === 'manager' && (
-                <>
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => navigate("/admin")}
-                    className="text-foreground hover:text-primary"
-                  >
-                    <Settings className="h-4 w-4 mr-2" />
-                    จัดการระบบ
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => navigate("/members")}
-                    className="text-foreground hover:text-primary"
-                  >
-                    <Users className="h-4 w-4 mr-2" />
-                    จัดการสมาชิก
-                  </Button>
-                </>
+                <Button 
+                  variant="ghost" 
+                  onClick={() => navigate("/members")}
+                  className="text-foreground hover:text-primary"
+                >
+                  <Users className="h-4 w-4 mr-2" />
+                  จัดการสมาชิก
+                </Button>
               )}
               
               <div className="flex items-center gap-2">

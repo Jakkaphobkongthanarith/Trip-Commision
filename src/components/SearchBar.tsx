@@ -2,11 +2,22 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, MapPin, Calendar } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const SearchBar = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [location, setLocation] = useState("");
   const [date, setDate] = useState("");
+
+  const handleSearch = () => {
+    const params = new URLSearchParams();
+    if (searchQuery) params.set('search', searchQuery);
+    if (location) params.set('location', location);
+    if (date) params.set('date', date);
+    
+    navigate(`/packages?${params.toString()}`);
+  };
 
   return (
     <div className="w-full max-w-6xl mx-auto bg-card rounded-2xl shadow-card p-6 border border-border/50">
@@ -53,6 +64,7 @@ const SearchBar = () => {
         <Button 
           size="lg" 
           className="bg-sunset-gradient hover:opacity-90 text-white font-semibold shadow-card-hover transition-all duration-300 h-11"
+          onClick={handleSearch}
         >
           <Search className="h-5 w-5 mr-2" />
           ค้นหา
