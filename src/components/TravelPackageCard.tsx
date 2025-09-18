@@ -7,18 +7,20 @@ import { useNavigate } from "react-router-dom";
 interface TravelPackage {
   id: string;
   title: string;
-  description: string;
-  image: string;
+  description?: string;
+  image?: string;
+  image_url?: string;
   price: number;
   originalPrice?: number;
-  duration: string;
+  duration: number | string;
   location: string;
-  maxPeople: number;
-  currentBookings: number;
-  tags: string[];
-  rating: number;
-  reviewCount: number;
-  date: string;
+  maxPeople?: number;
+  currentBookings?: number;
+  tags?: string[];
+  rating?: number;
+  reviewCount?: number;
+  review_count?: number;
+  date?: string;
 }
 
 interface TravelPackageCardProps {
@@ -29,13 +31,13 @@ interface TravelPackageCardProps {
 const TravelPackageCard: React.FC<TravelPackageCardProps> = ({ package: pkg, onTagClick }) => {
   const navigate = useNavigate();
   const discount = pkg.originalPrice ? Math.round(((pkg.originalPrice - pkg.price) / pkg.originalPrice) * 100) : 0;
-  const availableSpots = pkg.maxPeople - pkg.currentBookings;
+  const availableSpots = pkg.maxPeople && pkg.currentBookings ? pkg.maxPeople - pkg.currentBookings : 0;
   
   return (
     <Card className="group overflow-hidden bg-card border border-border/50 hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1">
       <div className="relative overflow-hidden cursor-pointer" onClick={() => navigate(`/packages/${pkg.id}`)}>
         <img
-          src={pkg.image}
+          src={pkg.image_url || pkg.image}
           alt={pkg.title}
           className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500"
         />
@@ -46,8 +48,8 @@ const TravelPackageCard: React.FC<TravelPackageCardProps> = ({ package: pkg, onT
         )}
         <div className="absolute top-3 right-3 bg-background/80 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1 text-sm">
           <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-          <span className="font-medium">{pkg.rating}</span>
-          <span className="text-muted-foreground">({pkg.reviewCount})</span>
+          <span className="font-medium">{pkg.rating || 0}</span>
+          <span className="text-muted-foreground">({pkg.review_count || pkg.reviewCount || 0})</span>
         </div>
       </div>
       
@@ -62,7 +64,7 @@ const TravelPackageCard: React.FC<TravelPackageCardProps> = ({ package: pkg, onT
           </div>
           <div className="flex items-center gap-1">
             <Clock className="h-4 w-4" />
-            <span>{pkg.duration}</span>
+            <span>{typeof pkg.duration === 'number' ? `${pkg.duration} วัน` : pkg.duration}</span>
           </div>
         </div>
       </CardHeader>
@@ -73,7 +75,7 @@ const TravelPackageCard: React.FC<TravelPackageCardProps> = ({ package: pkg, onT
         </p>
         
         <div className="flex flex-wrap gap-1">
-          {pkg.tags.slice(0, 3).map((tag) => (
+          {pkg.tags?.slice(0, 3).map((tag) => (
             <Badge 
               key={tag} 
               variant="secondary" 
@@ -83,7 +85,7 @@ const TravelPackageCard: React.FC<TravelPackageCardProps> = ({ package: pkg, onT
               {tag}
             </Badge>
           ))}
-          {pkg.tags.length > 3 && (
+          {pkg.tags && pkg.tags.length > 3 && (
             <Badge variant="outline" className="text-xs">
               +{pkg.tags.length - 3}
             </Badge>
@@ -95,7 +97,7 @@ const TravelPackageCard: React.FC<TravelPackageCardProps> = ({ package: pkg, onT
             <Users className="h-4 w-4" />
             <span>เหลือ {availableSpots} ที่นั่ง</span>
           </div>
-          <span className="text-muted-foreground">วันที่: {pkg.date}</span>
+          {pkg.date && <span className="text-muted-foreground">วันที่: {pkg.date}</span>}
         </div>
       </CardContent>
       

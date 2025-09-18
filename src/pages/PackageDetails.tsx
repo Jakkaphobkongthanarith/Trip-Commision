@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { mockPackages } from "@/data/mockPackages";
+import { supabase } from "@/integrations/supabase/client";
 import {
   MapPin,
   Clock,
@@ -34,6 +34,8 @@ const PackageDetails = () => {
   const { toast } = useToast();
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [discountCode, setDiscountCode] = useState("");
+  const [packageData, setPackageData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [bookingData, setBookingData] = useState({
     fullName: "",
     email: "",
@@ -42,7 +44,37 @@ const PackageDetails = () => {
     numberOfPeople: 1,
   });
 
-  const packageData = mockPackages.find((pkg) => pkg.id === id);
+  useEffect(() => {
+    const fetchPackage = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('travel_packages')
+          .select('*')
+          .eq('id', id)
+          .single();
+        
+        if (error) throw error;
+        setPackageData(data);
+      } catch (error) {
+        console.error('Error fetching package:', error);
+        setPackageData(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (id) {
+      fetchPackage();
+    }
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">กำลังโหลด...</div>
+      </div>
+    );
+  }
 
   if (!packageData) {
     return (
@@ -57,18 +89,17 @@ const PackageDetails = () => {
     );
   }
 
-  const discount = packageData.originalPrice
+  const discount = packageData?.originalPrice
     ? Math.round(
         ((packageData.originalPrice - packageData.price) /
           packageData.originalPrice) *
           100
       )
     : 0;
-  const availableSpots = packageData.maxPeople - packageData.currentBookings;
+  const availableSpots = packageData?.maxPeople ? packageData.maxPeople - (packageData.currentBookings || 0) : 0;
 
   const handleBookingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    debugger;
     toast({
       title: "การจองสำเร็จ!",
       description: `คุณได้จองแพคเกจ "${packageData.title}" เรียบร้อยแล้ว`,
@@ -99,7 +130,7 @@ const PackageDetails = () => {
             {/* Hero Image */}
             <div className="relative rounded-xl overflow-hidden">
               <img
-                src={packageData.image}
+                src={packageData.image_url}
                 alt={packageData.title}
                 className="w-full h-96 object-cover"
               />
@@ -112,7 +143,7 @@ const PackageDetails = () => {
                 <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                 <span className="font-medium">{packageData.rating}</span>
                 <span className="text-muted-foreground">
-                  ({packageData.reviewCount})
+                  ({packageData.review_count})
                 </span>
               </div>
             </div>
@@ -130,21 +161,21 @@ const PackageDetails = () => {
                   </div>
                   <div className="flex items-center gap-1">
                     <Clock className="h-4 w-4" />
-                    <span>{packageData.duration}</span>
+                    <span>{packageData.duration} วัน</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
-                    <span>{packageData.date}</span>
+                    <span>วันที่เดินทาง</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Users className="h-4 w-4" />
-                    <span>เหลือ {availableSpots} ที่นั่ง</span>
+                    <span>ติดต่อสอบถาม</span>
                   </div>
                 </div>
               </div>
 
               <div className="flex flex-wrap gap-2">
-                {packageData.tags.map((tag) => (
+                {packageData.tags?.map((tag) => (
                   <Badge 
                     key={tag} 
                     variant="secondary" 
@@ -174,7 +205,7 @@ const PackageDetails = () => {
                 <div className="grid md:grid-cols-2 gap-3">
                   {[
                     "ที่พักตามโปรแกรม",
-                    "อาหารตามโปรแกรม",
+                    "อาหารตามโปรแกรม", 
                     "รถโค้ชปรับอากาศ",
                     "ไกด์ท้องถิ่น",
                     "ประกันการเดินทาง",
@@ -210,141 +241,13 @@ const PackageDetails = () => {
               </CardHeader>
 
               <CardContent className="space-y-4">
-                {!showBookingForm ? (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="discount">โค้ดส่วนลด (ถ้ามี)</Label>
-                      <Input
-                        id="discount"
-                        placeholder="กรอกโค้ดส่วนลด"
-                        value={discountCode}
-                        onChange={(e) => setDiscountCode(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="people">จำนวนผู้เดินทาง</Label>
-                      <Input
-                        id="people"
-                        type="number"
-                        min="1"
-                        max={availableSpots}
-                        value={bookingData.numberOfPeople}
-                        onChange={(e) =>
-                          setBookingData({
-                            ...bookingData,
-                            numberOfPeople: parseInt(e.target.value) || 1,
-                          })
-                        }
-                      />
-                    </div>
-
-                    <Separator />
-
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span>ราคารวม</span>
-                        <span className="font-bold">
-                          ฿
-                          {(
-                            packageData.price * bookingData.numberOfPeople
-                          ).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm text-muted-foreground">
-                        <span>ค่าธรรมเนียม</span>
-                        <span>฿0</span>
-                      </div>
-                    </div>
-
-                    <Button
-                      className="w-full"
-                      size="lg"
-                      onClick={() => setShowBookingForm(true)}
-                      disabled={availableSpots === 0}
-                    >
-                      {availableSpots > 0 ? "จองเลย" : "เต็มแล้ว"}
-                    </Button>
-                  </>
-                ) : (
-                  <form onSubmit={handleBookingSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="fullName">ชื่อ-นามสกุล *</Label>
-                      <Input
-                        id="fullName"
-                        required
-                        value={bookingData.fullName}
-                        onChange={(e) =>
-                          setBookingData({
-                            ...bookingData,
-                            fullName: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="email">อีเมล *</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        required
-                        value={bookingData.email}
-                        onChange={(e) =>
-                          setBookingData({
-                            ...bookingData,
-                            email: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">เบอร์โทรศัพท์ *</Label>
-                      <Input
-                        id="phone"
-                        required
-                        value={bookingData.phone}
-                        onChange={(e) =>
-                          setBookingData({
-                            ...bookingData,
-                            phone: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="requests">คำร้องพิเศษ</Label>
-                      <Textarea
-                        id="requests"
-                        placeholder="เช่น อาหารเจ, ที่พักแยกชาย-หญิง"
-                        value={bookingData.specialRequests}
-                        onChange={(e) =>
-                          setBookingData({
-                            ...bookingData,
-                            specialRequests: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="flex-1"
-                        onClick={() => setShowBookingForm(false)}
-                      >
-                        กลับ
-                      </Button>
-                      <Button type="submit" className="flex-1">
-                        <CreditCard className="h-4 w-4 mr-2" />
-                        ชำระเงิน
-                      </Button>
-                    </div>
-                  </form>
-                )}
+                <Button
+                  className="w-full"
+                  size="lg"
+                  onClick={() => setShowBookingForm(true)}
+                >
+                  จองเลย
+                </Button>
 
                 <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mt-4">
                   <Shield className="h-4 w-4" />

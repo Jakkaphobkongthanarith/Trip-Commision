@@ -5,24 +5,44 @@ import { Badge } from "@/components/ui/badge";
 import TravelPackageCard from "@/components/TravelPackageCard";
 import SearchBar from "@/components/SearchBar";
 import Navbar from "@/components/Navbar";
-import { mockPackages } from "@/data/mockPackages";
+import { supabase } from "@/integrations/supabase/client";
 import { X } from "lucide-react";
 
 const PackageList = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [packages] = useState(mockPackages);
+  const [packages, setPackages] = useState([]);
+  const [loading, setLoading] = useState(true);
   const selectedTag = searchParams.get('tag');
   const searchQuery = searchParams.get('search');
   const locationFilter = searchParams.get('location');
   const dateFilter = searchParams.get('date');
 
+  useEffect(() => {
+    const fetchPackages = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('travel_packages')
+          .select('*')
+          .eq('is_active', true);
+        
+        if (error) throw error;
+        setPackages(data || []);
+      } catch (error) {
+        console.error('Error fetching packages:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPackages();
+  }, []);
+
   const filteredPackages = packages.filter(pkg => {
-    if (selectedTag && !pkg.tags.includes(selectedTag)) return false;
+    if (selectedTag && !pkg.tags?.includes(selectedTag)) return false;
     if (searchQuery && !pkg.title.toLowerCase().includes(searchQuery.toLowerCase()) && 
-        !pkg.description.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+        !pkg.description?.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     if (locationFilter && !pkg.location.toLowerCase().includes(locationFilter.toLowerCase())) return false;
-    if (dateFilter && pkg.date !== dateFilter) return false;
     return true;
   });
 
@@ -86,15 +106,19 @@ const PackageList = () => {
             )}
 
             {filteredPackages.length > 0 ? (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {filteredPackages.map((packageItem) => (
-                  <TravelPackageCard
-                    key={packageItem.id}
-                    package={packageItem}
-                    onTagClick={handleTagClick}
-                  />
-                ))}
-              </div>
+              loading ? (
+                <div className="text-center py-8">กำลังโหลด...</div>
+              ) : (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {filteredPackages.map((packageItem) => (
+                    <TravelPackageCard
+                      key={packageItem.id}
+                      package={packageItem}
+                      onTagClick={handleTagClick}
+                    />
+                  ))}
+                </div>
+              )
             ) : (
               <div className="text-center py-16">
                 <p className="text-xl text-muted-foreground mb-4">

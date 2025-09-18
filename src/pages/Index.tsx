@@ -1,17 +1,38 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import SearchBar from "@/components/SearchBar";
 import TravelPackageCard from "@/components/TravelPackageCard";
-import { mockPackages } from "@/data/mockPackages";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 
 const Index = () => {
-  const [packages] = useState(mockPackages);
+  const [packages, setPackages] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
+  useEffect(() => {
+    const fetchPackages = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('travel_packages')
+          .select('*')
+          .eq('is_active', true);
+        
+        if (error) throw error;
+        setPackages(data || []);
+      } catch (error) {
+        console.error('Error fetching packages:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPackages();
+  }, []);
+
   const filteredPackages = selectedTag 
-    ? packages.filter(pkg => pkg.tags.includes(selectedTag))
+    ? packages.filter(pkg => pkg.tags?.includes(selectedTag))
     : packages;
 
   const handleTagClick = (tag: string) => {
@@ -78,9 +99,13 @@ const Index = () => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredPackages.map((pkg) => (
-              <TravelPackageCard key={pkg.id} package={pkg} onTagClick={handleTagClick} />
-            ))}
+            {loading ? (
+              <div className="col-span-full text-center">กำลังโหลด...</div>
+            ) : (
+              filteredPackages.map((pkg) => (
+                <TravelPackageCard key={pkg.id} package={pkg} onTagClick={handleTagClick} />
+              ))
+            )}
           </div>
           
           {selectedTag && filteredPackages.length === 0 && (
