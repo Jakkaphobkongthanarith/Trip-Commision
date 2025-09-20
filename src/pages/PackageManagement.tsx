@@ -68,12 +68,7 @@ export default function PackageManagement() {
     try {
       const { data, error } = await supabase
         .from("travel_packages")
-        .select(`
-          *,
-          profiles:advertiser_id (
-            display_name
-          )
-        `)
+        .select("*")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -89,27 +84,37 @@ export default function PackageManagement() {
 
   const fetchAdvertisers = async () => {
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select(`
-          user_id,
-          display_name,
-          user_roles!inner (
-            role
-          )
-        `)
-        .eq("user_roles.role", "advertiser");
+      // Get all advertiser user IDs first
+      const { data: roleData, error: roleError } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "advertiser");
 
-      if (error) throw error;
-      
-      const advertiserUsers = data?.map(item => ({
-        id: item.user_id,
-        display_name: item.display_name || "ไม่ระบุชื่อ",
+      if (roleError) throw roleError;
+
+      if (!roleData || roleData.length === 0) {
+        setAdvertisers([]);
+        return;
+      }
+
+      // Get profiles for those users
+      const userIds = roleData.map(item => item.user_id);
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("user_id, display_name")
+        .in("user_id", userIds);
+
+      if (profileError) throw profileError;
+
+      const advertiserUsers = profileData?.map(profile => ({
+        id: profile.user_id,
+        display_name: profile.display_name || "ไม่ระบุชื่อ",
         email: ""
       })) || [];
       
       setAdvertisers(advertiserUsers);
     } catch (error) {
+      console.error("Error fetching advertisers:", error);
       toast({
         title: "เกิดข้อผิดพลาด",
         description: "ไม่สามารถโหลดข้อมูลผู้โฆษณาได้",
@@ -228,6 +233,11 @@ export default function PackageManagement() {
       advertiser_id: ""
     });
     setEditingPackage(null);
+  };
+
+  const getAdvertiserName = (advertiserId: string) => {
+    const advertiser = advertisers.find(a => a.id === advertiserId);
+    return advertiser?.display_name || "ไม่ระบุ";
   };
 
   if (loading || isLoading) {
@@ -376,7 +386,7 @@ export default function PackageManagement() {
                   </p>
                   {pkg.advertiser_id && (
                     <p className="text-sm text-blue-600 mt-1">
-                      ผู้โฆษณา: {advertisers.find(a => a.id === pkg.advertiser_id)?.display_name || "ไม่ระบุ"}
+                      ผู้โฆษณา: {getAdvertiserName(pkg.advertiser_id)}
                     </p>
                   )}
                 </div>
