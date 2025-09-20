@@ -264,6 +264,7 @@ export type Database = {
       }
       travel_packages: {
         Row: {
+          advertiser_id: string | null
           created_at: string
           description: string | null
           duration: number
@@ -279,6 +280,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          advertiser_id?: string | null
           created_at?: string
           description?: string | null
           duration: number
@@ -294,6 +296,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          advertiser_id?: string | null
           created_at?: string
           description?: string | null
           duration?: number
