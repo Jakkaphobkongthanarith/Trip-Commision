@@ -305,14 +305,14 @@ export default function PackageManagement() {
 
               <div>
                 <Label htmlFor="advertiser">ผู้โฆษณา</Label>
-                <Select value={formData.advertiser_id} onValueChange={(value) => 
-                  setFormData({...formData, advertiser_id: value})
+                <Select value={formData.advertiser_id || "none"} onValueChange={(value) => 
+                  setFormData({...formData, advertiser_id: value === "none" ? "" : value})
                 }>
                   <SelectTrigger>
                     <SelectValue placeholder="เลือกผู้โฆษณา (ไม่บังคับ)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">ไม่มีผู้โฆษณา</SelectItem>
+                    <SelectItem value="none">ไม่มีผู้โฆษณา</SelectItem>
                     {advertisers.map((advertiser) => (
                       <SelectItem key={advertiser.id} value={advertiser.id}>
                         {advertiser.display_name}
