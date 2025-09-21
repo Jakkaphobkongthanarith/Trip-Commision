@@ -427,20 +427,20 @@ export default function PackageManagement() {
                           onValueChange={setNewTag}
                         />
                         <CommandList>
-                          <CommandEmpty>
-                            {newTag && (
-                              <Button 
-                                variant="ghost" 
-                                className="w-full"
-                                onClick={() => addTag(newTag)}
+                          <CommandGroup>
+                            {newTag && !existingTags.includes(newTag.trim()) && (
+                              <CommandItem
+                                value={`create-${newTag}`}
+                                onSelect={() => addTag(newTag)}
+                                className="text-green-600"
                               >
                                 <Plus className="mr-2 h-4 w-4" />
                                 สร้าง "{newTag}"
-                              </Button>
+                              </CommandItem>
                             )}
-                          </CommandEmpty>
-                          <CommandGroup>
-                            {availableTagsForSelection.map((tag) => (
+                            {availableTagsForSelection
+                              .filter(tag => tag.toLowerCase().includes(newTag.toLowerCase()))
+                              .map((tag) => (
                               <CommandItem
                                 key={tag}
                                 value={tag}
@@ -456,6 +456,14 @@ export default function PackageManagement() {
                               </CommandItem>
                             ))}
                           </CommandGroup>
+                          {!newTag && existingTags.length === 0 && (
+                            <CommandEmpty>ยังไม่มีแท็กในระบบ</CommandEmpty>
+                          )}
+                          {newTag && availableTagsForSelection.filter(tag => 
+                            tag.toLowerCase().includes(newTag.toLowerCase())
+                          ).length === 0 && existingTags.includes(newTag.trim()) && (
+                            <CommandEmpty>แท็กนี้มีอยู่แล้ว</CommandEmpty>
+                          )}
                         </CommandList>
                       </Command>
                     </PopoverContent>
