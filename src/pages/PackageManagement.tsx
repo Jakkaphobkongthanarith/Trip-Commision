@@ -6,13 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Edit, Trash2, Plus, X } from "lucide-react";
+import { Edit, Trash2, Plus, X, Check, ChevronsUpDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { Navigate } from "react-router-dom";
 
 interface Package {
@@ -40,6 +43,7 @@ export default function PackageManagement() {
   const { toast } = useToast();
   const [packages, setPackages] = useState<Package[]>([]);
   const [advertisers, setAdvertisers] = useState<User[]>([]);
+  const [existingTags, setExistingTags] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -55,6 +59,7 @@ export default function PackageManagement() {
     tags: [] as string[]
   });
   const [newTag, setNewTag] = useState("");
+  const [tagComboOpen, setTagComboOpen] = useState(false);
 
   // Redirect if not manager
   if (!loading && userRole !== "manager") {
@@ -65,6 +70,7 @@ export default function PackageManagement() {
     if (userRole === "manager") {
       fetchPackages();
       fetchAdvertisers();
+      fetchExistingTags();
     }
   }, [userRole]);
 
@@ -129,6 +135,29 @@ export default function PackageManagement() {
     }
   };
 
+  const fetchExistingTags = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("travel_packages")
+        .select("tags")
+        .not("tags", "is", null);
+
+      if (error) throw error;
+
+      // Flatten and deduplicate tags
+      const allTags = new Set<string>();
+      data?.forEach(pkg => {
+        if (pkg.tags && Array.isArray(pkg.tags)) {
+          pkg.tags.forEach(tag => allTags.add(tag));
+        }
+      });
+
+      setExistingTags(Array.from(allTags).sort());
+    } catch (error) {
+      console.error("Error fetching existing tags:", error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -172,6 +201,7 @@ export default function PackageManagement() {
       }
 
       fetchPackages();
+      fetchExistingTags(); // Refresh tags after save
       resetForm();
       setIsDialogOpen(false);
     } catch (error) {
@@ -243,16 +273,19 @@ export default function PackageManagement() {
     setNewTag("");
   };
 
-  const addTag = () => {
-    if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
-      setFormData({...formData, tags: [...formData.tags, newTag.trim()]});
+  const addTag = (tag: string) => {
+    if (tag.trim() && !formData.tags.includes(tag.trim())) {
+      setFormData({...formData, tags: [...formData.tags, tag.trim()]});
       setNewTag("");
+      setTagComboOpen(false);
     }
   };
 
   const removeTag = (tagToRemove: string) => {
     setFormData({...formData, tags: formData.tags.filter(tag => tag !== tagToRemove)});
   };
+
+  const availableTagsForSelection = existingTags.filter(tag => !formData.tags.includes(tag));
 
   const getAdvertiserName = (advertiserId: string) => {
     const advertiser = advertisers.find(a => a.id === advertiserId);
@@ -373,30 +406,67 @@ export default function PackageManagement() {
 
               <div>
                 <Label htmlFor="tags">แท็ก</Label>
-                <div className="space-y-2">
-                  <div className="flex gap-2">
-                    <Input
-                      id="tags"
-                      placeholder="เพิ่มแท็ก..."
-                      value={newTag}
-                      onChange={(e) => setNewTag(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          addTag();
-                        }
-                      }}
-                    />
-                    <Button type="button" onClick={addTag} variant="outline">
-                      เพิ่ม
-                    </Button>
-                  </div>
+                <div className="space-y-3">
+                  <Popover open={tagComboOpen} onOpenChange={setTagComboOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={tagComboOpen}
+                        className="w-full justify-between"
+                      >
+                        เลือกแท็กหรือสร้างใหม่...
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0">
+                      <Command>
+                        <CommandInput 
+                          placeholder="ค้นหาหรือพิมพ์แท็กใหม่..." 
+                          value={newTag}
+                          onValueChange={setNewTag}
+                        />
+                        <CommandList>
+                          <CommandEmpty>
+                            {newTag && (
+                              <Button 
+                                variant="ghost" 
+                                className="w-full"
+                                onClick={() => addTag(newTag)}
+                              >
+                                <Plus className="mr-2 h-4 w-4" />
+                                สร้าง "{newTag}"
+                              </Button>
+                            )}
+                          </CommandEmpty>
+                          <CommandGroup>
+                            {availableTagsForSelection.map((tag) => (
+                              <CommandItem
+                                key={tag}
+                                value={tag}
+                                onSelect={() => addTag(tag)}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    formData.tags.includes(tag) ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {tag}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  
                   <div className="flex flex-wrap gap-2">
                     {formData.tags.map((tag, index) => (
                       <Badge key={index} variant="secondary" className="flex items-center gap-1">
                         {tag}
                         <X 
-                          className="h-3 w-3 cursor-pointer" 
+                          className="h-3 w-3 cursor-pointer hover:text-destructive" 
                           onClick={() => removeTag(tag)}
                         />
                       </Badge>
