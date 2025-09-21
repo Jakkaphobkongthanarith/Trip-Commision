@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Search, Users, UserCheck, UserX, Trash2 } from 'lucide-react';
@@ -31,6 +32,8 @@ const MemberManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [memberDetailsOpen, setMemberDetailsOpen] = useState(false);
 
   useEffect(() => {
     if (user && (userRole === 'advertiser' || userRole === 'manager')) {
@@ -289,7 +292,14 @@ const MemberManagement = () => {
                       {userRole === 'manager' && (
                         <TableCell>
                           <div className="flex gap-2">
-                            <Button variant="outline" size="sm">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => {
+                                setSelectedMember(member);
+                                setMemberDetailsOpen(true);
+                              }}
+                            >
                               ดูรายละเอียด
                             </Button>
                             {member.role === 'advertiser' && (
@@ -330,6 +340,50 @@ const MemberManagement = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Member Details Dialog */}
+        <Dialog open={memberDetailsOpen} onOpenChange={setMemberDetailsOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>รายละเอียดสมาชิก</DialogTitle>
+            </DialogHeader>
+            {selectedMember && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">ชื่อผู้ใช้</label>
+                    <p className="text-sm">{selectedMember.display_name || 'ไม่ระบุชื่อ'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">อีเมล</label>
+                    <p className="text-sm">{selectedMember.email}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">ตำแหน่ง</label>
+                    <Badge variant={getRoleBadgeVariant(selectedMember.role)} className="mt-1">
+                      {getRoleLabel(selectedMember.role)}
+                    </Badge>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">วันที่สมัคร</label>
+                    <p className="text-sm">{new Date(selectedMember.created_at).toLocaleDateString('th-TH', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      weekday: 'long'
+                    })}</p>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">ID ผู้ใช้</label>
+                  <p className="text-sm font-mono bg-muted p-2 rounded">{selectedMember.user_id}</p>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

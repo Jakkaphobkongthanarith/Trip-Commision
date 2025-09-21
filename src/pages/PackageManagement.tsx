@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Edit, Trash2, Plus } from "lucide-react";
+import { Edit, Trash2, Plus, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Navigate } from "react-router-dom";
 
 interface Package {
@@ -24,6 +25,7 @@ interface Package {
   image_url: string;
   is_active: boolean;
   advertiser_id: string | null;
+  tags: string[];
 }
 
 interface User {
@@ -49,8 +51,10 @@ export default function PackageManagement() {
     description: "",
     image_url: "",
     is_active: true,
-    advertiser_id: ""
+    advertiser_id: "",
+    tags: [] as string[]
   });
+  const [newTag, setNewTag] = useState("");
 
   // Redirect if not manager
   if (!loading && userRole !== "manager") {
@@ -138,7 +142,8 @@ export default function PackageManagement() {
         description: formData.description,
         image_url: formData.image_url,
         is_active: formData.is_active,
-        advertiser_id: formData.advertiser_id || null
+        advertiser_id: formData.advertiser_id || null,
+        tags: formData.tags
       };
 
       if (editingPackage) {
@@ -190,7 +195,8 @@ export default function PackageManagement() {
       description: pkg.description || "",
       image_url: pkg.image_url || "",
       is_active: pkg.is_active,
-      advertiser_id: pkg.advertiser_id || ""
+      advertiser_id: pkg.advertiser_id || "",
+      tags: pkg.tags || []
     });
     setIsDialogOpen(true);
   };
@@ -230,9 +236,22 @@ export default function PackageManagement() {
       description: "",
       image_url: "",
       is_active: true,
-      advertiser_id: ""
+      advertiser_id: "",
+      tags: []
     });
     setEditingPackage(null);
+    setNewTag("");
+  };
+
+  const addTag = () => {
+    if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
+      setFormData({...formData, tags: [...formData.tags, newTag.trim()]});
+      setNewTag("");
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setFormData({...formData, tags: formData.tags.filter(tag => tag !== tagToRemove)});
   };
 
   const getAdvertiserName = (advertiserId: string) => {
@@ -352,6 +371,40 @@ export default function PackageManagement() {
                 />
               </div>
 
+              <div>
+                <Label htmlFor="tags">แท็ก</Label>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      id="tags"
+                      placeholder="เพิ่มแท็ก..."
+                      value={newTag}
+                      onChange={(e) => setNewTag(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          addTag();
+                        }
+                      }}
+                    />
+                    <Button type="button" onClick={addTag} variant="outline">
+                      เพิ่ม
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {formData.tags.map((tag, index) => (
+                      <Badge key={index} variant="secondary" className="flex items-center gap-1">
+                        {tag}
+                        <X 
+                          className="h-3 w-3 cursor-pointer" 
+                          onClick={() => removeTag(tag)}
+                        />
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
               <div className="flex items-center space-x-2">
                 <Switch
                   id="is_active"
@@ -384,11 +437,20 @@ export default function PackageManagement() {
                   <p className="text-muted-foreground mt-1">
                     {pkg.location} • {pkg.duration} วัน • ฿{pkg.price.toLocaleString()}
                   </p>
-                  {pkg.advertiser_id && (
-                    <p className="text-sm text-blue-600 mt-1">
-                      ผู้โฆษณา: {getAdvertiserName(pkg.advertiser_id)}
-                    </p>
-                  )}
+                   {pkg.advertiser_id && (
+                     <p className="text-sm text-blue-600 mt-1">
+                       ผู้โฆษณา: {getAdvertiserName(pkg.advertiser_id)}
+                     </p>
+                   )}
+                   {pkg.tags && pkg.tags.length > 0 && (
+                     <div className="flex flex-wrap gap-1 mt-2">
+                       {pkg.tags.map((tag, index) => (
+                         <Badge key={index} variant="outline" className="text-xs">
+                           {tag}
+                         </Badge>
+                       ))}
+                     </div>
+                   )}
                 </div>
                 <div className="flex space-x-2">
                   <Button
