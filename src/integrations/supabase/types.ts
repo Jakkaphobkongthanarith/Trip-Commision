@@ -265,13 +265,17 @@ export type Database = {
       travel_packages: {
         Row: {
           advertiser_id: string | null
+          available_from: string | null
+          available_to: string | null
           created_at: string
           description: string | null
+          discount_percentage: number | null
           duration: number
           id: string
           image_url: string | null
           is_active: boolean | null
           location: string
+          max_guests: number | null
           price: number
           rating: number | null
           review_count: number | null
@@ -281,13 +285,17 @@ export type Database = {
         }
         Insert: {
           advertiser_id?: string | null
+          available_from?: string | null
+          available_to?: string | null
           created_at?: string
           description?: string | null
+          discount_percentage?: number | null
           duration: number
           id?: string
           image_url?: string | null
           is_active?: boolean | null
           location: string
+          max_guests?: number | null
           price: number
           rating?: number | null
           review_count?: number | null
@@ -297,13 +305,17 @@ export type Database = {
         }
         Update: {
           advertiser_id?: string | null
+          available_from?: string | null
+          available_to?: string | null
           created_at?: string
           description?: string | null
+          discount_percentage?: number | null
           duration?: number
           id?: string
           image_url?: string | null
           is_active?: boolean | null
           location?: string
+          max_guests?: number | null
           price?: number
           rating?: number | null
           review_count?: number | null

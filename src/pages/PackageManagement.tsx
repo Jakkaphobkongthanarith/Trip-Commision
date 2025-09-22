@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Edit, Trash2, Plus, X, Check, ChevronsUpDown } from "lucide-react";
+import { Edit, Trash2, Plus, X, Check, ChevronsUpDown, Search, Users, Calendar, Percent } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Navigate } from "react-router-dom";
@@ -29,6 +29,23 @@ interface Package {
   is_active: boolean;
   advertiser_id: string | null;
   tags: string[];
+  available_from: string | null;
+  available_to: string | null;
+  max_guests: number;
+  discount_percentage: number;
+}
+
+interface Booking {
+  id: string;
+  customer_id: string;
+  booking_date: string;
+  guest_count: number;
+  status: string;
+  profiles: {
+    display_name: string;
+    phone: string;
+    email: string;
+  };
 }
 
 interface User {
@@ -47,6 +64,10 @@ export default function PackageManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [bookingsDialogOpen, setBookingsDialogOpen] = useState(false);
+  const [selectedPackageBookings, setSelectedPackageBookings] = useState<Booking[]>([]);
+  const [selectedPackageTitle, setSelectedPackageTitle] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [formData, setFormData] = useState({
     title: "",
     location: "",
@@ -56,7 +77,11 @@ export default function PackageManagement() {
     image_url: "",
     is_active: true,
     advertiser_id: "",
-    tags: [] as string[]
+    tags: [] as string[],
+    available_from: "",
+    available_to: "",
+    max_guests: "10",
+    discount_percentage: "0"
   });
   const [newTag, setNewTag] = useState("");
   const [tagComboOpen, setTagComboOpen] = useState(false);
@@ -172,7 +197,11 @@ export default function PackageManagement() {
         image_url: formData.image_url,
         is_active: formData.is_active,
         advertiser_id: formData.advertiser_id || null,
-        tags: formData.tags
+        tags: formData.tags,
+        available_from: formData.available_from || null,
+        available_to: formData.available_to || null,
+        max_guests: parseInt(formData.max_guests),
+        discount_percentage: parseFloat(formData.discount_percentage)
       };
 
       if (editingPackage) {
@@ -226,7 +255,11 @@ export default function PackageManagement() {
       image_url: pkg.image_url || "",
       is_active: pkg.is_active,
       advertiser_id: pkg.advertiser_id || "",
-      tags: pkg.tags || []
+      tags: pkg.tags || [],
+      available_from: pkg.available_from || "",
+      available_to: pkg.available_to || "",
+      max_guests: pkg.max_guests.toString(),
+      discount_percentage: pkg.discount_percentage.toString()
     });
     setIsDialogOpen(true);
   };
@@ -267,7 +300,11 @@ export default function PackageManagement() {
       image_url: "",
       is_active: true,
       advertiser_id: "",
-      tags: []
+      tags: [],
+      available_from: "",
+      available_to: "",
+      max_guests: "10",
+      discount_percentage: "0"
     });
     setEditingPackage(null);
     setNewTag("");
@@ -285,12 +322,74 @@ export default function PackageManagement() {
     setFormData({...formData, tags: formData.tags.filter(tag => tag !== tagToRemove)});
   };
 
+  const fetchPackageBookings = async (packageId: string, packageTitle: string) => {
+    try {
+      // First get bookings
+      const { data: bookingsData, error: bookingsError } = await supabase
+        .from("bookings")
+        .select("id, customer_id, booking_date, guest_count, status")
+        .eq("package_id", packageId)
+        .order("booking_date", { ascending: false });
+
+      if (bookingsError) throw bookingsError;
+
+      if (!bookingsData || bookingsData.length === 0) {
+        setSelectedPackageBookings([]);
+        setSelectedPackageTitle(packageTitle);
+        setBookingsDialogOpen(true);
+        return;
+      }
+
+      // Get customer profiles
+      const customerIds = bookingsData.map(booking => booking.customer_id);
+      const { data: profilesData, error: profilesError } = await supabase
+        .from("profiles")
+        .select("user_id, display_name, phone")
+        .in("user_id", customerIds);
+
+      if (profilesError) throw profilesError;
+
+      // Combine data
+      const bookingsWithProfiles = bookingsData.map(booking => {
+        const profile = profilesData?.find(p => p.user_id === booking.customer_id);
+        return {
+          ...booking,
+          profiles: {
+            display_name: profile?.display_name || "ไม่ระบุชื่อ",
+            phone: profile?.phone || "ไม่ระบุเบอร์",
+            email: ""
+          }
+        };
+      });
+
+      setSelectedPackageBookings(bookingsWithProfiles);
+      setSelectedPackageTitle(packageTitle);
+      setBookingsDialogOpen(true);
+    } catch (error) {
+      console.error("Error fetching bookings:", error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถโหลดข้อมูลการจองได้",
+        variant: "destructive"
+      });
+    }
+  };
+
   const availableTagsForSelection = existingTags.filter(tag => !formData.tags.includes(tag));
 
   const getAdvertiserName = (advertiserId: string) => {
     const advertiser = advertisers.find(a => a.id === advertiserId);
     return advertiser?.display_name || "ไม่ระบุ";
   };
+
+  // Filter packages based on search term
+  const filteredPackages = packages.filter(pkg => {
+    const searchLower = searchTerm.toLowerCase();
+    const matchesTitle = pkg.title.toLowerCase().includes(searchLower);
+    const matchesLocation = pkg.location.toLowerCase().includes(searchLower);
+    const matchesTags = pkg.tags?.some(tag => tag.toLowerCase().includes(searchLower)) || false;
+    return matchesTitle || matchesLocation || matchesTags;
+  });
 
   if (loading || isLoading) {
     return (
@@ -342,15 +441,39 @@ export default function PackageManagement() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="price">ราคา (บาท) *</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.price}
-                    onChange={(e) => setFormData({...formData, price: e.target.value})}
-                    required
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="price"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.price}
+                      onChange={(e) => setFormData({...formData, price: e.target.value})}
+                      required
+                      className="flex-1"
+                    />
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="icon">
+                          <Percent className="h-4 w-4" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-40">
+                        <div className="space-y-2">
+                          <Label htmlFor="discount">ส่วนลด (%)</Label>
+                          <Input
+                            id="discount"
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            value={formData.discount_percentage}
+                            onChange={(e) => setFormData({...formData, discount_percentage: e.target.value})}
+                          />
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor="duration">ระยะเวลา (วัน) *</Label>
@@ -360,6 +483,38 @@ export default function PackageManagement() {
                     min="1"
                     value={formData.duration}
                     onChange={(e) => setFormData({...formData, duration: e.target.value})}
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="available_from">วันที่เริ่มให้บริการ</Label>
+                  <Input
+                    id="available_from"
+                    type="date"
+                    value={formData.available_from}
+                    onChange={(e) => setFormData({...formData, available_from: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="available_to">วันที่สิ้นสุดการให้บริการ</Label>
+                  <Input
+                    id="available_to"
+                    type="date"
+                    value={formData.available_to}
+                    onChange={(e) => setFormData({...formData, available_to: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="max_guests">จำนวนคนสูงสุด *</Label>
+                  <Input
+                    id="max_guests"
+                    type="number"
+                    min="1"
+                    value={formData.max_guests}
+                    onChange={(e) => setFormData({...formData, max_guests: e.target.value})}
                     required
                   />
                 </div>
@@ -505,8 +660,21 @@ export default function PackageManagement() {
         </Dialog>
       </div>
 
+      {/* Search Bar */}
+      <div className="mb-6">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="ค้นหาแพคเกจตามชื่อ สถานที่ หรือแท็ก..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </div>
+
       <div className="grid gap-6">
-        {packages.map((pkg) => (
+        {filteredPackages.map((pkg) => (
           <Card key={pkg.id}>
             <CardHeader>
               <div className="flex justify-between items-start">
@@ -514,7 +682,28 @@ export default function PackageManagement() {
                   <CardTitle>{pkg.title}</CardTitle>
                   <p className="text-muted-foreground mt-1">
                     {pkg.location} • {pkg.duration} วัน • ฿{pkg.price.toLocaleString()}
+                    {pkg.discount_percentage > 0 && (
+                      <span className="text-red-600 font-medium ml-2">
+                        (ส่วนลด {pkg.discount_percentage}%)
+                      </span>
+                    )}
                   </p>
+                  <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                    {pkg.max_guests && (
+                      <span className="flex items-center gap-1">
+                        <Users className="w-3 h-3" />
+                        สูงสุด {pkg.max_guests} คน
+                      </span>
+                    )}
+                    {(pkg.available_from || pkg.available_to) && (
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        {pkg.available_from && new Date(pkg.available_from).toLocaleDateString('th-TH')}
+                        {pkg.available_from && pkg.available_to && ' - '}
+                        {pkg.available_to && new Date(pkg.available_to).toLocaleDateString('th-TH')}
+                      </span>
+                    )}
+                  </div>
                    {pkg.advertiser_id && (
                      <p className="text-sm text-blue-600 mt-1">
                        ผู้โฆษณา: {getAdvertiserName(pkg.advertiser_id)}
@@ -531,6 +720,14 @@ export default function PackageManagement() {
                    )}
                 </div>
                 <div className="flex space-x-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => fetchPackageBookings(pkg.id, pkg.title)}
+                    title="ดูการจอง"
+                  >
+                    <Users className="w-4 h-4" />
+                  </Button>
                   <Button
                     size="sm"
                     variant="outline"
@@ -572,6 +769,52 @@ export default function PackageManagement() {
           </Card>
         ))}
       </div>
+
+      {/* Bookings Dialog */}
+      <Dialog open={bookingsDialogOpen} onOpenChange={setBookingsDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>การจองแพคเกจ: {selectedPackageTitle}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {selectedPackageBookings.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                ยังไม่มีการจองสำหรับแพคเกจนี้
+              </p>
+            ) : (
+              <div className="grid gap-4">
+                {selectedPackageBookings.map((booking) => (
+                  <Card key={booking.id} className="p-4">
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-2">
+                        <h4 className="font-medium">
+                          {booking.profiles.display_name}
+                        </h4>
+                        <div className="text-sm text-muted-foreground space-y-1">
+                          <p>📞 {booking.profiles.phone}</p>
+                          <p>📅 วันที่จอง: {new Date(booking.booking_date).toLocaleDateString('th-TH')}</p>
+                          <p>👥 จำนวนผู้เดินทาง: {booking.guest_count} คน</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <Badge 
+                          variant={booking.status === 'confirmed' ? 'default' : 
+                                  booking.status === 'cancelled' ? 'destructive' : 'secondary'}
+                        >
+                          {booking.status === 'pending' && 'รอดำเนินการ'}
+                          {booking.status === 'confirmed' && 'ยืนยันแล้ว'}
+                          {booking.status === 'cancelled' && 'ยกเลิกแล้ว'}
+                          {booking.status === 'completed' && 'เสร็จสิ้น'}
+                        </Badge>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
