@@ -31,7 +31,7 @@ interface TravelPackageCardProps {
 const TravelPackageCard: React.FC<TravelPackageCardProps> = ({ package: pkg, onTagClick }) => {
   const navigate = useNavigate();
   const discount = pkg.originalPrice ? Math.round(((pkg.originalPrice - pkg.price) / pkg.originalPrice) * 100) : 0;
-  const availableSpots = pkg.maxPeople && pkg.currentBookings ? pkg.maxPeople - pkg.currentBookings : 0;
+  const availableSpots = pkg.maxPeople ? pkg.maxPeople - (pkg.currentBookings || 0) : 99;
   
   return (
     <Card className="group overflow-hidden bg-card border border-border/50 hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1">

@@ -21,13 +21,28 @@ const PackageList = () => {
   useEffect(() => {
     const fetchPackages = async () => {
       try {
+        // Fetch packages with booking counts
         const { data, error } = await supabase
           .from('travel_packages')
-          .select('*')
+          .select(`
+            *,
+            bookings(guest_count)
+          `)
           .eq('is_active', true);
         
         if (error) throw error;
-        setPackages(data || []);
+        
+        // Calculate current bookings for each package
+        const packagesWithBookings = (data || []).map(pkg => {
+          const totalBookings = pkg.bookings?.reduce((sum, booking) => sum + (booking.guest_count || 0), 0) || 0;
+          return {
+            ...pkg,
+            currentBookings: totalBookings,
+            maxPeople: pkg.max_guests
+          };
+        });
+        
+        setPackages(packagesWithBookings);
       } catch (error) {
         console.error('Error fetching packages:', error);
       } finally {

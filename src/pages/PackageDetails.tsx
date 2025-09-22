@@ -49,12 +49,24 @@ const PackageDetails = () => {
       try {
         const { data, error } = await supabase
           .from('travel_packages')
-          .select('*')
+          .select(`
+            *,
+            bookings(guest_count)
+          `)
           .eq('id', id)
           .single();
         
         if (error) throw error;
-        setPackageData(data);
+        
+        // Calculate current bookings
+        const totalBookings = data.bookings?.reduce((sum, booking) => sum + (booking.guest_count || 0), 0) || 0;
+        const packageWithBookings = {
+          ...data,
+          currentBookings: totalBookings,
+          maxPeople: data.max_guests
+        };
+        
+        setPackageData(packageWithBookings);
       } catch (error) {
         console.error('Error fetching package:', error);
         setPackageData(null);
