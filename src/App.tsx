@@ -9,6 +9,8 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import PackageDetails from "./pages/PackageDetails";
 import PackageList from "./pages/PackageList";
+import Profile from "./pages/Profile";
+import PaymentSuccess from "./pages/PaymentSuccess";
 import AdvertiserDashboard from "./pages/AdvertiserDashboard";
 import MemberManagement from "./pages/MemberManagement";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -29,6 +31,12 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/packages" element={<PackageList />} />
             <Route path="/packages/:id" element={<PackageDetails />} />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            } />
+            <Route path="/payment-success" element={<PaymentSuccess />} />
             <Route path="/advertiser" element={
               <ProtectedRoute>
                 <AdvertiserDashboard />

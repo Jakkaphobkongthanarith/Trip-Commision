@@ -5,12 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
-  CardFooter,
   CardHeader,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -20,29 +18,24 @@ import {
   Star,
   Calendar,
   ArrowLeft,
-  Phone,
-  Mail,
-  CreditCard,
   Shield,
   Check,
+  Minus,
+  Plus,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 const PackageDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [showBookingForm, setShowBookingForm] = useState(false);
-  const [discountCode, setDiscountCode] = useState("");
+  const { user } = useAuth();
   const [packageData, setPackageData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [bookingData, setBookingData] = useState({
-    fullName: "",
-    email: "",
-    phone: "",
-    specialRequests: "",
-    numberOfPeople: 1,
-  });
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [guestCount, setGuestCount] = useState(1);
+  const [selectedDate, setSelectedDate] = useState("");
 
   useEffect(() => {
     const fetchPackage = async () => {
@@ -110,13 +103,74 @@ const PackageDetails = () => {
     : 0;
   const availableSpots = packageData?.maxPeople ? packageData.maxPeople - (packageData.currentBookings || 0) : 0;
 
-  const handleBookingSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast({
-      title: "การจองสำเร็จ!",
-      description: `คุณได้จองแพคเกจ "${packageData.title}" เรียบร้อยแล้ว`,
-    });
-    setShowBookingForm(false);
+  const handleBooking = async () => {
+    if (!user) {
+      toast({
+        title: "กรุณาเข้าสู่ระบบ",
+        description: "คุณต้องเข้าสู่ระบบก่อนทำการจอง",
+        variant: "destructive",
+      });
+      navigate("/auth");
+      return;
+    }
+
+    if (!selectedDate) {
+      toast({
+        title: "กรุณาเลือกวันที่",
+        description: "โปรดเลือกวันที่เดินทาง",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (guestCount > availableSpots) {
+      toast({
+        title: "จำนวนคนเกินที่สามารถจองได้",
+        description: `สามารถจองได้สูงสุด ${availableSpots} ท่าน`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setBookingLoading(true);
+    try {
+      const totalAmount = packageData.price * guestCount;
+      const discountAmount = packageData.discount_percentage 
+        ? (totalAmount * packageData.discount_percentage / 100) 
+        : 0;
+      const finalAmount = totalAmount - discountAmount;
+
+      const { data, error } = await supabase.functions.invoke('create-booking-payment', {
+        body: {
+          packageId: packageData.id,
+          guestCount,
+          bookingDate: selectedDate,
+          totalAmount,
+          finalAmount,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.url) {
+        // Open Stripe checkout in new tab
+        window.open(data.url, '_blank');
+        
+        toast({
+          title: "กำลังเปิดหน้าชำระเงิน",
+          description: "จะเปิดหน้าต่างใหม่สำหรับชำระเงิน",
+        });
+      }
+    } catch (error) {
+      console.error('Booking error:', error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถสร้างการจองได้ กรุณาลองใหม่อีกครั้ง",
+        variant: "destructive",
+      });
+    } finally {
+      setBookingLoading(false);
+    }
   };
 
   return (
@@ -252,16 +306,93 @@ const PackageDetails = () => {
                 </div>
               </CardHeader>
 
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
+                {/* Date Selection */}
+                <div className="space-y-2">
+                  <Label htmlFor="date">วันที่เดินทาง</Label>
+                  <Input
+                    id="date"
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    max={packageData.available_to || undefined}
+                    required
+                  />
+                </div>
+
+                {/* Guest Count Selection */}
+                <div className="space-y-2">
+                  <Label>จำนวนผู้เดินทาง</Label>
+                  <div className="flex items-center justify-between border rounded-lg p-3">
+                    <span className="text-sm">ผู้เดินทาง</span>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setGuestCount(Math.max(1, guestCount - 1))}
+                        disabled={guestCount <= 1}
+                        className="h-8 w-8"
+                      >
+                        <Minus className="h-4 w-4" />
+                      </Button>
+                      <span className="font-medium text-lg w-8 text-center">
+                        {guestCount}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setGuestCount(Math.min(availableSpots, guestCount + 1))}
+                        disabled={guestCount >= availableSpots}
+                        className="h-8 w-8"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    ที่ว่างเหลือ: {availableSpots} ท่าน
+                  </p>
+                </div>
+
+                {/* Price Breakdown */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>ราคาต่อคน:</span>
+                    <span>฿{packageData.price.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>จำนวนผู้เดินทาง:</span>
+                    <span>{guestCount} ท่าน</span>
+                  </div>
+                  {packageData.discount_percentage > 0 && (
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span>ส่วนลด ({packageData.discount_percentage}%):</span>
+                      <span>-฿{((packageData.price * guestCount * packageData.discount_percentage / 100)).toLocaleString()}</span>
+                    </div>
+                  )}
+                  <Separator />
+                  <div className="flex justify-between font-semibold">
+                    <span>ราคารวม:</span>
+                    <span>฿{(packageData.price * guestCount * (1 - (packageData.discount_percentage || 0) / 100)).toLocaleString()}</span>
+                  </div>
+                </div>
+
                 <Button
                   className="w-full"
                   size="lg"
-                  onClick={() => setShowBookingForm(true)}
+                  onClick={handleBooking}
+                  disabled={bookingLoading || availableSpots === 0 || !selectedDate}
                 >
-                  จองเลย
+                  {bookingLoading 
+                    ? "กำลังดำเนินการ..." 
+                    : availableSpots === 0 
+                    ? "จองเต็มแล้ว" 
+                    : "จองเลย"
+                  }
                 </Button>
 
-                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mt-4">
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                   <Shield className="h-4 w-4" />
                   <span>การันตีความปลอดภัยในการชำระเงิน</span>
                 </div>
