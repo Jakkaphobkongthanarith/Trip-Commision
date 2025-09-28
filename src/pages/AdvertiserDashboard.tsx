@@ -1,15 +1,28 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { Navigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
-import { DollarSign, Star, Calendar, TrendingUp } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { th } from 'date-fns/locale';
-import Navbar from '@/components/Navbar';
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Navigate } from "react-router-dom";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { apiRequest } from "@/lib/api";
+import { DollarSign, Star, Calendar, TrendingUp } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { th } from "date-fns/locale";
+import Navbar from "@/components/Navbar";
 
 interface Commission {
   id: string;
@@ -49,7 +62,7 @@ interface UpcomingTrip {
 
 const AdvertiserDashboard = () => {
   const { user } = useAuth();
-  const [userRole, setUserRole] = useState<string>('');
+  const [userRole, setUserRole] = useState<string>("");
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>([]);
@@ -70,140 +83,134 @@ const AdvertiserDashboard = () => {
       if (!isCancelled) setLoading(false);
     };
     run();
-    return () => { isCancelled = true; };
+    return () => {
+      isCancelled = true;
+    };
   }, [user]);
 
   const fetchUserRole = async () => {
     if (!user) return;
 
     try {
-      const { data: roleData, error: roleError } = await supabase.rpc('get_current_user_role');
-      if (!roleError && roleData) {
-        setUserRole(roleData as string);
-        return;
-      }
+      const roleData = await apiRequest("/api/user/current/role");
+      console.log("User role data:", roleData);
 
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (!error && data?.role) {
-        setUserRole(data.role as string);
+      if (roleData && roleData.role) {
+        setUserRole(roleData.role as string);
+      } else {
+        setUserRole("");
       }
     } catch (e) {
-      console.error('Error fetching user role:', e);
+      console.error("Error fetching user role:", e);
     }
   };
 
   const fetchCommissions = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from('commissions')
-      .select('*')
-      .eq('advertiser_id', user.id)
-      .order('created_at', { ascending: false });
-
-    if (!error && data) {
+    try {
+      const data = await apiRequest(
+        `/api/commissions?advertiser_id=${user.id}&order=created_at.desc`
+      );
       setCommissions(data);
-      
+
       // Calculate monthly commission
       const currentMonth = new Date().getMonth();
       const currentYear = new Date().getFullYear();
       const monthlyTotal = data
-        .filter(commission => {
+        .filter((commission: any) => {
           const commissionDate = new Date(commission.created_at);
-          return commissionDate.getMonth() === currentMonth && 
-                 commissionDate.getFullYear() === currentYear &&
-                 commission.status === 'paid';
+          return (
+            commissionDate.getMonth() === currentMonth &&
+            commissionDate.getFullYear() === currentYear &&
+            commission.status === "paid"
+          );
         })
-        .reduce((sum, commission) => sum + commission.commission_amount, 0);
-      
+        .reduce(
+          (sum: number, commission: any) => sum + commission.commission_amount,
+          0
+        );
+
       setMonthlyCommission(monthlyTotal);
+    } catch (error) {
+      console.error("Error fetching commissions:", error);
     }
   };
 
   const fetchReviews = async () => {
-    const { data, error } = await supabase
-      .from('reviews')
-      .select(`
-        id,
-        rating,
-        comment,
-        created_at,
-        package_id,
-        customer_id
-      `)
-      .order('created_at', { ascending: false })
-      .limit(10);
+    try {
+      const data = await apiRequest(
+        "/api/reviews?limit=10&order=created_at.desc"
+      );
 
-    if (!error && data) {
       // Fetch related data separately
       const reviewsWithDetails = await Promise.all(
-        data.map(async (review) => {
+        data.map(async (review: any) => {
           const [packageData, profileData] = await Promise.all([
-            supabase.from('travel_packages').select('title').eq('id', review.package_id).single(),
-            supabase.from('profiles').select('display_name').eq('user_id', review.customer_id).single()
+            apiRequest(`/api/packages/${review.package_id}`),
+            apiRequest(`/api/profiles/${review.customer_id}`),
           ]);
-          
+
           return {
             ...review,
-            travel_packages: packageData.data,
-            profiles: profileData.data
+            travel_packages: { title: packageData.title },
+            profiles: { display_name: profileData.display_name },
           };
         })
       );
-      
-      setReviews(reviewsWithDetails.filter(r => r.travel_packages && r.profiles) as Review[]);
+
+      setReviews(
+        reviewsWithDetails.filter(
+          (r) => r.travel_packages && r.profiles
+        ) as Review[]
+      );
+    } catch (error) {
+      console.error("Error fetching reviews:", error);
     }
   };
 
   const fetchUpcomingTrips = async () => {
-    const today = new Date().toISOString().split('T')[0];
-    
-    const { data, error } = await supabase
-      .from('bookings')
-      .select(`
-        id,
-        booking_date,
-        guest_count,
-        status,
-        package_id,
-        customer_id
-      `)
-      .gte('booking_date', today)
-      .order('booking_date', { ascending: true })
-      .limit(10);
+    const today = new Date().toISOString().split("T")[0];
 
-    if (!error && data) {
+    try {
+      const data = await apiRequest(
+        `/api/bookings?booking_date.gte=${today}&limit=10&order=booking_date.asc`
+      );
+
       // Fetch related data separately
       const tripsWithDetails = await Promise.all(
-        data.map(async (trip) => {
+        data.map(async (trip: any) => {
           const [packageData, profileData] = await Promise.all([
-            supabase.from('travel_packages').select('title, location').eq('id', trip.package_id).single(),
-            supabase.from('profiles').select('display_name').eq('user_id', trip.customer_id).single()
+            apiRequest(`/api/packages/${trip.package_id}`),
+            apiRequest(`/api/profiles/${trip.customer_id}`),
           ]);
-          
+
           return {
             ...trip,
-            travel_packages: packageData.data,
-            profiles: profileData.data
+            travel_packages: {
+              title: packageData.title,
+              location: packageData.location,
+            },
+            profiles: { display_name: profileData.display_name },
           };
         })
       );
-      
-      setUpcomingTrips(tripsWithDetails.filter(t => t.travel_packages && t.profiles) as UpcomingTrip[]);
+
+      setUpcomingTrips(
+        tripsWithDetails.filter(
+          (t) => t.travel_packages && t.profiles
+        ) as UpcomingTrip[]
+      );
+    } catch (error) {
+      console.error("Error fetching upcoming trips:", error);
     }
   };
-
 
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
 
-  if (userRole && userRole !== 'advertiser') {
+  if (userRole && userRole !== "advertiser") {
     return <Navigate to="/" replace />;
   }
 
@@ -228,7 +235,9 @@ const AdvertiserDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card className="bg-white/95 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">ค่าคอมมิชชั่นเดือนนี้</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                ค่าคอมมิชชั่นเดือนนี้
+              </CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -240,22 +249,28 @@ const AdvertiserDashboard = () => {
 
           <Card className="bg-white/95 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">คะแนนรีวิวเฉลี่ย</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                คะแนนรีวิวเฉลี่ย
+              </CardTitle>
               <Star className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {reviews.length > 0 ? 
-                  (reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length).toFixed(1) : 
-                  '0.0'
-                }
+                {reviews.length > 0
+                  ? (
+                      reviews.reduce((sum, review) => sum + review.rating, 0) /
+                      reviews.length
+                    ).toFixed(1)
+                  : "0.0"}
               </div>
             </CardContent>
           </Card>
 
           <Card className="bg-white/95 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">ทริปที่จะมาถึง</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                ทริปที่จะมาถึง
+              </CardTitle>
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -265,7 +280,9 @@ const AdvertiserDashboard = () => {
 
           <Card className="bg-white/95 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">รีวิวทั้งหมด</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                รีวิวทั้งหมด
+              </CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -283,35 +300,48 @@ const AdvertiserDashboard = () => {
             </CardHeader>
             <CardContent>
               {reviews.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">ยังไม่มีรีวิว</p>
+                <p className="text-muted-foreground text-center py-4">
+                  ยังไม่มีรีวิว
+                </p>
               ) : (
                 <div className="space-y-4">
                   {reviews.slice(0, 5).map((review) => (
-                    <div key={review.id} className="border-b pb-4 last:border-b-0">
+                    <div
+                      key={review.id}
+                      className="border-b pb-4 last:border-b-0"
+                    >
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center space-x-2">
-                          <span className="font-medium">{review.profiles?.display_name}</span>
+                          <span className="font-medium">
+                            {review.profiles?.display_name}
+                          </span>
                           <div className="flex">
                             {[...Array(5)].map((_, i) => (
                               <Star
                                 key={i}
                                 className={`w-4 h-4 ${
-                                  i < review.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
+                                  i < review.rating
+                                    ? "text-yellow-400 fill-current"
+                                    : "text-gray-300"
                                 }`}
                               />
                             ))}
                           </div>
                         </div>
                         <span className="text-sm text-muted-foreground">
-                          {formatDistanceToNow(new Date(review.created_at), { 
-                            addSuffix: true, 
-                            locale: th 
+                          {formatDistanceToNow(new Date(review.created_at), {
+                            addSuffix: true,
+                            locale: th,
                           })}
                         </span>
                       </div>
-                      <p className="text-sm font-medium mb-1">{review.travel_packages?.title}</p>
+                      <p className="text-sm font-medium mb-1">
+                        {review.travel_packages?.title}
+                      </p>
                       {review.comment && (
-                        <p className="text-sm text-muted-foreground">{review.comment}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {review.comment}
+                        </p>
                       )}
                     </div>
                   ))}
@@ -328,15 +358,23 @@ const AdvertiserDashboard = () => {
             </CardHeader>
             <CardContent>
               {upcomingTrips.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">ไม่มีทริปที่จะมาถึง</p>
+                <p className="text-muted-foreground text-center py-4">
+                  ไม่มีทริปที่จะมาถึง
+                </p>
               ) : (
                 <div className="space-y-4">
                   {upcomingTrips.slice(0, 5).map((trip) => (
-                    <div key={trip.id} className="flex items-center justify-between border-b pb-4 last:border-b-0">
+                    <div
+                      key={trip.id}
+                      className="flex items-center justify-between border-b pb-4 last:border-b-0"
+                    >
                       <div>
-                        <p className="font-medium">{trip.travel_packages?.title}</p>
+                        <p className="font-medium">
+                          {trip.travel_packages?.title}
+                        </p>
                         <p className="text-sm text-muted-foreground">
-                          {trip.travel_packages?.location} • {trip.guest_count} คน
+                          {trip.travel_packages?.location} • {trip.guest_count}{" "}
+                          คน
                         </p>
                         <p className="text-sm text-muted-foreground">
                           โดย {trip.profiles?.display_name}
@@ -344,10 +382,20 @@ const AdvertiserDashboard = () => {
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-medium">
-                          {new Date(trip.booking_date).toLocaleDateString('th-TH')}
+                          {new Date(trip.booking_date).toLocaleDateString(
+                            "th-TH"
+                          )}
                         </p>
-                        <Badge variant={trip.status === 'confirmed' ? 'default' : 'secondary'}>
-                          {trip.status === 'confirmed' ? 'ยืนยันแล้ว' : 'รอดำเนินการ'}
+                        <Badge
+                          variant={
+                            trip.status === "confirmed"
+                              ? "default"
+                              : "secondary"
+                          }
+                        >
+                          {trip.status === "confirmed"
+                            ? "ยืนยันแล้ว"
+                            : "รอดำเนินการ"}
                         </Badge>
                       </div>
                     </div>
@@ -366,7 +414,9 @@ const AdvertiserDashboard = () => {
           </CardHeader>
           <CardContent>
             {commissions.length === 0 ? (
-              <p className="text-muted-foreground text-center py-4">ยังไม่มีข้อมูลค่าคอมมิชชั่น</p>
+              <p className="text-muted-foreground text-center py-4">
+                ยังไม่มีข้อมูลค่าคอมมิชชั่น
+              </p>
             ) : (
               <Table>
                 <TableHeader>
@@ -381,13 +431,23 @@ const AdvertiserDashboard = () => {
                   {commissions.slice(0, 10).map((commission) => (
                     <TableRow key={commission.id}>
                       <TableCell>
-                        {new Date(commission.created_at).toLocaleDateString('th-TH')}
+                        {new Date(commission.created_at).toLocaleDateString(
+                          "th-TH"
+                        )}
                       </TableCell>
-                      <TableCell>฿{commission.commission_amount.toLocaleString()}</TableCell>
+                      <TableCell>
+                        ฿{commission.commission_amount.toLocaleString()}
+                      </TableCell>
                       <TableCell>{commission.commission_percentage}%</TableCell>
                       <TableCell>
-                        <Badge variant={commission.status === 'paid' ? 'default' : 'secondary'}>
-                          {commission.status === 'paid' ? 'จ่ายแล้ว' : 'รอจ่าย'}
+                        <Badge
+                          variant={
+                            commission.status === "paid"
+                              ? "default"
+                              : "secondary"
+                          }
+                        >
+                          {commission.status === "paid" ? "จ่ายแล้ว" : "รอจ่าย"}
                         </Badge>
                       </TableCell>
                     </TableRow>

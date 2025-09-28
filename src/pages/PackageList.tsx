@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import TravelPackageCard from "@/components/TravelPackageCard";
 import SearchBar from "@/components/SearchBar";
 import Navbar from "@/components/Navbar";
-import { supabase } from "@/integrations/supabase/client";
+import { packageAPI } from "@/lib/api";
 import { X } from "lucide-react";
 
 const PackageList = () => {
@@ -13,38 +13,21 @@ const PackageList = () => {
   const navigate = useNavigate();
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
-  const selectedTag = searchParams.get('tag');
-  const searchQuery = searchParams.get('search');
-  const locationFilter = searchParams.get('location');
-  const dateFilter = searchParams.get('date');
+  const selectedTag = searchParams.get("tag");
+  const searchQuery = searchParams.get("search");
+  const locationFilter = searchParams.get("location");
+  const dateFilter = searchParams.get("date");
 
   useEffect(() => {
     const fetchPackages = async () => {
       try {
-        // Fetch packages with booking counts
-        const { data, error } = await supabase
-          .from('travel_packages')
-          .select(`
-            *,
-            bookings(guest_count)
-          `)
-          .eq('is_active', true);
-        
-        if (error) throw error;
-        
-        // Calculate current bookings for each package
-        const packagesWithBookings = (data || []).map(pkg => {
-          const totalBookings = pkg.bookings?.reduce((sum, booking) => sum + (booking.guest_count || 0), 0) || 0;
-          return {
-            ...pkg,
-            currentBookings: totalBookings,
-            maxPeople: pkg.max_guests
-          };
-        });
-        
-        setPackages(packagesWithBookings);
+        const data = await packageAPI.getAll();
+
+        // Filter เฉพาะ is_active ใน frontend (หรือจะเพิ่ม filter ใน backend ก็ได้)
+        const activePackages = data.filter((pkg) => pkg.is_active !== false);
+        setPackages(activePackages || []);
       } catch (error) {
-        console.error('Error fetching packages:', error);
+        console.error("Error fetching packages:", error);
       } finally {
         setLoading(false);
       }
@@ -53,11 +36,19 @@ const PackageList = () => {
     fetchPackages();
   }, []);
 
-  const filteredPackages = packages.filter(pkg => {
+  const filteredPackages = packages.filter((pkg) => {
     if (selectedTag && !pkg.tags?.includes(selectedTag)) return false;
-    if (searchQuery && !pkg.title.toLowerCase().includes(searchQuery.toLowerCase()) && 
-        !pkg.description?.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    if (locationFilter && !pkg.location.toLowerCase().includes(locationFilter.toLowerCase())) return false;
+    if (
+      searchQuery &&
+      !pkg.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      !pkg.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+      return false;
+    if (
+      locationFilter &&
+      !pkg.location.toLowerCase().includes(locationFilter.toLowerCase())
+    )
+      return false;
     return true;
   });
 
@@ -66,13 +57,13 @@ const PackageList = () => {
   };
 
   const clearFilter = () => {
-    navigate('/packages');
+    navigate("/packages");
   };
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
+
       <main className="pt-20">
         {/* Hero Section */}
         <section className="relative bg-gradient-to-br from-primary/10 via-background to-secondary/10 py-16">
@@ -93,13 +84,15 @@ const PackageList = () => {
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-3xl font-bold mb-2">
-                  {selectedTag ? `แพคเกจประเภท: ${selectedTag}` : 'แพคเกจทั้งหมด'}
+                  {selectedTag
+                    ? `แพคเกจประเภท: ${selectedTag}`
+                    : "แพคเกจทั้งหมด"}
                 </h2>
                 <p className="text-muted-foreground">
                   พบ {filteredPackages.length} แพคเกจ
                 </p>
               </div>
-              
+
               {selectedTag && (
                 <Button
                   variant="outline"
@@ -139,9 +132,7 @@ const PackageList = () => {
                 <p className="text-xl text-muted-foreground mb-4">
                   ไม่พบแพคเกจที่ตรงกับการค้นหา
                 </p>
-                <Button onClick={clearFilter}>
-                  ดูแพคเกจทั้งหมด
-                </Button>
+                <Button onClick={clearFilter}>ดูแพคเกจทั้งหมด</Button>
               </div>
             )}
           </div>

@@ -10,7 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { supabase } from "@/integrations/supabase/client";
+import { packageAPI } from "@/lib/api";
 import {
   MapPin,
   Clock,
@@ -40,28 +40,12 @@ const PackageDetails = () => {
   useEffect(() => {
     const fetchPackage = async () => {
       try {
-        const { data, error } = await supabase
-          .from('travel_packages')
-          .select(`
-            *,
-            bookings(guest_count)
-          `)
-          .eq('id', id)
-          .single();
-        
-        if (error) throw error;
-        
-        // Calculate current bookings
-        const totalBookings = data.bookings?.reduce((sum, booking) => sum + (booking.guest_count || 0), 0) || 0;
-        const packageWithBookings = {
-          ...data,
-          currentBookings: totalBookings,
-          maxPeople: data.max_guests
-        };
-        
-        setPackageData(packageWithBookings);
+        console.log("id ->", id);
+        const data = await packageAPI.getById(id);
+        console.log("package data ->", data);
+        setPackageData(data);
       } catch (error) {
-        console.error('Error fetching package:', error);
+        console.error("Error fetching package:", error);
         setPackageData(null);
       } finally {
         setLoading(false);
@@ -101,7 +85,9 @@ const PackageDetails = () => {
           100
       )
     : 0;
-  const availableSpots = packageData?.maxPeople ? packageData.maxPeople - (packageData.currentBookings || 0) : 0;
+  const availableSpots = packageData?.maxPeople
+    ? packageData.maxPeople - (packageData.currentBookings || 0)
+    : 0;
 
   const handleBooking = async () => {
     if (!user) {
@@ -242,11 +228,13 @@ const PackageDetails = () => {
 
               <div className="flex flex-wrap gap-2">
                 {packageData.tags?.map((tag) => (
-                  <Badge 
-                    key={tag} 
-                    variant="secondary" 
+                  <Badge
+                    key={tag}
+                    variant="secondary"
                     className="text-sm cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
-                    onClick={() => navigate(`/packages?tag=${encodeURIComponent(tag)}`)}
+                    onClick={() =>
+                      navigate(`/packages?tag=${encodeURIComponent(tag)}`)
+                    }
                   >
                     {tag}
                   </Badge>
@@ -271,7 +259,7 @@ const PackageDetails = () => {
                 <div className="grid md:grid-cols-2 gap-3">
                   {[
                     "ที่พักตามโปรแกรม",
-                    "อาหารตามโปรแกรม", 
+                    "อาหารตามโปรแกรม",
                     "รถโค้ชปรับอากาศ",
                     "ไกด์ท้องถิ่น",
                     "ประกันการเดินทาง",

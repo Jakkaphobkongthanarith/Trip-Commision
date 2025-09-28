@@ -1,21 +1,35 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { Plane, Mail, Lock, User, UserCheck } from 'lucide-react';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/api";
+import { Plane, Mail, Lock, User, UserCheck } from "lucide-react";
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [role, setRole] = useState<'customer' | 'advertiser' | 'manager'>('customer');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [role, setRole] = useState<"customer" | "advertiser" | "manager">(
+    "customer"
+  );
   const [isLoading, setIsLoading] = useState(false);
   const { signIn, signUp, user } = useAuth();
   const { toast } = useToast();
@@ -23,7 +37,7 @@ const Auth = () => {
 
   // Redirect if already logged in
   if (user) {
-    navigate('/');
+    navigate("/");
     return null;
   }
 
@@ -36,9 +50,10 @@ const Auth = () => {
     if (error) {
       toast({
         title: "เข้าสู่ระบบไม่สำเร็จ",
-        description: error.message === 'Invalid login credentials' 
-          ? "อีเมลหรือรหัสผ่านไม่ถูกต้อง" 
-          : error.message,
+        description:
+          error.message === "Invalid login credentials"
+            ? "อีเมลหรือรหัสผ่านไม่ถูกต้อง"
+            : error.message,
         variant: "destructive",
       });
     } else {
@@ -65,14 +80,14 @@ const Auth = () => {
 
       // Then update the user role (the trigger will create default customer role)
       // We need to update it if it's not customer
-      if (role !== 'customer') {
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .update({ role })
-          .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
-
-        if (roleError) {
-          console.error('Error updating role:', roleError);
+      if (role !== "customer") {
+        try {
+          await apiRequest("/api/user/role", {
+            method: "PUT",
+            body: JSON.stringify({ role }),
+          });
+        } catch (roleError) {
+          console.error("Error updating role:", roleError);
         }
       }
 
@@ -83,9 +98,10 @@ const Auth = () => {
     } catch (error: any) {
       toast({
         title: "สมัครสมาชิกไม่สำเร็จ",
-        description: error.message === 'User already registered' 
-          ? "อีเมลนี้ถูกใช้งานแล้ว" 
-          : error.message,
+        description:
+          error.message === "User already registered"
+            ? "อีเมลนี้ถูกใช้งานแล้ว"
+            : error.message,
         variant: "destructive",
       });
     }
@@ -95,10 +111,14 @@ const Auth = () => {
 
   const getRoleText = (roleValue: string) => {
     switch (roleValue) {
-      case 'customer': return 'นักท่องเที่ยว';
-      case 'advertiser': return 'คนกลาง';
-      case 'manager': return 'แอดมิน';
-      default: return roleValue;
+      case "customer":
+        return "นักท่องเที่ยว";
+      case "advertiser":
+        return "คนกลาง";
+      case "manager":
+        return "แอดมิน";
+      default:
+        return roleValue;
     }
   };
 
@@ -116,10 +136,10 @@ const Auth = () => {
         <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-xl">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl text-foreground">
-              {isSignUp ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}
+              {isSignUp ? "สมัครสมาชิก" : "เข้าสู่ระบบ"}
             </CardTitle>
             <CardDescription>
-              {isSignUp ? 'สร้างบัญชีใหม่' : 'เข้าสู่ระบบด้วยบัญชีของคุณ'}
+              {isSignUp ? "สร้างบัญชีใหม่" : "เข้าสู่ระบบด้วยบัญชีของคุณ"}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -156,14 +176,10 @@ const Auth = () => {
                     />
                   </div>
                 </div>
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  disabled={isLoading}
-                >
+                <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
                 </Button>
-                
+
                 <div className="text-center">
                   <Button
                     type="button"
@@ -193,12 +209,17 @@ const Auth = () => {
                     />
                   </div>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="role">ประเภทผู้ใช้</Label>
                   <div className="relative">
                     <UserCheck className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
-                    <Select value={role} onValueChange={(value: 'customer' | 'advertiser' | 'manager') => setRole(value)}>
+                    <Select
+                      value={role}
+                      onValueChange={(
+                        value: "customer" | "advertiser" | "manager"
+                      ) => setRole(value)}
+                    >
                       <SelectTrigger className="pl-10">
                         <SelectValue placeholder="เลือกประเภทผู้ใช้" />
                       </SelectTrigger>
@@ -242,14 +263,12 @@ const Auth = () => {
                     />
                   </div>
                 </div>
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  disabled={isLoading}
-                >
-                  {isLoading ? "กำลังสมัครสมาชิก..." : `สมัครในฐานะ${getRoleText(role)}`}
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading
+                    ? "กำลังสมัครสมาชิก..."
+                    : `สมัครในฐานะ${getRoleText(role)}`}
                 </Button>
-                
+
                 <div className="text-center">
                   <Button
                     type="button"

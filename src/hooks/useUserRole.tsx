@@ -1,42 +1,33 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiRequest } from "@/lib/api";
 
 export const useUserRole = () => {
   const { user } = useAuth();
-  const [userRole, setUserRole] = useState<string>('');
+  const [userRole, setUserRole] = useState<string>("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchUserRole = async () => {
       if (!user) {
-        setUserRole('');
+        setUserRole("");
         setLoading(false);
         return;
       }
 
       try {
-        // Prefer RPC to avoid RLS issues and missing-row errors
-        const { data: roleData, error: roleError } = await supabase.rpc('get_current_user_role');
-        if (!roleError && roleData) {
-          setUserRole(roleData as string);
-          return;
-        }
+        // เรียก backend API แทน Supabase RPC
+        const roleData = await apiRequest("/api/user/current/role");
+        console.log("User role:", roleData);
 
-        // Fallback to direct table query
-        const { data, error } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (!error && data?.role) {
-          setUserRole(data.role as string);
+        if (roleData && roleData.role) {
+          setUserRole(roleData.role as string);
         } else {
-          setUserRole('');
+          setUserRole("");
         }
       } catch (err) {
-        console.error('Error fetching user role:', err);
+        console.error("Error fetching user role:", err);
+        setUserRole("");
       } finally {
         setLoading(false);
       }
