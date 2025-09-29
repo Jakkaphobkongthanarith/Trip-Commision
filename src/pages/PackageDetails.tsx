@@ -2,11 +2,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -85,8 +81,8 @@ const PackageDetails = () => {
           100
       )
     : 0;
-  const availableSpots = packageData?.maxPeople
-    ? packageData.maxPeople - (packageData.currentBookings || 0)
+  const availableSpots = packageData?.MaxGuests
+    ? packageData.MaxGuests - (packageData.currentBookings || 0)
     : 0;
 
   const handleBooking = async () => {
@@ -121,34 +117,43 @@ const PackageDetails = () => {
     setBookingLoading(true);
     try {
       const totalAmount = packageData.price * guestCount;
-      const discountAmount = packageData.discount_percentage 
-        ? (totalAmount * packageData.discount_percentage / 100) 
+      const discountAmount = packageData.discount_percentage
+        ? (totalAmount * packageData.discount_percentage) / 100
         : 0;
       const finalAmount = totalAmount - discountAmount;
 
-      const { data, error } = await supabase.functions.invoke('create-booking-payment', {
-        body: {
+      // Call backend API for booking instead of Supabase function
+      const response = await fetch("http://localhost:8080/api/bookings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
           packageId: packageData.id,
           guestCount,
           bookingDate: selectedDate,
           totalAmount,
           finalAmount,
-        },
+        }),
       });
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error(`Booking failed: ${response.status}`);
+      }
+
+      const data = await response.json();
 
       if (data?.url) {
         // Open Stripe checkout in new tab
-        window.open(data.url, '_blank');
-        
+        window.open(data.url, "_blank");
+
         toast({
           title: "กำลังเปิดหน้าชำระเงิน",
           description: "จะเปิดหน้าต่างใหม่สำหรับชำระเงิน",
         });
       }
     } catch (error) {
-      console.error('Booking error:', error);
+      console.error("Booking error:", error);
       toast({
         title: "เกิดข้อผิดพลาด",
         description: "ไม่สามารถสร้างการจองได้ กรุณาลองใหม่อีกครั้ง",
@@ -227,18 +232,36 @@ const PackageDetails = () => {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                {packageData.tags?.map((tag) => (
-                  <Badge
-                    key={tag}
-                    variant="secondary"
-                    className="text-sm cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
-                    onClick={() =>
-                      navigate(`/packages?tag=${encodeURIComponent(tag)}`)
-                    }
-                  >
-                    {tag}
-                  </Badge>
-                ))}
+                {(() => {
+                  // Handle tags as string or array
+                  let tagsArray: string[] = [];
+                  if (
+                    typeof packageData.tags === "string" &&
+                    packageData.tags.trim()
+                  ) {
+                    // If tags is a comma-separated string, split it
+                    tagsArray = packageData.tags
+                      .split(",")
+                      .map((tag) => tag.trim())
+                      .filter((tag) => tag);
+                  } else if (Array.isArray(packageData.tags)) {
+                    // If tags is already an array
+                    tagsArray = packageData.tags;
+                  }
+
+                  return tagsArray.map((tag, index) => (
+                    <Badge
+                      key={`${tag}-${index}`}
+                      variant="secondary"
+                      className="text-sm cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                      onClick={() =>
+                        navigate(`/packages?tag=${encodeURIComponent(tag)}`)
+                      }
+                    >
+                      {tag}
+                    </Badge>
+                  ));
+                })()}
               </div>
 
               <Separator />
@@ -303,7 +326,7 @@ const PackageDetails = () => {
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    min={new Date().toISOString().split('T')[0]}
+                    min={new Date().toISOString().split("T")[0]}
                     max={packageData.available_to || undefined}
                     required
                   />
@@ -318,7 +341,9 @@ const PackageDetails = () => {
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => setGuestCount(Math.max(1, guestCount - 1))}
+                        onClick={() =>
+                          setGuestCount(Math.max(1, guestCount - 1))
+                        }
                         disabled={guestCount <= 1}
                         className="h-8 w-8"
                       >
@@ -330,7 +355,11 @@ const PackageDetails = () => {
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => setGuestCount(Math.min(availableSpots, guestCount + 1))}
+                        onClick={() =>
+                          setGuestCount(
+                            Math.min(availableSpots, guestCount + 1)
+                          )
+                        }
                         disabled={guestCount >= availableSpots}
                         className="h-8 w-8"
                       >
@@ -356,13 +385,28 @@ const PackageDetails = () => {
                   {packageData.discount_percentage > 0 && (
                     <div className="flex justify-between text-sm text-green-600">
                       <span>ส่วนลด ({packageData.discount_percentage}%):</span>
-                      <span>-฿{((packageData.price * guestCount * packageData.discount_percentage / 100)).toLocaleString()}</span>
+                      <span>
+                        -฿
+                        {(
+                          (packageData.price *
+                            guestCount *
+                            packageData.discount_percentage) /
+                          100
+                        ).toLocaleString()}
+                      </span>
                     </div>
                   )}
                   <Separator />
                   <div className="flex justify-between font-semibold">
                     <span>ราคารวม:</span>
-                    <span>฿{(packageData.price * guestCount * (1 - (packageData.discount_percentage || 0) / 100)).toLocaleString()}</span>
+                    <span>
+                      ฿
+                      {(
+                        packageData.price *
+                        guestCount *
+                        (1 - (packageData.discount_percentage || 0) / 100)
+                      ).toLocaleString()}
+                    </span>
                   </div>
                 </div>
 
@@ -370,14 +414,15 @@ const PackageDetails = () => {
                   className="w-full"
                   size="lg"
                   onClick={handleBooking}
-                  disabled={bookingLoading || availableSpots === 0 || !selectedDate}
-                >
-                  {bookingLoading 
-                    ? "กำลังดำเนินการ..." 
-                    : availableSpots === 0 
-                    ? "จองเต็มแล้ว" 
-                    : "จองเลย"
+                  disabled={
+                    bookingLoading || availableSpots === 0 || !selectedDate
                   }
+                >
+                  {bookingLoading
+                    ? "กำลังดำเนินการ..."
+                    : availableSpots === 0
+                    ? "จองเต็มแล้ว"
+                    : "จองเลย"}
                 </Button>
 
                 <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">

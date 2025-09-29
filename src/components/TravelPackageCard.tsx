@@ -1,4 +1,9 @@
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Clock, Users, Star } from "lucide-react";
@@ -14,7 +19,7 @@ interface TravelPackage {
   originalPrice?: number;
   duration: number | string;
   location: string;
-  maxPeople?: number;
+  max_guests?: number;
   currentBookings?: number;
   tags?: string[];
   rating?: number;
@@ -28,14 +33,25 @@ interface TravelPackageCardProps {
   onTagClick?: (tag: string) => void;
 }
 
-const TravelPackageCard: React.FC<TravelPackageCardProps> = ({ package: pkg, onTagClick }) => {
+const TravelPackageCard: React.FC<TravelPackageCardProps> = ({
+  package: pkg,
+  onTagClick,
+}) => {
   const navigate = useNavigate();
-  const discount = pkg.originalPrice ? Math.round(((pkg.originalPrice - pkg.price) / pkg.originalPrice) * 100) : 0;
-  const availableSpots = pkg.maxPeople ? pkg.maxPeople - (pkg.currentBookings || 0) : 99;
-  
+  const discount = pkg.originalPrice
+    ? Math.round(((pkg.originalPrice - pkg.price) / pkg.originalPrice) * 100)
+    : 0;
+  console.log("pkg.max_guests", pkg.max_guests);
+  const availableSpots = pkg.max_guests
+    ? pkg.max_guests - (pkg.currentBookings || 0)
+    : 99;
+
   return (
     <Card className="group overflow-hidden bg-card border border-border/50 hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1">
-      <div className="relative overflow-hidden cursor-pointer" onClick={() => navigate(`/packages/${pkg.id}`)}>
+      <div
+        className="relative overflow-hidden cursor-pointer"
+        onClick={() => navigate(`/packages/${pkg.id}`)}
+      >
         <img
           src={pkg.image_url || pkg.image}
           alt={pkg.title}
@@ -49,10 +65,12 @@ const TravelPackageCard: React.FC<TravelPackageCardProps> = ({ package: pkg, onT
         <div className="absolute top-3 right-3 bg-background/80 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1 text-sm">
           <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
           <span className="font-medium">{pkg.rating || 0}</span>
-          <span className="text-muted-foreground">({pkg.review_count || pkg.reviewCount || 0})</span>
+          <span className="text-muted-foreground">
+            ({pkg.review_count || pkg.reviewCount || 0})
+          </span>
         </div>
       </div>
-      
+
       <CardHeader className="pb-3">
         <h3 className="font-bold text-lg text-card-foreground line-clamp-2 group-hover:text-primary transition-colors">
           {pkg.title}
@@ -64,43 +82,71 @@ const TravelPackageCard: React.FC<TravelPackageCardProps> = ({ package: pkg, onT
           </div>
           <div className="flex items-center gap-1">
             <Clock className="h-4 w-4" />
-            <span>{typeof pkg.duration === 'number' ? `${pkg.duration} วัน` : pkg.duration}</span>
+            <span>
+              {typeof pkg.duration === "number"
+                ? `${pkg.duration} วัน`
+                : pkg.duration}
+            </span>
           </div>
         </div>
       </CardHeader>
-      
+
       <CardContent className="space-y-3">
         <p className="text-muted-foreground text-sm line-clamp-2">
           {pkg.description}
         </p>
-        
+
         <div className="flex flex-wrap gap-1">
-          {pkg.tags?.slice(0, 3).map((tag) => (
-            <Badge 
-              key={tag} 
-              variant="secondary" 
-              className="text-xs cursor-pointer hover:bg-secondary/80 transition-colors"
-              onClick={() => onTagClick?.(tag)}
-            >
-              {tag}
-            </Badge>
-          ))}
-          {pkg.tags && pkg.tags.length > 3 && (
-            <Badge variant="outline" className="text-xs">
-              +{pkg.tags.length - 3}
-            </Badge>
-          )}
+          {/* Handle tags as string or array */}
+          {(() => {
+            let tagsArray: string[] = [];
+            if (typeof pkg.tags === "string" && (pkg.tags as string).trim()) {
+              // If tags is a comma-separated string, split it
+              tagsArray = (pkg.tags as string)
+                .split(",")
+                .map((tag) => tag.trim())
+                .filter((tag) => tag);
+            } else if (Array.isArray(pkg.tags)) {
+              // If tags is already an array
+              tagsArray = pkg.tags;
+            }
+
+            const displayTags = tagsArray.slice(0, 3);
+            const remainingCount = tagsArray.length - 3;
+
+            return (
+              <>
+                {displayTags.map((tag, index) => (
+                  <Badge
+                    key={`${tag}-${index}`}
+                    variant="secondary"
+                    className="text-xs cursor-pointer hover:bg-secondary/80 transition-colors"
+                    onClick={() => onTagClick?.(tag)}
+                  >
+                    {tag}
+                  </Badge>
+                ))}
+                {remainingCount > 0 && (
+                  <Badge variant="outline" className="text-xs">
+                    +{remainingCount}
+                  </Badge>
+                )}
+              </>
+            );
+          })()}
         </div>
-        
+
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-1 text-muted-foreground">
             <Users className="h-4 w-4" />
             <span>เหลือ {availableSpots} ที่นั่ง</span>
           </div>
-          {pkg.date && <span className="text-muted-foreground">วันที่: {pkg.date}</span>}
+          {pkg.date && (
+            <span className="text-muted-foreground">วันที่: {pkg.date}</span>
+          )}
         </div>
       </CardContent>
-      
+
       <CardFooter className="flex items-center justify-between pt-4">
         <div className="flex items-center gap-2">
           <span className="text-2xl font-bold text-primary">
@@ -112,9 +158,9 @@ const TravelPackageCard: React.FC<TravelPackageCardProps> = ({ package: pkg, onT
             </span>
           )}
         </div>
-        
-        <Button 
-          size="sm" 
+
+        <Button
+          size="sm"
           className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg group-hover:shadow-xl transition-shadow"
           disabled={availableSpots === 0}
           onClick={() => navigate(`/packages/${pkg.id}`)}

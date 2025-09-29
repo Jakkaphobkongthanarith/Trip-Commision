@@ -96,10 +96,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     // Clear browser storage manually
     try {
-      localStorage.removeItem('supabase.auth.token');
+      localStorage.removeItem("supabase.auth.token");
       sessionStorage.clear();
     } catch (e) {
-      console.warn('Storage clear error:', e);
+      console.warn("Storage clear error:", e);
     }
 
     // Redirect to login (ถ้าไม่อยู่หน้า auth อยู่แล้ว)
@@ -209,10 +209,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       // Clear browser storage manually before login
       try {
-        localStorage.removeItem('supabase.auth.token');
+        localStorage.removeItem("supabase.auth.token");
         sessionStorage.clear();
       } catch (e) {
-        console.warn('Storage clear error:', e);
+        console.warn("Storage clear error:", e);
       }
 
       // Then sign in with Supabase directly
@@ -293,7 +293,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       // Clear browser storage manually (no API calls)
       try {
-        localStorage.removeItem('supabase.auth.token');
+        localStorage.removeItem("supabase.auth.token");
         sessionStorage.clear();
       } catch (storageError) {
         console.warn("Storage clear error:", storageError);

@@ -19,18 +19,25 @@ import (
 func main() {
 	r := gin.Default()
 	
-	// CORS configuration สำหรับ frontend
+	// Debug middleware
+	r.Use(func(c *gin.Context) {
+		fmt.Printf("[DEBUG] %s %s from %s\n", c.Request.Method, c.Request.URL.Path, c.ClientIP())
+		c.Next()
+	})
+
+	// CORS configuration สำหรับ frontend - อนุญาตทุก origin สำหรับ debug
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:3000", "http://localhost:8081", "http://localhost:4173", "http://localhost:8001"},
+		AllowAllOrigins:  true, // Allow all origins for debugging
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
-		AllowCredentials: true,
+		AllowHeaders:     []string{"*"}, // Allow all headers
+		AllowCredentials: false, // Set to false when using AllowAllOrigins
 	}))
 	
 	// โหลด .env อัตโนมัติ (ถ้ามี)
 	_ = godotenv.Load()
 	// ดึง connection string จาก env
 	connStr := os.Getenv("SUPABASE_DB_URL")
+	fmt.Println("connStr:", connStr)
 	if connStr == "" {
 		log.Fatal("SUPABASE_DB_URL env variable is not set")
 	}
@@ -56,13 +63,8 @@ func main() {
 		log.Fatal("Unable to connect to database with GORM:", err)
 	}
 
-
 	// Setup routes ผ่าน controllers package
 	controllers.SetupRoutes(r, db)
-
-	// ตัวอย่าง greeting (mock)
-	greeting := "Hello from Supabase!"
-	fmt.Println(greeting)
 
 	// ใช้ PORT จาก environment หรือ default 8080
 	port := os.Getenv("PORT")
