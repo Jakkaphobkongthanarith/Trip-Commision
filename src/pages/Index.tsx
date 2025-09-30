@@ -11,11 +11,27 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
+  // Helper function to normalize tags
+  const normalizeTags = (tags: any): string[] => {
+    if (!tags) return [];
+    if (Array.isArray(tags)) return tags.filter(t => typeof t === 'string');
+    if (typeof tags === 'string') {
+      const cleanedTags = tags.replace(/[{}]/g, '');
+      return cleanedTags.split(',').map(t => t.trim()).filter(t => t);
+    }
+    return [];
+  };
+
   useEffect(() => {
     const fetchPackages = async () => {
       try {
         const data = await packageAPI.getAll();
-        setPackages(data || []);
+        // Normalize tags for all packages
+        const normalizedData = (data || []).map(pkg => ({
+          ...pkg,
+          tags: normalizeTags(pkg.tags)
+        }));
+        setPackages(normalizedData);
       } catch (error) {
         console.error("Error fetching packages:", error);
       } finally {

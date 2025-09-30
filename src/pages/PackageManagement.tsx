@@ -28,7 +28,7 @@ interface Package {
   image_url: string;
   is_active: boolean;
   advertiser_id: string | null;
-  tags: string[];
+  tags: string[] | string | null;
   available_from: string | null;
   available_to: string | null;
   max_guests: number;
@@ -99,6 +99,17 @@ export default function PackageManagement() {
     }
   }, [userRole]);
 
+  const normalizeTags = (tags: string[] | string | null): string[] => {
+    if (!tags) return [];
+    if (Array.isArray(tags)) return tags;
+    if (typeof tags === 'string') {
+      // Remove { and } from PostgreSQL array format
+      const cleanedTags = tags.replace(/[{}]/g, '');
+      return cleanedTags.split(',').map(t => t.trim()).filter(t => t);
+    }
+    return [];
+  };
+
   const fetchPackages = async () => {
     try {
       const { data, error } = await supabase
@@ -107,7 +118,14 @@ export default function PackageManagement() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setPackages(data || []);
+      
+      // Normalize tags for all packages
+      const normalizedData = (data || []).map(pkg => ({
+        ...pkg,
+        tags: normalizeTags(pkg.tags)
+      }));
+      
+      setPackages(normalizedData);
     } catch (error) {
       toast({
         title: "เกิดข้อผิดพลาด",
@@ -255,7 +273,7 @@ export default function PackageManagement() {
       image_url: pkg.image_url || "",
       is_active: pkg.is_active,
       advertiser_id: pkg.advertiser_id || "",
-      tags: pkg.tags || [],
+      tags: normalizeTags(pkg.tags),
       available_from: pkg.available_from || "",
       available_to: pkg.available_to || "",
       max_guests: pkg.max_guests.toString(),
@@ -387,7 +405,8 @@ export default function PackageManagement() {
     const searchLower = searchTerm.toLowerCase();
     const matchesTitle = pkg.title.toLowerCase().includes(searchLower);
     const matchesLocation = pkg.location.toLowerCase().includes(searchLower);
-    const matchesTags = pkg.tags?.some(tag => tag.toLowerCase().includes(searchLower)) || false;
+    const tags = normalizeTags(pkg.tags);
+    const matchesTags = tags.some(tag => typeof tag === 'string' && tag.toLowerCase().includes(searchLower));
     return matchesTitle || matchesLocation || matchesTags;
   });
 
@@ -709,12 +728,14 @@ export default function PackageManagement() {
                        ผู้โฆษณา: {getAdvertiserName(pkg.advertiser_id)}
                      </p>
                    )}
-                   {pkg.tags && pkg.tags.length > 0 && (
+                   {pkg.tags && Array.isArray(pkg.tags) && pkg.tags.length > 0 && (
                      <div className="flex flex-wrap gap-1 mt-2">
                        {pkg.tags.map((tag, index) => (
-                         <Badge key={index} variant="outline" className="text-xs">
-                           {tag}
-                         </Badge>
+                         typeof tag === 'string' && (
+                           <Badge key={index} variant="outline" className="text-xs">
+                             {tag}
+                           </Badge>
+                         )
                        ))}
                      </div>
                    )}

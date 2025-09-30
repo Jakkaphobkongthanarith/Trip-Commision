@@ -18,6 +18,17 @@ const PackageList = () => {
   const locationFilter = searchParams.get("location");
   const dateFilter = searchParams.get("date");
 
+  // Helper function to normalize tags
+  const normalizeTags = (tags: any): string[] => {
+    if (!tags) return [];
+    if (Array.isArray(tags)) return tags.filter(t => typeof t === 'string');
+    if (typeof tags === 'string') {
+      const cleanedTags = tags.replace(/[{}]/g, '');
+      return cleanedTags.split(',').map(t => t.trim()).filter(t => t);
+    }
+    return [];
+  };
+
   useEffect(() => {
     const fetchPackages = async () => {
       try {
@@ -25,7 +36,12 @@ const PackageList = () => {
 
         // Filter เฉพาะ is_active ใน frontend (หรือจะเพิ่ม filter ใน backend ก็ได้)
         const activePackages = data.filter((pkg) => pkg.is_active !== false);
-        setPackages(activePackages || []);
+        // Normalize tags for all packages
+        const normalizedData = activePackages.map(pkg => ({
+          ...pkg,
+          tags: normalizeTags(pkg.tags)
+        }));
+        setPackages(normalizedData);
       } catch (error) {
         console.error("Error fetching packages:", error);
       } finally {
