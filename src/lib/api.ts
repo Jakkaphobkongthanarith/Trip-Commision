@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 // API Base URL Configuration
 export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 // Helper function สำหรับเรียก API
 export const apiRequest = async (

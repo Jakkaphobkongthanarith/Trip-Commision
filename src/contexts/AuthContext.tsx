@@ -302,7 +302,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     // เรียก backend logout API เสมอ (สำคัญสำหรับ UI feedback)
     try {
-      const response = await fetch("http://localhost:8080/api/logout", {
+      const response = await fetch("http://localhost:8000/api/logout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

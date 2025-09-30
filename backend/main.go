@@ -74,10 +74,10 @@ func main() {
 	// Setup routes ผ่าน controllers package
 	controllers.SetupRoutes(r, db)
 
-	// ใช้ PORT จาก environment หรือ default 8080
+	// ใช้ PORT จาก environment หรือ default 8000
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080"
+		port = "8000"
 	}
 	
 	fmt.Printf("Server starting on port %s\n", port)

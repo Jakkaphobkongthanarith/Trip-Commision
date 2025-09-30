@@ -25,6 +25,6 @@ COPY --from=builder /app/main .
 # Copy .env file (optional, can use environment variables instead)
 COPY backend/.env* ./
 
-EXPOSE 8080
+EXPOSE 8000
 
 CMD ["./main"]

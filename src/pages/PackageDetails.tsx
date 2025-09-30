@@ -123,7 +123,7 @@ const PackageDetails = () => {
       const finalAmount = totalAmount - discountAmount;
 
       // Call backend API for booking instead of Supabase function
-      const response = await fetch("http://localhost:8080/api/bookings", {
+      const response = await fetch("http://localhost:8000/api/bookings", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
