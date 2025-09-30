@@ -21,6 +21,7 @@ export type Database = {
           customer_id: string
           discount_amount: number | null
           discount_code_id: string | null
+          display_id: number
           final_amount: number
           guest_count: number
           id: string
@@ -38,6 +39,7 @@ export type Database = {
           customer_id: string
           discount_amount?: number | null
           discount_code_id?: string | null
+          display_id?: number
           final_amount: number
           guest_count?: number
           id?: string
@@ -55,6 +57,7 @@ export type Database = {
           customer_id?: string
           discount_amount?: number | null
           discount_code_id?: string | null
+          display_id?: number
           final_amount?: number
           guest_count?: number
           id?: string
@@ -203,6 +206,7 @@ export type Database = {
         Row: {
           address: string | null
           created_at: string
+          display_id: number
           display_name: string | null
           id: string
           phone: string | null
@@ -212,6 +216,7 @@ export type Database = {
         Insert: {
           address?: string | null
           created_at?: string
+          display_id?: number
           display_name?: string | null
           id?: string
           phone?: string | null
@@ -221,6 +226,7 @@ export type Database = {
         Update: {
           address?: string | null
           created_at?: string
+          display_id?: number
           display_name?: string | null
           id?: string
           phone?: string | null
@@ -268,8 +274,10 @@ export type Database = {
           available_from: string | null
           available_to: string | null
           created_at: string
+          current_bookings: number | null
           description: string | null
           discount_percentage: number | null
+          display_id: number
           duration: number
           id: string
           image_url: string | null
@@ -288,8 +296,10 @@ export type Database = {
           available_from?: string | null
           available_to?: string | null
           created_at?: string
+          current_bookings?: number | null
           description?: string | null
           discount_percentage?: number | null
+          display_id?: number
           duration: number
           id?: string
           image_url?: string | null
@@ -308,8 +318,10 @@ export type Database = {
           available_from?: string | null
           available_to?: string | null
           created_at?: string
+          current_bookings?: number | null
           description?: string | null
           discount_percentage?: number | null
+          display_id?: number
           duration?: number
           id?: string
           image_url?: string | null
