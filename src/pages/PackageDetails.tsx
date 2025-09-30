@@ -81,8 +81,8 @@ const PackageDetails = () => {
           100
       )
     : 0;
-  const availableSpots = packageData?.MaxGuests
-    ? packageData.MaxGuests - (packageData.currentBookings || 0)
+  const availableSpots = packageData?.max_guests
+    ? packageData.max_guests - (packageData.current_bookings || 0)
     : 0;
 
   const handleBooking = async () => {
@@ -144,6 +144,16 @@ const PackageDetails = () => {
       const data = await response.json();
 
       if (data?.url) {
+        // อัพเดต current_bookings เมื่อการจองสำเร็จ
+        try {
+          await packageAPI.updateCurrentBookings(packageData.id, guestCount);
+          // รีเฟรชข้อมูลแพคเกจ
+          const updatedPackage = await packageAPI.getById(packageData.id);
+          setPackageData(updatedPackage);
+        } catch (updateError) {
+          console.error("Error updating current bookings:", updateError);
+        }
+
         // Open Stripe checkout in new tab
         window.open(data.url, "_blank");
 

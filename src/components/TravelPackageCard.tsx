@@ -20,7 +20,7 @@ interface TravelPackage {
   duration: number | string;
   location: string;
   max_guests?: number;
-  currentBookings?: number;
+  current_bookings?: number;
   tags?: string[];
   rating?: number;
   reviewCount?: number;
@@ -43,7 +43,7 @@ const TravelPackageCard: React.FC<TravelPackageCardProps> = ({
     : 0;
   console.log("pkg.max_guests", pkg.max_guests);
   const availableSpots = pkg.max_guests
-    ? pkg.max_guests - (pkg.currentBookings || 0)
+    ? pkg.max_guests - (pkg.current_bookings || 0)
     : 99;
 
   return (

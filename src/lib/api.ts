@@ -77,6 +77,11 @@ export const packageAPI = {
       method: "POST",
       body: JSON.stringify(packageData),
     }),
+  updateCurrentBookings: (id: string, guestCount: number) =>
+    apiRequest(`/package/${id}/bookings`, {
+      method: "PUT",
+      body: JSON.stringify({ guest_count: guestCount }),
+    }),
 };
 
 export const profileAPI = {

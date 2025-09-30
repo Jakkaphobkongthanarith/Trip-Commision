@@ -14,7 +14,8 @@ type TravelPackage struct {
 	Duration    int       `json:"duration"`
 	Rating      float64   `json:"rating"`
 	ReviewCount int       `json:"review_count" gorm:"column:review_count"`
-	MaxGuests   int       `json:"max_guests" gorm:"column:max_guests"`
-	Tags        string    `json:"tags"` // ใช้ string แทน array สำหรับตอนนี้
+	MaxGuests        int       `json:"max_guests" gorm:"column:max_guests"`
+	CurrentBookings  int       `json:"current_bookings" gorm:"column:current_bookings;default:0"`
+	Tags             string    `json:"tags"` // ใช้ string แทน array สำหรับตอนนี้
 	// เพิ่ม field อื่นๆ ตาม schema
 }

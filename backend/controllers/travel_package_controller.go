@@ -60,6 +60,45 @@ func CreatePackageHandler(c *gin.Context, db *gorm.DB) {
 	c.JSON(200, pkg)
 }
 
+// อัพเดต current_bookings เมื่อมีการจองสำเร็จ
+func UpdateCurrentBookingsHandler(c *gin.Context, db *gorm.DB) {
+	packageID := c.Param("id")
+	
+	type BookingUpdate struct {
+		GuestCount int `json:"guest_count"`
+	}
+	
+	var updateData BookingUpdate
+	if err := c.ShouldBindJSON(&updateData); err != nil {
+		c.JSON(400, gin.H{"error": "invalid request"})
+		return
+	}
+	
+	// อัพเดต current_bookings โดยเพิ่มจำนวนผู้โดยสาร
+	result := db.Model(&models.TravelPackage{}).
+		Where("id = ?", packageID).
+		Update("current_bookings", gorm.Expr("current_bookings + ?", updateData.GuestCount))
+	
+	if result.Error != nil {
+		c.JSON(500, gin.H{"error": result.Error.Error()})
+		return
+	}
+	
+	if result.RowsAffected == 0 {
+		c.JSON(404, gin.H{"error": "Package not found"})
+		return
+	}
+	
+	// ส่งข้อมูลแพคเกจที่อัพเดตแล้วกลับไป
+	var updatedPkg models.TravelPackage
+	db.Where("id = ?", packageID).First(&updatedPkg)
+	
+	c.JSON(200, gin.H{
+		"message": "Current bookings updated successfully",
+		"package": updatedPkg,
+	})
+}
+
 
 
 // Service สำหรับดึง travel packages ทั้งหมด
