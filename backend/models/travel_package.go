@@ -16,6 +16,7 @@ type TravelPackage struct {
 	ReviewCount int       `json:"review_count" gorm:"column:review_count"`
 	MaxGuests        int       `json:"max_guests" gorm:"column:max_guests"`
 	CurrentBookings  int       `json:"current_bookings" gorm:"column:current_bookings;default:0"`
-	Tags             string    `json:"tags"` // ใช้ string แทน array สำหรับตอนนี้
+	Tags             string    `json:"-" gorm:"column:tags"` // ไม่ส่งออกใน JSON โดยตรง
+	TagsArray        []string  `json:"tags" gorm:"-"` // ส่งออกใน JSON แต่ไม่เก็บใน DB
 	// เพิ่ม field อื่นๆ ตาม schema
 }

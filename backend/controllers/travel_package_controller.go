@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"strings"
 	"trip-trader-backend/models"
 
 	"github.com/gin-gonic/gin"
@@ -8,6 +9,38 @@ import (
 	// "c:\\Users\\User\\Desktop\\Project Real\\trip-trader\\backend\\models"
 	"gorm.io/gorm"
 )
+
+// Helper function เพื่อแปลง tags จาก string เป็น array
+func convertTagsToArray(pkg *models.TravelPackage) {
+	if pkg.Tags != "" {
+		// ลบ { และ } ออกจาก string
+		cleanedTags := strings.ReplaceAll(pkg.Tags, "{", "")
+		cleanedTags = strings.ReplaceAll(cleanedTags, "}", "")
+		
+		// แปลง string เป็น array โดยแยกด้วย comma
+		tags := strings.Split(cleanedTags, ",")
+		
+		// Trim whitespace และเอาค่าว่างออก
+		var cleanTags []string
+		for _, tag := range tags {
+			trimmed := strings.TrimSpace(tag)
+			if trimmed != "" {
+				cleanTags = append(cleanTags, trimmed)
+			}
+		}
+		pkg.TagsArray = cleanTags
+	} else {
+		pkg.TagsArray = []string{}
+	}
+}
+
+// Helper function เพื่อแปลง packages ทั้งหมด
+func convertAllPackagesTags(packages []models.TravelPackage) []models.TravelPackage {
+	for i := range packages {
+		convertTagsToArray(&packages[i])
+	}
+	return packages
+}
 
 // ดึง travel packages ทั้งหมด
 func GetAllPackagesHandler(c *gin.Context, db *gorm.DB) {
@@ -19,6 +52,10 @@ func GetAllPackagesHandler(c *gin.Context, db *gorm.DB) {
 		c.JSON(500, gin.H{"error": result.Error.Error()})
 		return
 	}
+	
+	// แปลง tags เป็น array ก่อนส่งกลับ
+	packages = convertAllPackagesTags(packages)
+	
 	c.JSON(200, packages)
 }
 
@@ -41,6 +78,10 @@ func GetPackageByIDHandler(c *gin.Context, db *gorm.DB) {
 		})
 		return
 	}
+	
+	// แปลง tags เป็น array ก่อนส่งกลับ
+	convertTagsToArray(&pkg)
+	
 	c.JSON(200, pkg)
 }
 
