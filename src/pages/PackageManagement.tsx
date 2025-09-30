@@ -93,19 +93,7 @@ export default function PackageManagement() {
   const { userRole, loading } = useUserRole();
   const { toast } = useToast();
 
-  // Early return ต้องอยู่ก่อน useState - ตรวจสอบ loading state ด้วย
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  if (userRole !== "manager") {
-    return <Navigate to="/" replace />;
-  }
-
+  // ย้าย useState ทั้งหมดมาไว้ก่อน early return
   const [packages, setPackages] = useState<Package[]>([]);
   const [advertisers, setAdvertisers] = useState<User[]>([]);
   const [existingTags, setExistingTags] = useState<string[]>([]);
@@ -136,6 +124,7 @@ export default function PackageManagement() {
   const [newTag, setNewTag] = useState("");
   const [tagComboOpen, setTagComboOpen] = useState(false);
 
+  // useEffect ต้องอยู่หลัง useState แต่ก่อน early return
   useEffect(() => {
     if (userRole === "manager") {
       fetchPackages();
@@ -143,6 +132,19 @@ export default function PackageManagement() {
       fetchExistingTags();
     }
   }, [userRole]);
+
+  // Early return หลังจาก useState ทั้งหมด
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (userRole !== "manager") {
+    return <Navigate to="/" replace />;
+  }
 
   const normalizeTags = (tags: string[] | string | null): string[] => {
     if (!tags) return [];
@@ -472,7 +474,7 @@ export default function PackageManagement() {
     return matchesTitle || matchesLocation || matchesTags;
   });
 
-  if (loading || isLoading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>

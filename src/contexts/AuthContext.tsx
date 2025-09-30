@@ -210,6 +210,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
         // Store role in session storage
         if (role) {
+          console.log("Storing user role:", role);
           sessionStorage.setItem("userRole", role);
           setUserRole(role);
         }
@@ -253,6 +254,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
         // Extract role from backend response and store in session
         if (backendResponse && backendResponse.role) {
+          console.log("Storing user role from backend:", backendResponse.role);
           sessionStorage.setItem("userRole", backendResponse.role);
           setUserRole(backendResponse.role);
           console.log("User role stored:", backendResponse.role);
