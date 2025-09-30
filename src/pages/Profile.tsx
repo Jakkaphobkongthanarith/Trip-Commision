@@ -37,6 +37,21 @@ const Profile = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Early return ถ้าไม่มี user (ต้องอยู่ก่อน useState และ useEffect)
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card>
+          <CardContent className="p-8 text-center">
+            <h2 className="text-2xl font-bold mb-4">กรุณาเข้าสู่ระบบ</h2>
+            <Button onClick={() => navigate("/auth")}>เข้าสู่ระบบ</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const [profile, setProfile] = useState<Profile>({});
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,26 +67,27 @@ const Profile = () => {
   const fetchProfile = async () => {
     try {
       const { data, error } = await supabase
-        .from('profiles')
-        .select('display_name, phone, address')
-        .eq('user_id', user?.id)
+        .from("profiles")
+        .select("display_name, phone, address")
+        .eq("user_id", user?.id)
         .single();
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching profile:', error);
+      if (error && error.code !== "PGRST116") {
+        console.error("Error fetching profile:", error);
       } else if (data) {
         setProfile(data);
       }
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error("Error fetching profile:", error);
     }
   };
 
   const fetchBookings = async () => {
     try {
       const { data, error } = await supabase
-        .from('bookings')
-        .select(`
+        .from("bookings")
+        .select(
+          `
           id,
           booking_date,
           guest_count,
@@ -84,17 +100,18 @@ const Profile = () => {
             location,
             image_url
           )
-        `)
-        .eq('customer_id', user?.id)
-        .order('booking_date', { ascending: false });
+        `
+        )
+        .eq("customer_id", user?.id)
+        .order("booking_date", { ascending: false });
 
       if (error) {
-        console.error('Error fetching bookings:', error);
+        console.error("Error fetching bookings:", error);
       } else {
         setBookings(data || []);
       }
     } catch (error) {
-      console.error('Error fetching bookings:', error);
+      console.error("Error fetching bookings:", error);
     } finally {
       setLoading(false);
     }
@@ -105,14 +122,12 @@ const Profile = () => {
 
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({
-          user_id: user.id,
-          display_name: profile.display_name,
-          phone: profile.phone,
-          address: profile.address,
-        });
+      const { error } = await supabase.from("profiles").upsert({
+        user_id: user.id,
+        display_name: profile.display_name,
+        phone: profile.phone,
+        address: profile.address,
+      });
 
       if (error) throw error;
 
@@ -121,7 +136,7 @@ const Profile = () => {
         description: "ข้อมูลโปรไฟล์ของคุณได้รับการอัปเดตแล้ว",
       });
     } catch (error) {
-      console.error('Error saving profile:', error);
+      console.error("Error saving profile:", error);
       toast({
         title: "เกิดข้อผิดพลาด",
         description: "ไม่สามารถบันทึกข้อมูลได้",
@@ -133,37 +148,25 @@ const Profile = () => {
   };
 
   const getStatusColor = (status: string, paymentStatus: string) => {
-    if (paymentStatus === 'completed') return 'bg-green-100 text-green-800';
-    if (paymentStatus === 'pending') return 'bg-yellow-100 text-yellow-800';
-    if (paymentStatus === 'failed' || status === 'cancelled') return 'bg-red-100 text-red-800';
-    return 'bg-gray-100 text-gray-800';
+    if (paymentStatus === "completed") return "bg-green-100 text-green-800";
+    if (paymentStatus === "pending") return "bg-yellow-100 text-yellow-800";
+    if (paymentStatus === "failed" || status === "cancelled")
+      return "bg-red-100 text-red-800";
+    return "bg-gray-100 text-gray-800";
   };
 
   const getStatusText = (status: string, paymentStatus: string) => {
-    if (paymentStatus === 'completed') return 'ชำระเงินแล้ว';
-    if (paymentStatus === 'pending') return 'รอชำระเงิน';
-    if (paymentStatus === 'failed') return 'ชำระเงินไม่สำเร็จ';
-    if (status === 'cancelled') return 'ยกเลิกแล้ว';
+    if (paymentStatus === "completed") return "ชำระเงินแล้ว";
+    if (paymentStatus === "pending") return "รอชำระเงิน";
+    if (paymentStatus === "failed") return "ชำระเงินไม่สำเร็จ";
+    if (status === "cancelled") return "ยกเลิกแล้ว";
     return status;
   };
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card>
-          <CardContent className="p-8 text-center">
-            <h2 className="text-2xl font-bold mb-4">กรุณาเข้าสู่ระบบ</h2>
-            <Button onClick={() => navigate("/auth")}>เข้าสู่ระบบ</Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
+
       <div className="container mx-auto px-4 py-24">
         <div className="mb-6">
           <Button
@@ -191,7 +194,7 @@ const Profile = () => {
                 <Label htmlFor="email">อีเมล</Label>
                 <Input
                   id="email"
-                  value={user.email || ''}
+                  value={user.email || ""}
                   disabled
                   className="bg-muted"
                 />
@@ -204,8 +207,10 @@ const Profile = () => {
                 <Label htmlFor="displayName">ชื่อ-นามสกุล</Label>
                 <Input
                   id="displayName"
-                  value={profile.display_name || ''}
-                  onChange={(e) => setProfile({ ...profile, display_name: e.target.value })}
+                  value={profile.display_name || ""}
+                  onChange={(e) =>
+                    setProfile({ ...profile, display_name: e.target.value })
+                  }
                   placeholder="กรอกชื่อ-นามสกุล"
                 />
               </div>
@@ -214,8 +219,10 @@ const Profile = () => {
                 <Label htmlFor="phone">เบอร์โทรศัพท์</Label>
                 <Input
                   id="phone"
-                  value={profile.phone || ''}
-                  onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                  value={profile.phone || ""}
+                  onChange={(e) =>
+                    setProfile({ ...profile, phone: e.target.value })
+                  }
                   placeholder="กรอกเบอร์โทรศัพท์"
                 />
               </div>
@@ -224,14 +231,16 @@ const Profile = () => {
                 <Label htmlFor="address">ที่อยู่</Label>
                 <Input
                   id="address"
-                  value={profile.address || ''}
-                  onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+                  value={profile.address || ""}
+                  onChange={(e) =>
+                    setProfile({ ...profile, address: e.target.value })
+                  }
                   placeholder="กรอกที่อยู่"
                 />
               </div>
 
-              <Button 
-                onClick={handleSaveProfile} 
+              <Button
+                onClick={handleSaveProfile}
                 disabled={saving}
                 className="w-full"
               >
@@ -280,10 +289,16 @@ const Profile = () => {
                               <span>{booking.travel_packages?.location}</span>
                             </div>
                           </div>
-                          <Badge 
-                            className={getStatusColor(booking.status, booking.payment_status)}
+                          <Badge
+                            className={getStatusColor(
+                              booking.status,
+                              booking.payment_status
+                            )}
                           >
-                            {getStatusText(booking.status, booking.payment_status)}
+                            {getStatusText(
+                              booking.status,
+                              booking.payment_status
+                            )}
                           </Badge>
                         </div>
 
@@ -293,22 +308,32 @@ const Profile = () => {
                           <div>
                             <p className="text-muted-foreground">วันที่จอง</p>
                             <p className="font-medium">
-                              {new Date(booking.booking_date).toLocaleDateString('th-TH')}
+                              {new Date(
+                                booking.booking_date
+                              ).toLocaleDateString("th-TH")}
                             </p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground">จำนวนผู้เดินทาง</p>
-                            <p className="font-medium">{booking.guest_count} ท่าน</p>
+                            <p className="text-muted-foreground">
+                              จำนวนผู้เดินทาง
+                            </p>
+                            <p className="font-medium">
+                              {booking.guest_count} ท่าน
+                            </p>
                           </div>
                           <div>
                             <p className="text-muted-foreground">ราคารวม</p>
-                            <p className="font-medium">฿{booking.total_amount.toLocaleString()}</p>
+                            <p className="font-medium">
+                              ฿{booking.total_amount.toLocaleString()}
+                            </p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground">จำนวนเงินที่ชำระ</p>
+                            <p className="text-muted-foreground">
+                              จำนวนเงินที่ชำระ
+                            </p>
                             <p className="font-medium flex items-center gap-1">
-                              <CreditCard className="h-3 w-3" />
-                              ฿{booking.final_amount.toLocaleString()}
+                              <CreditCard className="h-3 w-3" />฿
+                              {booking.final_amount.toLocaleString()}
                             </p>
                           </div>
                         </div>

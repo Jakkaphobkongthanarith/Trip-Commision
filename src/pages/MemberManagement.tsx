@@ -1,19 +1,53 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { Navigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { supabase } from '@/integrations/supabase/client';
-import { useUserRole } from '@/hooks/useUserRole';
-import { Search, Users, UserCheck, UserX, Trash2 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import Navbar from '@/components/Navbar';
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Navigate } from "react-router-dom";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useUserRole } from "@/hooks/useUserRole";
+import { Search, Users, UserCheck, UserX, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import Navbar from "@/components/Navbar";
 
 interface Member {
   id: string;
@@ -28,15 +62,33 @@ const MemberManagement = () => {
   const { user } = useAuth();
   const { userRole, loading: roleLoading } = useUserRole();
   const { toast } = useToast();
+
+  // Early returns ต้องอยู่ก่อน hooks ทั้งหมด
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  if (roleLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (userRole !== "advertiser" && userRole !== "manager") {
+    return <Navigate to="/" replace />;
+  }
+
   const [members, setMembers] = useState<Member[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [memberDetailsOpen, setMemberDetailsOpen] = useState(false);
 
   useEffect(() => {
-    if (user && (userRole === 'advertiser' || userRole === 'manager')) {
+    if (user && (userRole === "advertiser" || userRole === "manager")) {
       fetchMembers();
     }
   }, [user, userRole]);
@@ -45,9 +97,9 @@ const MemberManagement = () => {
     try {
       // Get all profiles with their roles
       const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .from("profiles")
+        .select("*")
+        .order("created_at", { ascending: false });
 
       if (profilesError) throw profilesError;
 
@@ -56,16 +108,16 @@ const MemberManagement = () => {
         const membersWithRoles = await Promise.all(
           profiles.map(async (profile) => {
             const { data: roleData } = await supabase
-              .from('user_roles')
-              .select('role')
-              .eq('user_id', profile.user_id)
+              .from("user_roles")
+              .select("role")
+              .eq("user_id", profile.user_id)
               .single();
 
             // Get email from auth metadata (simplified approach)
             return {
               ...profile,
-              role: roleData?.role || 'customer',
-              email: `user_${profile.user_id.slice(0, 8)}@example.com` // Placeholder since we can't access auth.users
+              role: roleData?.role || "customer",
+              email: `user_${profile.user_id.slice(0, 8)}@example.com`, // Placeholder since we can't access auth.users
             };
           })
         );
@@ -73,7 +125,7 @@ const MemberManagement = () => {
         setMembers(membersWithRoles);
       }
     } catch (error) {
-      console.error('Error fetching members:', error);
+      console.error("Error fetching members:", error);
       toast({
         title: "เกิดข้อผิดพลาด",
         description: "ไม่สามารถโหลดข้อมูลสมาชิกได้",
@@ -87,8 +139,8 @@ const MemberManagement = () => {
   const handleDeleteMember = async (userId: string, displayName: string) => {
     try {
       // Only allow deleting advertiser role
-      const memberToDelete = members.find(m => m.user_id === userId);
-      if (memberToDelete?.role !== 'advertiser') {
+      const memberToDelete = members.find((m) => m.user_id === userId);
+      if (memberToDelete?.role !== "advertiser") {
         toast({
           title: "ข้อผิดพลาด",
           description: "สามารถลบเฉพาะบัญชี 'คนกลาง' เท่านั้น",
@@ -98,26 +150,26 @@ const MemberManagement = () => {
       }
 
       const { error } = await supabase
-        .from('profiles')
+        .from("profiles")
         .delete()
-        .eq('user_id', userId);
+        .eq("user_id", userId);
 
       if (error) {
-        console.error('Error deleting member:', error);
+        console.error("Error deleting member:", error);
         toast({
           title: "ข้อผิดพลาด",
           description: "ไม่สามารถลบสมาชิกได้",
           variant: "destructive",
         });
       } else {
-        setMembers(members.filter(m => m.user_id !== userId));
+        setMembers(members.filter((m) => m.user_id !== userId));
         toast({
           title: "สำเร็จ",
           description: `ลบบัญชี ${displayName} เรียบร้อยแล้ว`,
         });
       }
     } catch (error) {
-      console.error('Error deleting member:', error);
+      console.error("Error deleting member:", error);
       toast({
         title: "ข้อผิดพลาด",
         description: "เกิดข้อผิดพลาดในระบบ",
@@ -126,58 +178,44 @@ const MemberManagement = () => {
     }
   };
 
-  const filteredMembers = members.filter(member => {
-    const matchesSearch = member.display_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  const filteredMembers = members.filter((member) => {
+    const matchesSearch =
+      member.display_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       member.role?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesRole = roleFilter === 'all' || member.role === roleFilter;
-    
+
+    const matchesRole = roleFilter === "all" || member.role === roleFilter;
+
     return matchesSearch && matchesRole;
   });
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
-      case 'manager':
-        return 'destructive';
-      case 'advertiser':
-        return 'default';
-      case 'customer':
-        return 'secondary';
+      case "manager":
+        return "destructive";
+      case "advertiser":
+        return "default";
+      case "customer":
+        return "secondary";
       default:
-        return 'outline';
+        return "outline";
     }
   };
 
   const getRoleLabel = (role: string) => {
     switch (role) {
-      case 'manager':
-        return 'แอดมิน';
-      case 'advertiser':
-        return 'คนกลาง';
-      case 'customer':
-        return 'นักท่องเที่ยว';
+      case "manager":
+        return "แอดมิน";
+      case "advertiser":
+        return "คนกลาง";
+      case "customer":
+        return "นักท่องเที่ยว";
       default:
         return role;
     }
   };
 
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
-
-  if (roleLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  if (userRole !== 'advertiser' && userRole !== 'manager') {
-    return <Navigate to="/" replace />;
-  }
-
+  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -199,7 +237,9 @@ const MemberManagement = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card className="bg-white/95 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">สมาชิกทั้งหมด</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                สมาชิกทั้งหมด
+              </CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -209,12 +249,14 @@ const MemberManagement = () => {
 
           <Card className="bg-white/95 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">นักท่องเที่ยว</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                นักท่องเที่ยว
+              </CardTitle>
               <UserCheck className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {members.filter(m => m.role === 'customer').length}
+                {members.filter((m) => m.role === "customer").length}
               </div>
             </CardContent>
           </Card>
@@ -226,7 +268,7 @@ const MemberManagement = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {members.filter(m => m.role === 'advertiser').length}
+                {members.filter((m) => m.role === "advertiser").length}
               </div>
             </CardContent>
           </Card>
@@ -262,7 +304,9 @@ const MemberManagement = () => {
           </CardHeader>
           <CardContent>
             {filteredMembers.length === 0 ? (
-              <p className="text-muted-foreground text-center py-4">ไม่พบข้อมูลสมาชิก</p>
+              <p className="text-muted-foreground text-center py-4">
+                ไม่พบข้อมูลสมาชิก
+              </p>
             ) : (
               <Table>
                 <TableHeader>
@@ -271,14 +315,14 @@ const MemberManagement = () => {
                     <TableHead>อีเมล</TableHead>
                     <TableHead>ตำแหน่ง</TableHead>
                     <TableHead>วันที่สมัคร</TableHead>
-                    {userRole === 'manager' && <TableHead>การจัดการ</TableHead>}
+                    {userRole === "manager" && <TableHead>การจัดการ</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredMembers.map((member) => (
                     <TableRow key={member.id}>
                       <TableCell className="font-medium">
-                        {member.display_name || 'ไม่ระบุชื่อ'}
+                        {member.display_name || "ไม่ระบุชื่อ"}
                       </TableCell>
                       <TableCell>{member.email}</TableCell>
                       <TableCell>
@@ -287,13 +331,15 @@ const MemberManagement = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {new Date(member.created_at).toLocaleDateString('th-TH')}
+                        {new Date(member.created_at).toLocaleDateString(
+                          "th-TH"
+                        )}
                       </TableCell>
-                      {userRole === 'manager' && (
+                      {userRole === "manager" && (
                         <TableCell>
                           <div className="flex gap-2">
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               size="sm"
                               onClick={() => {
                                 setSelectedMember(member);
@@ -302,7 +348,7 @@ const MemberManagement = () => {
                             >
                               ดูรายละเอียด
                             </Button>
-                            {member.role === 'advertiser' && (
+                            {member.role === "advertiser" && (
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                   <Button variant="destructive" size="sm">
@@ -312,16 +358,28 @@ const MemberManagement = () => {
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                   <AlertDialogHeader>
-                                    <AlertDialogTitle>ยืนยันการลบบัญชี</AlertDialogTitle>
+                                    <AlertDialogTitle>
+                                      ยืนยันการลบบัญชี
+                                    </AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      คุณแน่ใจหรือไม่ที่จะลบบัญชี "{member.display_name || member.email}" 
+                                      คุณแน่ใจหรือไม่ที่จะลบบัญชี "
+                                      {member.display_name || member.email}"
                                       การกระทำนี้ไม่สามารถย้อนกลับได้
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
-                                    <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
-                                    <AlertDialogAction 
-                                      onClick={() => handleDeleteMember(member.user_id, member.display_name || member.email || 'ผู้ใช้')}
+                                    <AlertDialogCancel>
+                                      ยกเลิก
+                                    </AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() =>
+                                        handleDeleteMember(
+                                          member.user_id,
+                                          member.display_name ||
+                                            member.email ||
+                                            "ผู้ใช้"
+                                        )
+                                      }
                                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                     >
                                       ลบบัญชี
@@ -351,34 +409,56 @@ const MemberManagement = () => {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">ชื่อผู้ใช้</label>
-                    <p className="text-sm">{selectedMember.display_name || 'ไม่ระบุชื่อ'}</p>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      ชื่อผู้ใช้
+                    </label>
+                    <p className="text-sm">
+                      {selectedMember.display_name || "ไม่ระบุชื่อ"}
+                    </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">อีเมล</label>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      อีเมล
+                    </label>
                     <p className="text-sm">{selectedMember.email}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">ตำแหน่ง</label>
-                    <Badge variant={getRoleBadgeVariant(selectedMember.role)} className="mt-1">
+                    <label className="text-sm font-medium text-muted-foreground">
+                      ตำแหน่ง
+                    </label>
+                    <Badge
+                      variant={getRoleBadgeVariant(selectedMember.role)}
+                      className="mt-1"
+                    >
                       {getRoleLabel(selectedMember.role)}
                     </Badge>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">วันที่สมัคร</label>
-                    <p className="text-sm">{new Date(selectedMember.created_at).toLocaleDateString('th-TH', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                      weekday: 'long'
-                    })}</p>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      วันที่สมัคร
+                    </label>
+                    <p className="text-sm">
+                      {new Date(selectedMember.created_at).toLocaleDateString(
+                        "th-TH",
+                        {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                          weekday: "long",
+                        }
+                      )}
+                    </p>
                   </div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">ID ผู้ใช้</label>
-                  <p className="text-sm font-mono bg-muted p-2 rounded">{selectedMember.user_id}</p>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    ID ผู้ใช้
+                  </label>
+                  <p className="text-sm font-mono bg-muted p-2 rounded">
+                    {selectedMember.user_id}
+                  </p>
                 </div>
               </div>
             )}

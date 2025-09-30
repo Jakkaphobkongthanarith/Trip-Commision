@@ -13,11 +13,13 @@ import { useNavigate } from "react-router-dom";
 interface AuthContextType {
   user: User | null;
   session: Session | null;
+  userRole: string | null;
   loading: boolean;
   signUp: (
     email: string,
     password: string,
-    displayName?: string
+    displayName?: string,
+    role?: string
   ) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<{ error: any }>;
@@ -40,7 +42,16 @@ interface AuthProviderProps {
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Load userRole from session storage on initialization
+    const storedRole = sessionStorage.getItem("userRole");
+    if (storedRole) {
+      setUserRole(storedRole);
+    }
+  }, []);
 
   // Token expiry checker
   useEffect(() => {
@@ -167,7 +178,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const signUp = async (
     email: string,
     password: string,
-    displayName?: string
+    displayName?: string,
+    role?: string
   ) => {
     try {
       // Sign up with Supabase directly
@@ -187,13 +199,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return { error: supabaseError };
       }
 
-      // Also call backend API (optional)
+      // Also call backend API with role
       try {
         await authAPI.signup({
           email,
           password,
           display_name: displayName || "",
+          role: role || "customer",
         });
+
+        // Store role in session storage
+        if (role) {
+          sessionStorage.setItem("userRole", role);
+          setUserRole(role);
+        }
       } catch (backendError) {
         console.warn("Backend signup error (continuing anyway):", backendError);
       }
@@ -227,9 +246,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return { error: supabaseError };
       }
 
-      // Also call backend API (optional)
+      // Call backend API to get role
       try {
-        await authAPI.login({ email, password });
+        const backendResponse = await authAPI.login({ email, password });
+        console.log("Backend login response:", backendResponse);
+
+        // Extract role from backend response and store in session
+        if (backendResponse && backendResponse.role) {
+          sessionStorage.setItem("userRole", backendResponse.role);
+          setUserRole(backendResponse.role);
+          console.log("User role stored:", backendResponse.role);
+        }
       } catch (backendError) {
         console.warn("Backend login error (continuing anyway):", backendError);
       }
@@ -290,6 +317,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       // เมื่อ backend logout สำเร็จ ค่อย clear local state
       setUser(null);
       setSession(null);
+      setUserRole(null);
 
       // Clear browser storage manually (no API calls)
       try {
@@ -313,6 +341,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const value = {
     user,
     session,
+    userRole,
     loading,
     signUp,
     signIn,

@@ -9,6 +9,12 @@ import (
 )
 
 func SetupRoutes(r *gin.Engine, db *gorm.DB) {
+	// Middleware เพื่อใส่ db instance ใน context
+	r.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Next()
+	})
+
 	// Travel Package routes
 	r.GET("/allPackages", func(c *gin.Context) {
 		GetAllPackagesHandler(c, db)
@@ -38,9 +44,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	r.GET("/api/user/current/role", func(c *gin.Context) {
 		GetCurrentUserRoleHandler(c, db)
 	})
-	r.PUT("/api/user/role", func(c *gin.Context) {
-		UpdateCurrentUserRoleHandler(c, db)
-	})
+
 	r.PUT("/api/user/:userId/role", func(c *gin.Context) {
 		UpdateUserRoleHandler(c, db)
 	})

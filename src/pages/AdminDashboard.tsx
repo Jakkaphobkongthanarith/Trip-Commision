@@ -1,16 +1,29 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { Navigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { supabase } from '@/integrations/supabase/client';
-import { useUserRole } from '@/hooks/useUserRole';
-import { Search, Users, Trash2, Shield, UserCheck, UserX } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import Navbar from '@/components/Navbar';
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Navigate } from "react-router-dom";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
+import { useUserRole } from "@/hooks/useUserRole";
+import { Search, Users, Trash2, Shield, UserCheck, UserX } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import Navbar from "@/components/Navbar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,12 +51,22 @@ const AdminDashboard = () => {
   const { user } = useAuth();
   const { userRole } = useUserRole();
   const { toast } = useToast();
+
+  // Early returns ต้องอยู่ก่อน hooks ทั้งหมด
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  if (userRole !== "manager") {
+    return <Navigate to="/" replace />;
+  }
+
   const [users, setUsers] = useState<User[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user && userRole === 'manager') {
+    if (user && userRole === "manager") {
       fetchUsers();
     }
   }, [user, userRole]);
@@ -52,9 +75,9 @@ const AdminDashboard = () => {
     try {
       // Get all profiles with their roles
       const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .from("profiles")
+        .select("*")
+        .order("created_at", { ascending: false });
 
       if (profilesError) throw profilesError;
 
@@ -63,15 +86,15 @@ const AdminDashboard = () => {
         const usersWithRoles = await Promise.all(
           profiles.map(async (profile) => {
             const { data: roleData } = await supabase
-              .from('user_roles')
-              .select('role')
-              .eq('user_id', profile.user_id)
+              .from("user_roles")
+              .select("role")
+              .eq("user_id", profile.user_id)
               .single();
 
             return {
               ...profile,
-              role: roleData?.role || 'customer',
-              email: `user_${profile.user_id.slice(0, 8)}@example.com` // Placeholder since we can't access auth.users
+              role: roleData?.role || "customer",
+              email: `user_${profile.user_id.slice(0, 8)}@example.com`, // Placeholder since we can't access auth.users
             };
           })
         );
@@ -79,7 +102,7 @@ const AdminDashboard = () => {
         setUsers(usersWithRoles);
       }
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error("Error fetching users:", error);
       toast({
         title: "เกิดข้อผิดพลาด",
         description: "ไม่สามารถโหลดข้อมูลผู้ใช้ได้",
@@ -94,29 +117,29 @@ const AdminDashboard = () => {
     try {
       // Delete user profile and related data
       const { error: profileError } = await supabase
-        .from('profiles')
+        .from("profiles")
         .delete()
-        .eq('user_id', userId);
+        .eq("user_id", userId);
 
       if (profileError) throw profileError;
 
       // Delete user role
       const { error: roleError } = await supabase
-        .from('user_roles')
+        .from("user_roles")
         .delete()
-        .eq('user_id', userId);
+        .eq("user_id", userId);
 
       if (roleError) throw roleError;
 
       // Remove from local state
-      setUsers(users.filter(u => u.user_id !== userId));
+      setUsers(users.filter((u) => u.user_id !== userId));
 
       toast({
         title: "ลบผู้ใช้สำเร็จ",
         description: `ได้ลบบัญชีของ ${displayName} เรียบร้อยแล้ว`,
       });
     } catch (error) {
-      console.error('Error deleting user:', error);
+      console.error("Error deleting user:", error);
       toast({
         title: "เกิดข้อผิดพลาด",
         description: "ไม่สามารถลบผู้ใช้ได้",
@@ -125,32 +148,33 @@ const AdminDashboard = () => {
     }
   };
 
-  const filteredUsers = users.filter(user =>
-    user.display_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredUsers = users.filter(
+    (user) =>
+      user.display_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
-      case 'manager':
-        return 'destructive';
-      case 'advertiser':
-        return 'default';
-      case 'customer':
-        return 'secondary';
+      case "manager":
+        return "destructive";
+      case "advertiser":
+        return "default";
+      case "customer":
+        return "secondary";
       default:
-        return 'outline';
+        return "outline";
     }
   };
 
   const getRoleLabel = (role: string) => {
     switch (role) {
-      case 'manager':
-        return 'แอดมิน';
-      case 'advertiser':
-        return 'คนกลาง';
-      case 'customer':
-        return 'นักท่องเที่ยว';
+      case "manager":
+        return "แอดมิน";
+      case "advertiser":
+        return "คนกลาง";
+      case "customer":
+        return "นักท่องเที่ยว";
       default:
         return role;
     }
@@ -159,20 +183,13 @@ const AdminDashboard = () => {
   const getRoleStats = () => {
     return {
       total: users.length,
-      customers: users.filter(u => u.role === 'customer').length,
-      advertisers: users.filter(u => u.role === 'advertiser').length,
-      managers: users.filter(u => u.role === 'manager').length,
+      customers: users.filter((u) => u.role === "customer").length,
+      advertisers: users.filter((u) => u.role === "advertiser").length,
+      managers: users.filter((u) => u.role === "manager").length,
     };
   };
 
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
-
-  if (userRole !== 'manager') {
-    return <Navigate to="/" replace />;
-  }
-
+  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -196,7 +213,9 @@ const AdminDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card className="bg-white/95 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">ผู้ใช้ทั้งหมด</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                ผู้ใช้ทั้งหมด
+              </CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -206,7 +225,9 @@ const AdminDashboard = () => {
 
           <Card className="bg-white/95 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">นักท่องเที่ยว</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                นักท่องเที่ยว
+              </CardTitle>
               <UserCheck className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -239,7 +260,9 @@ const AdminDashboard = () => {
         <Card className="bg-white/95 backdrop-blur-sm">
           <CardHeader>
             <CardTitle>จัดการผู้ใช้</CardTitle>
-            <CardDescription>ดูและจัดการข้อมูลผู้ใช้ทั้งหมดในระบบ</CardDescription>
+            <CardDescription>
+              ดูและจัดการข้อมูลผู้ใช้ทั้งหมดในระบบ
+            </CardDescription>
             <div className="flex items-center space-x-2">
               <Search className="h-4 w-4 text-muted-foreground" />
               <Input
@@ -252,7 +275,9 @@ const AdminDashboard = () => {
           </CardHeader>
           <CardContent>
             {filteredUsers.length === 0 ? (
-              <p className="text-muted-foreground text-center py-4">ไม่พบข้อมูลผู้ใช้</p>
+              <p className="text-muted-foreground text-center py-4">
+                ไม่พบข้อมูลผู้ใช้
+              </p>
             ) : (
               <Table>
                 <TableHeader>
@@ -269,7 +294,7 @@ const AdminDashboard = () => {
                   {filteredUsers.map((userItem) => (
                     <TableRow key={userItem.id}>
                       <TableCell className="font-medium">
-                        {userItem.display_name || 'ไม่ระบุชื่อ'}
+                        {userItem.display_name || "ไม่ระบุชื่อ"}
                       </TableCell>
                       <TableCell>{userItem.email}</TableCell>
                       <TableCell>
@@ -277,16 +302,18 @@ const AdminDashboard = () => {
                           {getRoleLabel(userItem.role)}
                         </Badge>
                       </TableCell>
-                      <TableCell>{userItem.phone || 'ไม่ระบุ'}</TableCell>
+                      <TableCell>{userItem.phone || "ไม่ระบุ"}</TableCell>
                       <TableCell>
-                        {new Date(userItem.created_at).toLocaleDateString('th-TH')}
+                        {new Date(userItem.created_at).toLocaleDateString(
+                          "th-TH"
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
                           <Button variant="outline" size="sm">
                             แก้ไข
                           </Button>
-                          {userItem.role !== 'manager' && (
+                          {userItem.role !== "manager" && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button variant="destructive" size="sm">
@@ -295,16 +322,24 @@ const AdminDashboard = () => {
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>ยืนยันการลบผู้ใช้</AlertDialogTitle>
+                                  <AlertDialogTitle>
+                                    ยืนยันการลบผู้ใช้
+                                  </AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    คุณต้องการลบบัญชีของ "{userItem.display_name || userItem.email}" หรือไม่? 
-                                    การดำเนินการนี้ไม่สามารถย้อนกลับได้
+                                    คุณต้องการลบบัญชีของ "
+                                    {userItem.display_name || userItem.email}"
+                                    หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
                                   <AlertDialogAction
-                                    onClick={() => handleDeleteUser(userItem.user_id, userItem.display_name || userItem.email)}
+                                    onClick={() =>
+                                      handleDeleteUser(
+                                        userItem.user_id,
+                                        userItem.display_name || userItem.email
+                                      )
+                                    }
                                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                   >
                                     ลบ

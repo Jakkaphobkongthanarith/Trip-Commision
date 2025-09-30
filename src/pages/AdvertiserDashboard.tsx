@@ -62,6 +62,12 @@ interface UpcomingTrip {
 
 const AdvertiserDashboard = () => {
   const { user } = useAuth();
+
+  // Early returns ต้องอยู่ก่อน hooks ทั้งหมด
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
   const [userRole, setUserRole] = useState<string>("");
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -92,11 +98,11 @@ const AdvertiserDashboard = () => {
     if (!user) return;
 
     try {
-      const roleData = await apiRequest("/api/user/current/role");
+      const roleData = sessionStorage.getItem("userRole");
       console.log("User role data:", roleData);
 
-      if (roleData && roleData.role) {
-        setUserRole(roleData.role as string);
+      if (roleData) {
+        setUserRole(roleData as string);
       } else {
         setUserRole("");
       }
@@ -206,20 +212,18 @@ const AdvertiserDashboard = () => {
     }
   };
 
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
-
-  if (userRole && userRole !== "advertiser") {
-    return <Navigate to="/" replace />;
-  }
-
+  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
       </div>
     );
+  }
+
+  // Role check - redirect if not advertiser
+  if (userRole && userRole !== "advertiser") {
+    return <Navigate to="/" replace />;
   }
 
   return (

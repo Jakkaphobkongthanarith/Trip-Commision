@@ -71,29 +71,23 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
-      // First create the user account
-      const { error: signUpError } = await signUp(email, password, displayName);
+      // Create the user account with role
+      const { error: signUpError } = await signUp(
+        email,
+        password,
+        displayName,
+        role
+      );
 
       if (signUpError) {
         throw signUpError;
       }
 
-      // Then update the user role (the trigger will create default customer role)
-      // We need to update it if it's not customer
-      if (role !== "customer") {
-        try {
-          await apiRequest("/api/user/role", {
-            method: "PUT",
-            body: JSON.stringify({ role }),
-          });
-        } catch (roleError) {
-          console.error("Error updating role:", roleError);
-        }
-      }
-
       toast({
         title: "สมัครสมาชิกสำเร็จ",
-        description: "ยินดีต้อนรับเข้าสู่ระบบ TravelCommission!",
+        description: `ยินดีต้อนรับเข้าสู่ระบบ TravelCommission ในฐานะ${getRoleText(
+          role
+        )}!`,
       });
     } catch (error: any) {
       toast({

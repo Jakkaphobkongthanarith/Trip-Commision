@@ -5,15 +5,49 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Edit, Trash2, Plus, X, Check, ChevronsUpDown, Search, Users, Calendar, Percent } from "lucide-react";
+import {
+  Edit,
+  Trash2,
+  Plus,
+  X,
+  Check,
+  ChevronsUpDown,
+  Search,
+  Users,
+  Calendar,
+  Percent,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Navigate } from "react-router-dom";
@@ -58,6 +92,20 @@ export default function PackageManagement() {
   const { user } = useAuth();
   const { userRole, loading } = useUserRole();
   const { toast } = useToast();
+
+  // Early return ต้องอยู่ก่อน useState - ตรวจสอบ loading state ด้วย
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (userRole !== "manager") {
+    return <Navigate to="/" replace />;
+  }
+
   const [packages, setPackages] = useState<Package[]>([]);
   const [advertisers, setAdvertisers] = useState<User[]>([]);
   const [existingTags, setExistingTags] = useState<string[]>([]);
@@ -65,7 +113,9 @@ export default function PackageManagement() {
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [bookingsDialogOpen, setBookingsDialogOpen] = useState(false);
-  const [selectedPackageBookings, setSelectedPackageBookings] = useState<Booking[]>([]);
+  const [selectedPackageBookings, setSelectedPackageBookings] = useState<
+    Booking[]
+  >([]);
   const [selectedPackageTitle, setSelectedPackageTitle] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [formData, setFormData] = useState({
@@ -81,15 +131,10 @@ export default function PackageManagement() {
     available_from: "",
     available_to: "",
     max_guests: "10",
-    discount_percentage: "0"
+    discount_percentage: "0",
   });
   const [newTag, setNewTag] = useState("");
   const [tagComboOpen, setTagComboOpen] = useState(false);
-
-  // Redirect if not manager
-  if (!loading && userRole !== "manager") {
-    return <Navigate to="/" replace />;
-  }
 
   useEffect(() => {
     if (userRole === "manager") {
@@ -102,10 +147,13 @@ export default function PackageManagement() {
   const normalizeTags = (tags: string[] | string | null): string[] => {
     if (!tags) return [];
     if (Array.isArray(tags)) return tags;
-    if (typeof tags === 'string') {
+    if (typeof tags === "string") {
       // Remove { and } from PostgreSQL array format
-      const cleanedTags = tags.replace(/[{}]/g, '');
-      return cleanedTags.split(',').map(t => t.trim()).filter(t => t);
+      const cleanedTags = tags.replace(/[{}]/g, "");
+      return cleanedTags
+        .split(",")
+        .map((t) => t.trim())
+        .filter((t) => t);
     }
     return [];
   };
@@ -118,19 +166,19 @@ export default function PackageManagement() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      
+
       // Normalize tags for all packages
-      const normalizedData = (data || []).map(pkg => ({
+      const normalizedData = (data || []).map((pkg) => ({
         ...pkg,
-        tags: normalizeTags(pkg.tags)
+        tags: normalizeTags(pkg.tags),
       }));
-      
+
       setPackages(normalizedData);
     } catch (error) {
       toast({
         title: "เกิดข้อผิดพลาด",
         description: "ไม่สามารถโหลดข้อมูลแพคเกจได้",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
@@ -151,7 +199,7 @@ export default function PackageManagement() {
       }
 
       // Get profiles for those users
-      const userIds = roleData.map(item => item.user_id);
+      const userIds = roleData.map((item) => item.user_id);
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("user_id, display_name")
@@ -159,19 +207,20 @@ export default function PackageManagement() {
 
       if (profileError) throw profileError;
 
-      const advertiserUsers = profileData?.map(profile => ({
-        id: profile.user_id,
-        display_name: profile.display_name || "ไม่ระบุชื่อ",
-        email: ""
-      })) || [];
-      
+      const advertiserUsers =
+        profileData?.map((profile) => ({
+          id: profile.user_id,
+          display_name: profile.display_name || "ไม่ระบุชื่อ",
+          email: "",
+        })) || [];
+
       setAdvertisers(advertiserUsers);
     } catch (error) {
       console.error("Error fetching advertisers:", error);
       toast({
         title: "เกิดข้อผิดพลาด",
         description: "ไม่สามารถโหลดข้อมูลผู้โฆษณาได้",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -189,9 +238,9 @@ export default function PackageManagement() {
 
       // Flatten and deduplicate tags
       const allTags = new Set<string>();
-      data?.forEach(pkg => {
+      data?.forEach((pkg) => {
         if (pkg.tags && Array.isArray(pkg.tags)) {
-          pkg.tags.forEach(tag => allTags.add(tag));
+          pkg.tags.forEach((tag) => allTags.add(tag));
         }
       });
 
@@ -219,7 +268,7 @@ export default function PackageManagement() {
         available_from: formData.available_from || null,
         available_to: formData.available_to || null,
         max_guests: parseInt(formData.max_guests),
-        discount_percentage: parseFloat(formData.discount_percentage)
+        discount_percentage: parseFloat(formData.discount_percentage),
       };
 
       if (editingPackage) {
@@ -227,23 +276,23 @@ export default function PackageManagement() {
           .from("travel_packages")
           .update(packageData)
           .eq("id", editingPackage.id);
-        
+
         if (error) throw error;
-        
+
         toast({
           title: "สำเร็จ",
-          description: "อัปเดตแพคเกจเรียบร้อยแล้ว"
+          description: "อัปเดตแพคเกจเรียบร้อยแล้ว",
         });
       } else {
         const { error } = await supabase
           .from("travel_packages")
           .insert([packageData]);
-        
+
         if (error) throw error;
-        
+
         toast({
           title: "สำเร็จ",
-          description: "สร้างแพคเกจใหม่เรียบร้อยแล้ว"
+          description: "สร้างแพคเกจใหม่เรียบร้อยแล้ว",
         });
       }
 
@@ -255,7 +304,7 @@ export default function PackageManagement() {
       toast({
         title: "เกิดข้อผิดพลาด",
         description: "ไม่สามารถบันทึกข้อมูลได้",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -277,7 +326,7 @@ export default function PackageManagement() {
       available_from: pkg.available_from || "",
       available_to: pkg.available_to || "",
       max_guests: pkg.max_guests.toString(),
-      discount_percentage: pkg.discount_percentage.toString()
+      discount_percentage: pkg.discount_percentage.toString(),
     });
     setIsDialogOpen(true);
   };
@@ -295,15 +344,15 @@ export default function PackageManagement() {
 
       toast({
         title: "สำเร็จ",
-        description: "ลบแพคเกจเรียบร้อยแล้ว"
+        description: "ลบแพคเกจเรียบร้อยแล้ว",
       });
-      
+
       fetchPackages();
     } catch (error) {
       toast({
         title: "เกิดข้อผิดพลาด",
         description: "ไม่สามารถลบแพคเกจได้",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
@@ -322,7 +371,7 @@ export default function PackageManagement() {
       available_from: "",
       available_to: "",
       max_guests: "10",
-      discount_percentage: "0"
+      discount_percentage: "0",
     });
     setEditingPackage(null);
     setNewTag("");
@@ -330,17 +379,23 @@ export default function PackageManagement() {
 
   const addTag = (tag: string) => {
     if (tag.trim() && !formData.tags.includes(tag.trim())) {
-      setFormData({...formData, tags: [...formData.tags, tag.trim()]});
+      setFormData({ ...formData, tags: [...formData.tags, tag.trim()] });
       setNewTag("");
       setTagComboOpen(false);
     }
   };
 
   const removeTag = (tagToRemove: string) => {
-    setFormData({...formData, tags: formData.tags.filter(tag => tag !== tagToRemove)});
+    setFormData({
+      ...formData,
+      tags: formData.tags.filter((tag) => tag !== tagToRemove),
+    });
   };
 
-  const fetchPackageBookings = async (packageId: string, packageTitle: string) => {
+  const fetchPackageBookings = async (
+    packageId: string,
+    packageTitle: string
+  ) => {
     try {
       // First get bookings
       const { data: bookingsData, error: bookingsError } = await supabase
@@ -359,7 +414,7 @@ export default function PackageManagement() {
       }
 
       // Get customer profiles
-      const customerIds = bookingsData.map(booking => booking.customer_id);
+      const customerIds = bookingsData.map((booking) => booking.customer_id);
       const { data: profilesData, error: profilesError } = await supabase
         .from("profiles")
         .select("user_id, display_name, phone")
@@ -368,15 +423,17 @@ export default function PackageManagement() {
       if (profilesError) throw profilesError;
 
       // Combine data
-      const bookingsWithProfiles = bookingsData.map(booking => {
-        const profile = profilesData?.find(p => p.user_id === booking.customer_id);
+      const bookingsWithProfiles = bookingsData.map((booking) => {
+        const profile = profilesData?.find(
+          (p) => p.user_id === booking.customer_id
+        );
         return {
           ...booking,
           profiles: {
             display_name: profile?.display_name || "ไม่ระบุชื่อ",
             phone: profile?.phone || "ไม่ระบุเบอร์",
-            email: ""
-          }
+            email: "",
+          },
         };
       });
 
@@ -388,25 +445,30 @@ export default function PackageManagement() {
       toast({
         title: "เกิดข้อผิดพลาด",
         description: "ไม่สามารถโหลดข้อมูลการจองได้",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
 
-  const availableTagsForSelection = existingTags.filter(tag => !formData.tags.includes(tag));
+  const availableTagsForSelection = existingTags.filter(
+    (tag) => !formData.tags.includes(tag)
+  );
 
   const getAdvertiserName = (advertiserId: string) => {
-    const advertiser = advertisers.find(a => a.id === advertiserId);
+    const advertiser = advertisers.find((a) => a.id === advertiserId);
     return advertiser?.display_name || "ไม่ระบุ";
   };
 
   // Filter packages based on search term
-  const filteredPackages = packages.filter(pkg => {
+  const filteredPackages = packages.filter((pkg) => {
     const searchLower = searchTerm.toLowerCase();
     const matchesTitle = pkg.title.toLowerCase().includes(searchLower);
     const matchesLocation = pkg.location.toLowerCase().includes(searchLower);
     const tags = normalizeTags(pkg.tags);
-    const matchesTags = tags.some(tag => typeof tag === 'string' && tag.toLowerCase().includes(searchLower));
+    const matchesTags = tags.some(
+      (tag) =>
+        typeof tag === "string" && tag.toLowerCase().includes(searchLower)
+    );
     return matchesTitle || matchesLocation || matchesTags;
   });
 
@@ -442,7 +504,9 @@ export default function PackageManagement() {
                   <Input
                     id="title"
                     value={formData.title}
-                    onChange={(e) => setFormData({...formData, title: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({ ...formData, title: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -451,12 +515,14 @@ export default function PackageManagement() {
                   <Input
                     id="location"
                     value={formData.location}
-                    onChange={(e) => setFormData({...formData, location: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({ ...formData, location: e.target.value })
+                    }
                     required
                   />
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="price">ราคา (บาท) *</Label>
@@ -467,7 +533,9 @@ export default function PackageManagement() {
                       min="0"
                       step="0.01"
                       value={formData.price}
-                      onChange={(e) => setFormData({...formData, price: e.target.value})}
+                      onChange={(e) =>
+                        setFormData({ ...formData, price: e.target.value })
+                      }
                       required
                       className="flex-1"
                     />
@@ -487,7 +555,12 @@ export default function PackageManagement() {
                             max="100"
                             step="0.01"
                             value={formData.discount_percentage}
-                            onChange={(e) => setFormData({...formData, discount_percentage: e.target.value})}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                discount_percentage: e.target.value,
+                              })
+                            }
                           />
                         </div>
                       </PopoverContent>
@@ -501,12 +574,14 @@ export default function PackageManagement() {
                     type="number"
                     min="1"
                     value={formData.duration}
-                    onChange={(e) => setFormData({...formData, duration: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({ ...formData, duration: e.target.value })
+                    }
                     required
                   />
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="available_from">วันที่เริ่มให้บริการ</Label>
@@ -514,16 +589,25 @@ export default function PackageManagement() {
                     id="available_from"
                     type="date"
                     value={formData.available_from}
-                    onChange={(e) => setFormData({...formData, available_from: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        available_from: e.target.value,
+                      })
+                    }
                   />
                 </div>
                 <div>
-                  <Label htmlFor="available_to">วันที่สิ้นสุดการให้บริการ</Label>
+                  <Label htmlFor="available_to">
+                    วันที่สิ้นสุดการให้บริการ
+                  </Label>
                   <Input
                     id="available_to"
                     type="date"
                     value={formData.available_to}
-                    onChange={(e) => setFormData({...formData, available_to: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({ ...formData, available_to: e.target.value })
+                    }
                   />
                 </div>
                 <div>
@@ -533,7 +617,9 @@ export default function PackageManagement() {
                     type="number"
                     min="1"
                     value={formData.max_guests}
-                    onChange={(e) => setFormData({...formData, max_guests: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({ ...formData, max_guests: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -541,9 +627,15 @@ export default function PackageManagement() {
 
               <div>
                 <Label htmlFor="advertiser">ผู้โฆษณา</Label>
-                <Select value={formData.advertiser_id || "none"} onValueChange={(value) => 
-                  setFormData({...formData, advertiser_id: value === "none" ? "" : value})
-                }>
+                <Select
+                  value={formData.advertiser_id || "none"}
+                  onValueChange={(value) =>
+                    setFormData({
+                      ...formData,
+                      advertiser_id: value === "none" ? "" : value,
+                    })
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="เลือกผู้โฆษณา (ไม่บังคับ)" />
                   </SelectTrigger>
@@ -564,7 +656,9 @@ export default function PackageManagement() {
                   id="image_url"
                   type="url"
                   value={formData.image_url}
-                  onChange={(e) => setFormData({...formData, image_url: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, image_url: e.target.value })
+                  }
                 />
               </div>
 
@@ -573,7 +667,9 @@ export default function PackageManagement() {
                 <Textarea
                   id="description"
                   value={formData.description}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
                   rows={4}
                 />
               </div>
@@ -595,60 +691,71 @@ export default function PackageManagement() {
                     </PopoverTrigger>
                     <PopoverContent className="w-full p-0">
                       <Command>
-                        <CommandInput 
-                          placeholder="ค้นหาหรือพิมพ์แท็กใหม่..." 
+                        <CommandInput
+                          placeholder="ค้นหาหรือพิมพ์แท็กใหม่..."
                           value={newTag}
                           onValueChange={setNewTag}
                         />
                         <CommandList>
                           <CommandGroup>
-                            {newTag && !existingTags.includes(newTag.trim()) && (
-                              <CommandItem
-                                value={`create-${newTag}`}
-                                onSelect={() => addTag(newTag)}
-                                className="text-green-600"
-                              >
-                                <Plus className="mr-2 h-4 w-4" />
-                                สร้าง "{newTag}"
-                              </CommandItem>
-                            )}
+                            {newTag &&
+                              !existingTags.includes(newTag.trim()) && (
+                                <CommandItem
+                                  value={`create-${newTag}`}
+                                  onSelect={() => addTag(newTag)}
+                                  className="text-green-600"
+                                >
+                                  <Plus className="mr-2 h-4 w-4" />
+                                  สร้าง "{newTag}"
+                                </CommandItem>
+                              )}
                             {availableTagsForSelection
-                              .filter(tag => tag.toLowerCase().includes(newTag.toLowerCase()))
+                              .filter((tag) =>
+                                tag.toLowerCase().includes(newTag.toLowerCase())
+                              )
                               .map((tag) => (
-                              <CommandItem
-                                key={tag}
-                                value={tag}
-                                onSelect={() => addTag(tag)}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    formData.tags.includes(tag) ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                {tag}
-                              </CommandItem>
-                            ))}
+                                <CommandItem
+                                  key={tag}
+                                  value={tag}
+                                  onSelect={() => addTag(tag)}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      formData.tags.includes(tag)
+                                        ? "opacity-100"
+                                        : "opacity-0"
+                                    )}
+                                  />
+                                  {tag}
+                                </CommandItem>
+                              ))}
                           </CommandGroup>
                           {!newTag && existingTags.length === 0 && (
                             <CommandEmpty>ยังไม่มีแท็กในระบบ</CommandEmpty>
                           )}
-                          {newTag && availableTagsForSelection.filter(tag => 
-                            tag.toLowerCase().includes(newTag.toLowerCase())
-                          ).length === 0 && existingTags.includes(newTag.trim()) && (
-                            <CommandEmpty>แท็กนี้มีอยู่แล้ว</CommandEmpty>
-                          )}
+                          {newTag &&
+                            availableTagsForSelection.filter((tag) =>
+                              tag.toLowerCase().includes(newTag.toLowerCase())
+                            ).length === 0 &&
+                            existingTags.includes(newTag.trim()) && (
+                              <CommandEmpty>แท็กนี้มีอยู่แล้ว</CommandEmpty>
+                            )}
                         </CommandList>
                       </Command>
                     </PopoverContent>
                   </Popover>
-                  
+
                   <div className="flex flex-wrap gap-2">
                     {formData.tags.map((tag, index) => (
-                      <Badge key={index} variant="secondary" className="flex items-center gap-1">
+                      <Badge
+                        key={index}
+                        variant="secondary"
+                        className="flex items-center gap-1"
+                      >
                         {tag}
-                        <X 
-                          className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                        <X
+                          className="h-3 w-3 cursor-pointer hover:text-destructive"
                           onClick={() => removeTag(tag)}
                         />
                       </Badge>
@@ -661,13 +768,19 @@ export default function PackageManagement() {
                 <Switch
                   id="is_active"
                   checked={formData.is_active}
-                  onCheckedChange={(checked) => setFormData({...formData, is_active: checked})}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, is_active: checked })
+                  }
                 />
                 <Label htmlFor="is_active">เปิดใช้งาน</Label>
               </div>
 
               <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                >
                   ยกเลิก
                 </Button>
                 <Button type="submit" disabled={isLoading}>
@@ -700,7 +813,8 @@ export default function PackageManagement() {
                 <div>
                   <CardTitle>{pkg.title}</CardTitle>
                   <p className="text-muted-foreground mt-1">
-                    {pkg.location} • {pkg.duration} วัน • ฿{pkg.price.toLocaleString()}
+                    {pkg.location} • {pkg.duration} วัน • ฿
+                    {pkg.price.toLocaleString()}
                     {pkg.discount_percentage > 0 && (
                       <span className="text-red-600 font-medium ml-2">
                         (ส่วนลด {pkg.discount_percentage}%)
@@ -717,28 +831,41 @@ export default function PackageManagement() {
                     {(pkg.available_from || pkg.available_to) && (
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
-                        {pkg.available_from && new Date(pkg.available_from).toLocaleDateString('th-TH')}
-                        {pkg.available_from && pkg.available_to && ' - '}
-                        {pkg.available_to && new Date(pkg.available_to).toLocaleDateString('th-TH')}
+                        {pkg.available_from &&
+                          new Date(pkg.available_from).toLocaleDateString(
+                            "th-TH"
+                          )}
+                        {pkg.available_from && pkg.available_to && " - "}
+                        {pkg.available_to &&
+                          new Date(pkg.available_to).toLocaleDateString(
+                            "th-TH"
+                          )}
                       </span>
                     )}
                   </div>
-                   {pkg.advertiser_id && (
-                     <p className="text-sm text-blue-600 mt-1">
-                       ผู้โฆษณา: {getAdvertiserName(pkg.advertiser_id)}
-                     </p>
-                   )}
-                   {pkg.tags && Array.isArray(pkg.tags) && pkg.tags.length > 0 && (
-                     <div className="flex flex-wrap gap-1 mt-2">
-                       {pkg.tags.map((tag, index) => (
-                         typeof tag === 'string' && (
-                           <Badge key={index} variant="outline" className="text-xs">
-                             {tag}
-                           </Badge>
-                         )
-                       ))}
-                     </div>
-                   )}
+                  {pkg.advertiser_id && (
+                    <p className="text-sm text-blue-600 mt-1">
+                      ผู้โฆษณา: {getAdvertiserName(pkg.advertiser_id)}
+                    </p>
+                  )}
+                  {pkg.tags &&
+                    Array.isArray(pkg.tags) &&
+                    pkg.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {pkg.tags.map(
+                          (tag, index) =>
+                            typeof tag === "string" && (
+                              <Badge
+                                key={index}
+                                variant="outline"
+                                className="text-xs"
+                              >
+                                {tag}
+                              </Badge>
+                            )
+                        )}
+                      </div>
+                    )}
                 </div>
                 <div className="flex space-x-2">
                   <Button
@@ -768,14 +895,18 @@ export default function PackageManagement() {
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <span className={`px-2 py-1 rounded-full text-xs ${
-                  pkg.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                }`}>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs ${
+                    pkg.is_active
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
+                  }`}
+                >
                   {pkg.is_active ? "เปิดใช้งาน" : "ปิดใช้งาน"}
                 </span>
                 {pkg.image_url && (
-                  <img 
-                    src={pkg.image_url} 
+                  <img
+                    src={pkg.image_url}
                     alt={pkg.title}
                     className="w-16 h-16 object-cover rounded"
                   />
@@ -813,19 +944,29 @@ export default function PackageManagement() {
                         </h4>
                         <div className="text-sm text-muted-foreground space-y-1">
                           <p>📞 {booking.profiles.phone}</p>
-                          <p>📅 วันที่จอง: {new Date(booking.booking_date).toLocaleDateString('th-TH')}</p>
+                          <p>
+                            📅 วันที่จอง:{" "}
+                            {new Date(booking.booking_date).toLocaleDateString(
+                              "th-TH"
+                            )}
+                          </p>
                           <p>👥 จำนวนผู้เดินทาง: {booking.guest_count} คน</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <Badge 
-                          variant={booking.status === 'confirmed' ? 'default' : 
-                                  booking.status === 'cancelled' ? 'destructive' : 'secondary'}
+                        <Badge
+                          variant={
+                            booking.status === "confirmed"
+                              ? "default"
+                              : booking.status === "cancelled"
+                              ? "destructive"
+                              : "secondary"
+                          }
                         >
-                          {booking.status === 'pending' && 'รอดำเนินการ'}
-                          {booking.status === 'confirmed' && 'ยืนยันแล้ว'}
-                          {booking.status === 'cancelled' && 'ยกเลิกแล้ว'}
-                          {booking.status === 'completed' && 'เสร็จสิ้น'}
+                          {booking.status === "pending" && "รอดำเนินการ"}
+                          {booking.status === "confirmed" && "ยืนยันแล้ว"}
+                          {booking.status === "cancelled" && "ยกเลิกแล้ว"}
+                          {booking.status === "completed" && "เสร็จสิ้น"}
                         </Badge>
                       </div>
                     </div>

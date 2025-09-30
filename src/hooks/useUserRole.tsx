@@ -1,40 +1,40 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiRequest } from "@/lib/api";
 
 export const useUserRole = () => {
-  const { user } = useAuth();
+  const { user, userRole: authUserRole } = useAuth();
   const [userRole, setUserRole] = useState<string>("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchUserRole = async () => {
-      if (!user) {
+    if (!user) {
+      setUserRole("");
+      setLoading(false);
+      return;
+    }
+
+    // Use userRole from AuthContext (stored in session storage)
+    if (authUserRole) {
+      setUserRole(authUserRole);
+      setLoading(false);
+      return;
+    }
+
+    // Fallback: try to get from session storage directly
+    try {
+      const storedRole = sessionStorage.getItem("userRole");
+      if (storedRole) {
+        setUserRole(storedRole);
+      } else {
         setUserRole("");
-        setLoading(false);
-        return;
       }
-
-      try {
-        // เรียก backend API แทน Supabase RPC
-        const roleData = await apiRequest("/api/user/current/role");
-        console.log("User role:", roleData);
-
-        if (roleData && roleData.role) {
-          setUserRole(roleData.role as string);
-        } else {
-          setUserRole("");
-        }
-      } catch (err) {
-        console.error("Error fetching user role:", err);
-        setUserRole("");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUserRole();
-  }, [user]);
+    } catch (err) {
+      console.error("Error getting user role from session storage:", err);
+      setUserRole("");
+    } finally {
+      setLoading(false);
+    }
+  }, [user, authUserRole]);
 
   return { userRole, loading };
 };
