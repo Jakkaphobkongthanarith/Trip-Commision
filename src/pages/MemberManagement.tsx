@@ -60,7 +60,7 @@ interface Member {
 
 const MemberManagement = () => {
   const { user } = useAuth();
-  const { userRole, loading: roleLoading } = useUserRole();
+  const userRole = sessionStorage.getItem("userRole") || "";
   const { toast } = useToast();
 
   // Early returns ต้องอยู่ก่อน hooks ทั้งหมด
@@ -68,15 +68,9 @@ const MemberManagement = () => {
     return <Navigate to="/auth" replace />;
   }
 
-  if (roleLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  if (userRole !== "manager") {
+    console.log("userRole", userRole);
 
-  if (userRole !== "advertiser" && userRole !== "manager") {
     return <Navigate to="/" replace />;
   }
 
@@ -88,7 +82,8 @@ const MemberManagement = () => {
   const [memberDetailsOpen, setMemberDetailsOpen] = useState(false);
 
   useEffect(() => {
-    if (user && (userRole === "advertiser" || userRole === "manager")) {
+    console.log("userRole", userRole);
+    if (user && userRole === "manager") {
       fetchMembers();
     }
   }, [user, userRole]);

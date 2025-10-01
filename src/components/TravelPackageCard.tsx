@@ -65,13 +65,7 @@ const TravelPackageCard: React.FC<TravelPackageCardProps> = ({
             ลด {discount}%
           </Badge>
         )}
-        <div className="absolute top-3 right-3 bg-background/80 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1 text-sm">
-          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-          <span className="font-medium">{pkg.rating || 0}</span>
-          <span className="text-muted-foreground">
-            ({pkg.review_count || pkg.reviewCount || 0})
-          </span>
-        </div>
+       
       </div>
 
       <CardHeader className="pb-3">

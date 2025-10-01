@@ -142,15 +142,6 @@ const PackageDetails = () => {
       return;
     }
 
-    if (!selectedDate) {
-      toast({
-        title: "กรุณาเลือกวันที่",
-        description: "โปรดเลือกวันที่เดินทาง",
-        variant: "destructive",
-      });
-      return;
-    }
-
     // Validate contact information
     if (!contactName.trim() || !contactPhone.trim() || !contactEmail.trim()) {
       toast({
@@ -190,7 +181,9 @@ const PackageDetails = () => {
       const finalAmount = totalAmount - discountAmount;
 
       // Get auth token
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) {
         throw new Error("No active session");
       }
@@ -277,13 +270,6 @@ const PackageDetails = () => {
                   ลด {discount}%
                 </Badge>
               )}
-              <div className="absolute top-4 right-4 bg-background/80 backdrop-blur-sm rounded-full px-3 py-2 flex items-center gap-1">
-                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                <span className="font-medium">{packageData.rating}</span>
-                <span className="text-muted-foreground">
-                  ({packageData.review_count})
-                </span>
-              </div>
             </div>
 
             {/* Package Info */}
@@ -305,7 +291,12 @@ const PackageDetails = () => {
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4" />
                       <span>
-                        {format(new Date(packageData.available_from), "dd MMM")} - {format(new Date(packageData.available_to), "dd MMM yyyy")}
+                        {format(new Date(packageData.available_from), "dd MMM")}{" "}
+                        -{" "}
+                        {format(
+                          new Date(packageData.available_to),
+                          "dd MMM yyyy"
+                        )}
                       </span>
                     </div>
                   )}
@@ -413,7 +404,10 @@ const PackageDetails = () => {
                             setUseProfileData(checked as boolean);
                           }}
                         />
-                        <Label htmlFor="useProfile" className="text-sm cursor-pointer">
+                        <Label
+                          htmlFor="useProfile"
+                          className="text-sm cursor-pointer"
+                        >
                           ใช้ข้อมูลจากโปรไฟล์
                         </Label>
                       </div>
@@ -465,20 +459,6 @@ const PackageDetails = () => {
                       rows={3}
                     />
                   </div>
-                </div>
-
-                {/* Date Selection */}
-                <div className="space-y-2">
-                  <Label htmlFor="date">วันที่เดินทาง</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    min={packageData.available_from || new Date().toISOString().split("T")[0]}
-                    max={packageData.available_to || undefined}
-                    required
-                  />
                 </div>
 
                 {/* Guest Count Selection */}
@@ -564,8 +544,12 @@ const PackageDetails = () => {
                   size="lg"
                   onClick={handleBooking}
                   disabled={
-                    bookingLoading || availableSpots === 0 || !selectedDate || 
-                    !contactName || !contactPhone || !contactEmail
+                    bookingLoading ||
+                    availableSpots === 0 ||
+                    !selectedDate ||
+                    !contactName ||
+                    !contactPhone ||
+                    !contactEmail
                   }
                 >
                   {bookingLoading

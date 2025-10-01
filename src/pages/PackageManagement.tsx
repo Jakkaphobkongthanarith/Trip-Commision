@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import Navbar from "@/components/Navbar";
 import {
   Select,
   SelectContent,
@@ -266,7 +267,9 @@ export default function PackageManagement() {
         image_url: formData.image_url,
         is_active: formData.is_active,
         advertiser_id: formData.advertiser_id || null,
-        tags: Array.isArray(formData.tags) ? `{${formData.tags.join(',')}}` : formData.tags,
+        tags: Array.isArray(formData.tags)
+          ? `{${formData.tags.join(",")}}`
+          : formData.tags,
         available_from: formData.available_from || null,
         available_to: formData.available_to || null,
         max_guests: parseInt(formData.max_guests),
@@ -484,6 +487,7 @@ export default function PackageManagement() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <Navbar />
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">จัดการแพคเกจท่องเที่ยว</h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
