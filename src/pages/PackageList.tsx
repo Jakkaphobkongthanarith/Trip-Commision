@@ -17,6 +17,8 @@ const PackageList = () => {
   const searchQuery = searchParams.get("search");
   const locationFilter = searchParams.get("location");
   const dateFilter = searchParams.get("date");
+  const minPrice = searchParams.get("minPrice");
+  const maxPrice = searchParams.get("maxPrice");
 
   // Helper function to normalize tags
   const normalizeTags = (tags: any): string[] => {
@@ -65,6 +67,8 @@ const PackageList = () => {
       !pkg.location.toLowerCase().includes(locationFilter.toLowerCase())
     )
       return false;
+    if (minPrice && pkg.price < parseFloat(minPrice)) return false;
+    if (maxPrice && pkg.price > parseFloat(maxPrice)) return false;
     return true;
   });
 

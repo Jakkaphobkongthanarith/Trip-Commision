@@ -1,10 +1,18 @@
 import { Button } from "@/components/ui/button";
-import { Plane, LogOut, BarChart3, Users, Settings, Package } from "lucide-react";
+import { Plane, LogOut, BarChart3, Users, Settings, Package, User, ChevronDown } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/useUserRole";
 import NotificationBell from "./NotificationBell";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Navbar = () => {
   const { user, signOut } = useAuth();
@@ -56,70 +64,72 @@ const Navbar = () => {
             <div className="flex items-center space-x-4">
               <NotificationBell />
               
-              {/* Role-based navigation buttons */}
-              {userRole === 'advertiser' && (
-                <>
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => navigate("/advertiser")}
-                    className="text-foreground hover:text-primary"
-                  >
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    แดชบอร์ด
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="text-foreground hover:text-primary flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    <span>{user.email}</span>
+                    <ChevronDown className="h-4 w-4" />
                   </Button>
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => navigate("/members")}
-                    className="text-foreground hover:text-primary"
-                  >
-                    <Users className="h-4 w-4 mr-2" />
-                    จัดการสมาชิก
-                  </Button>
-                </>
-              )}
-              
-              {userRole === 'manager' && (
-                <>
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => navigate("/members")}
-                    className="text-foreground hover:text-primary"
-                  >
-                    <Users className="h-4 w-4 mr-2" />
-                    จัดการสมาชิก
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => navigate("/package-management")}
-                    className="text-foreground hover:text-primary"
-                  >
-                    <Settings className="h-4 w-4 mr-2" />
-                    จัดการแพคเกจ
-                  </Button>
-                </>
-              )}
-              
-              <div className="flex items-center gap-2">
-                <span 
-                  className="text-foreground hover:text-primary cursor-pointer transition-colors" 
-                  onClick={() => navigate("/profile")}
-                >
-                  สวัสดี, {user.email}
-                </span>
-                {userRole && (
-                  <span className="text-sm text-muted-foreground bg-muted px-2 py-1 rounded-md">
-                    ลอคอินในฐานะ {userRole === 'customer' ? 'นักท่องเที่ยว' : userRole === 'advertiser' ? 'คนกลาง' : 'ผู้จัดการ'}
-                  </span>
-                )}
-              </div>
-              <Button 
-                variant="ghost" 
-                onClick={handleSignOut}
-                className="text-foreground hover:text-primary"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                ออกจากระบบ
-              </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 bg-card border-border z-50">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium">{user.email}</p>
+                      {userRole && (
+                        <p className="text-xs text-muted-foreground">
+                          ลอคอินในฐานะ {userRole === 'customer' ? 'นักท่องเที่ยว' : userRole === 'advertiser' ? 'คนกลาง' : 'ผู้จัดการ'}
+                        </p>
+                      )}
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  
+                  <DropdownMenuItem onClick={() => navigate("/profile")} className="cursor-pointer">
+                    <User className="h-4 w-4 mr-2" />
+                    โปรไฟล์
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem onClick={() => navigate("/packages")} className="cursor-pointer">
+                    <Package className="h-4 w-4 mr-2" />
+                    แพคเกจทั้งหมด
+                  </DropdownMenuItem>
+                  
+                  {userRole === 'advertiser' && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate("/advertiser")} className="cursor-pointer">
+                        <BarChart3 className="h-4 w-4 mr-2" />
+                        แดชบอร์ด
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/members")} className="cursor-pointer">
+                        <Users className="h-4 w-4 mr-2" />
+                        จัดการสมาชิก
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  
+                  {userRole === 'manager' && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate("/members")} className="cursor-pointer">
+                        <Users className="h-4 w-4 mr-2" />
+                        จัดการสมาชิก
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/package-management")} className="cursor-pointer">
+                        <Settings className="h-4 w-4 mr-2" />
+                        จัดการแพคเกจ
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-destructive focus:text-destructive">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    ออกจากระบบ
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           ) : (
             <>
