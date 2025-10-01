@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import SearchBar from "@/components/SearchBar";
 import TravelPackageCard from "@/components/TravelPackageCard";
@@ -7,9 +8,11 @@ import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 
 const Index = () => {
+  const navigate = useNavigate();
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(9); // แสดง 9 รายการ (3 แถว x 3 คอลัมน์)
 
   // Helper function to normalize tags
   const normalizeTags = (tags: any): string[] => {
@@ -46,6 +49,24 @@ const Index = () => {
     ? packages.filter((pkg) => pkg.tags?.includes(selectedTag))
     : packages;
 
+  // จำนวนรายการที่จะแสดง
+  const displayedPackages = filteredPackages.slice(0, visibleCount);
+  const hasMorePackages = filteredPackages.length > visibleCount;
+
+  // ฟังก์ชันไปหน้าแพคเกจทั้งหมด
+  const viewAllPackages = () => {
+    if (selectedTag) {
+      navigate(`/packages?tag=${encodeURIComponent(selectedTag)}`);
+    } else {
+      navigate('/packages');
+    }
+  };
+
+  // รีเซ็ตการแสดงผลเมื่อเปลี่ยน filter
+  useEffect(() => {
+    setVisibleCount(9);
+  }, [selectedTag]);
+
   useEffect(() => {
     fetch(
       `${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/meow`
@@ -65,6 +86,7 @@ const Index = () => {
 
   const clearFilter = () => {
     setSelectedTag(null);
+    setVisibleCount(9); // รีเซ็ตการแสดงผลกลับไปเป็น 9 รายการ
   };
 
   return (
@@ -133,7 +155,7 @@ const Index = () => {
             {loading ? (
               <div className="col-span-full text-center">กำลังโหลด...</div>
             ) : (
-              filteredPackages.map((pkg) => (
+              displayedPackages.map((pkg) => (
                 <TravelPackageCard
                   key={pkg.id}
                   package={pkg}
@@ -142,6 +164,29 @@ const Index = () => {
               ))
             )}
           </div>
+
+          {/* ปุ่มดูแพคเกจทั้งหมด */}
+          {!loading && hasMorePackages && (
+            <div className="text-center mt-12">
+              <Button 
+                onClick={viewAllPackages}
+                variant="outline"
+                size="lg"
+                className="px-8 py-3 text-lg"
+              >
+                ดูแพคเกจทั้งหมด ({filteredPackages.length - visibleCount} รายการเพิ่มเติม)
+              </Button>
+            </div>
+          )}
+
+          {/* แสดงจำนวนรายการปัจจุบัน */}
+          {!loading && filteredPackages.length > 0 && (
+            <div className="text-center mt-6">
+              <p className="text-muted-foreground">
+                แสดง {Math.min(visibleCount, filteredPackages.length)} จาก {filteredPackages.length} รายการ
+              </p>
+            </div>
+          )}
 
           {selectedTag && filteredPackages.length === 0 && (
             <div className="text-center py-12">

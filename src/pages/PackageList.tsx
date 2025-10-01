@@ -13,6 +13,7 @@ const PackageList = () => {
   const navigate = useNavigate();
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(9); // แสดง 9 รายการ (3 แถว x 3 คอลัมน์)
   const selectedTag = searchParams.get("tag");
   const searchQuery = searchParams.get("search");
   const locationFilter = searchParams.get("location");
@@ -72,12 +73,27 @@ const PackageList = () => {
     return true;
   });
 
+  // จำนวนรายการที่จะแสดง
+  const displayedPackages = filteredPackages.slice(0, visibleCount);
+  const hasMorePackages = filteredPackages.length > visibleCount;
+
+  // ฟังก์ชันโหลดเพิ่ม
+  const loadMore = () => {
+    setVisibleCount(prev => prev + 9); // เพิ่มทีละ 9 รายการ (3 แถว)
+  };
+
+  // รีเซ็ตการแสดงผลเมื่อเปลี่ยน filter
+  useEffect(() => {
+    setVisibleCount(9);
+  }, [selectedTag, searchQuery, locationFilter, minPrice, maxPrice]);
+
   const handleTagClick = (tag: string) => {
     navigate(`/packages?tag=${encodeURIComponent(tag)}`);
   };
 
   const clearFilter = () => {
     navigate("/packages");
+    setVisibleCount(9); // รีเซ็ตการแสดงผลกลับไปเป็น 9 รายการ
   };
 
   return (
@@ -137,15 +153,40 @@ const PackageList = () => {
               loading ? (
                 <div className="text-center py-8">กำลังโหลด...</div>
               ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {filteredPackages.map((packageItem) => (
-                    <TravelPackageCard
-                      key={packageItem.id}
-                      package={packageItem}
-                      onTagClick={handleTagClick}
-                    />
-                  ))}
-                </div>
+                <>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {displayedPackages.map((packageItem) => (
+                      <TravelPackageCard
+                        key={packageItem.id}
+                        package={packageItem}
+                        onTagClick={handleTagClick}
+                      />
+                    ))}
+                  </div>
+
+                  {/* ปุ่ม Load More */}
+                  {hasMorePackages && (
+                    <div className="text-center mt-12">
+                      <Button 
+                        onClick={loadMore}
+                        variant="outline"
+                        size="lg"
+                        className="px-8 py-3 text-lg"
+                      >
+                        โหลดเพิ่มเติม ({filteredPackages.length - visibleCount} รายการ)
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* แสดงจำนวนรายการปัจจุบัน */}
+                  {filteredPackages.length > 0 && (
+                    <div className="text-center mt-6">
+                      <p className="text-muted-foreground">
+                        แสดง {Math.min(visibleCount, filteredPackages.length)} จาก {filteredPackages.length} รายการ
+                      </p>
+                    </div>
+                  )}
+                </>
               )
             ) : (
               <div className="text-center py-16">
