@@ -1,12 +1,16 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { packageAPI } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import {
   MapPin,
   Clock,
@@ -32,6 +36,48 @@ const PackageDetails = () => {
   const [bookingLoading, setBookingLoading] = useState(false);
   const [guestCount, setGuestCount] = useState(1);
   const [selectedDate, setSelectedDate] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [specialRequests, setSpecialRequests] = useState("");
+  const [useProfileData, setUseProfileData] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
+
+  // Fetch user profile if logged in
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (user) {
+        try {
+          const { data, error } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+          if (data && !error) {
+            setUserProfile(data);
+          }
+        } catch (error) {
+          console.error("Error fetching profile:", error);
+        }
+      }
+    };
+
+    fetchProfile();
+  }, [user]);
+
+  // Auto-fill contact info when profile data checkbox is toggled
+  useEffect(() => {
+    if (useProfileData && userProfile && user) {
+      setContactName(userProfile.display_name || "");
+      setContactPhone(userProfile.phone || "");
+      setContactEmail(user.email || "");
+    } else if (!useProfileData) {
+      setContactName("");
+      setContactPhone("");
+      setContactEmail("");
+    }
+  }, [useProfileData, userProfile, user]);
 
   useEffect(() => {
     const fetchPackage = async () => {
@@ -105,6 +151,27 @@ const PackageDetails = () => {
       return;
     }
 
+    // Validate contact information
+    if (!contactName.trim() || !contactPhone.trim() || !contactEmail.trim()) {
+      toast({
+        title: "กรุณากรอกข้อมูลติดต่อ",
+        description: "โปรดกรอกข้อมูลติดต่อให้ครบถ้วน",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(contactEmail)) {
+      toast({
+        title: "อีเมลไม่ถูกต้อง",
+        description: "โปรดกรอกอีเมลที่ถูกต้อง",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (guestCount > availableSpots) {
       toast({
         title: "จำนวนคนเกินที่สามารถจองได้",
@@ -122,32 +189,36 @@ const PackageDetails = () => {
         : 0;
       const finalAmount = totalAmount - discountAmount;
 
-      // Call backend API for booking instead of Supabase function
-      const response = await fetch("http://localhost:8000/api/bookings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          packageId: packageData.id,
-          guestCount,
-          bookingDate: selectedDate,
-          totalAmount,
-          finalAmount,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Booking failed: ${response.status}`);
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("No active session");
       }
 
-      const data = await response.json();
+      // Call Supabase edge function for booking
+      const { data, error } = await supabase.functions.invoke(
+        "create-booking-payment",
+        {
+          body: {
+            packageId: packageData.id,
+            guestCount,
+            bookingDate: selectedDate,
+            totalAmount,
+            finalAmount,
+            contact_name: contactName,
+            contact_phone: contactPhone,
+            contact_email: contactEmail,
+            special_requests: specialRequests || null,
+          },
+        }
+      );
+
+      if (error) throw error;
 
       if (data?.url) {
-        // อัพเดต current_bookings เมื่อการจองสำเร็จ
+        // Update current_bookings
         try {
           await packageAPI.updateCurrentBookings(packageData.id, guestCount);
-          // รีเฟรชข้อมูลแพคเกจ
           const updatedPackage = await packageAPI.getById(packageData.id);
           setPackageData(updatedPackage);
         } catch (updateError) {
@@ -230,32 +301,33 @@ const PackageDetails = () => {
                     <Clock className="h-4 w-4" />
                     <span>{packageData.duration} วัน</span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    <span>วันที่เดินทาง</span>
-                  </div>
+                  {packageData.available_from && packageData.available_to && (
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-4 w-4" />
+                      <span>
+                        {format(new Date(packageData.available_from), "dd MMM")} - {format(new Date(packageData.available_to), "dd MMM yyyy")}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-1">
                     <Users className="h-4 w-4" />
-                    <span>ติดต่อสอบถาม</span>
+                    <span>เหลือที่ว่าง {availableSpots} ท่าน</span>
                   </div>
                 </div>
               </div>
 
               <div className="flex flex-wrap gap-2">
                 {(() => {
-                  // Handle tags as string or array
                   let tagsArray: string[] = [];
                   if (
                     typeof packageData.tags === "string" &&
                     packageData.tags.trim()
                   ) {
-                    // If tags is a comma-separated string, split it
                     tagsArray = packageData.tags
                       .split(",")
                       .map((tag) => tag.trim())
                       .filter((tag) => tag);
                   } else if (Array.isArray(packageData.tags)) {
-                    // If tags is already an array
                     tagsArray = packageData.tags;
                   }
 
@@ -328,6 +400,73 @@ const PackageDetails = () => {
               </CardHeader>
 
               <CardContent className="space-y-6">
+                {/* Contact Information Section */}
+                <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold">ข้อมูลติดต่อ</h3>
+                    {user && userProfile && (
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="useProfile"
+                          checked={useProfileData}
+                          onCheckedChange={(checked) => {
+                            setUseProfileData(checked as boolean);
+                          }}
+                        />
+                        <Label htmlFor="useProfile" className="text-sm cursor-pointer">
+                          ใช้ข้อมูลจากโปรไฟล์
+                        </Label>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="contactName">ชื่อ-นามสกุล *</Label>
+                    <Input
+                      id="contactName"
+                      value={contactName}
+                      onChange={(e) => setContactName(e.target.value)}
+                      placeholder="กรอกชื่อ-นามสกุล"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="contactPhone">เบอร์โทรศัพท์ *</Label>
+                    <Input
+                      id="contactPhone"
+                      value={contactPhone}
+                      onChange={(e) => setContactPhone(e.target.value)}
+                      placeholder="กรอกเบอร์โทรศัพท์"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="contactEmail">อีเมล *</Label>
+                    <Input
+                      id="contactEmail"
+                      type="email"
+                      value={contactEmail}
+                      onChange={(e) => setContactEmail(e.target.value)}
+                      placeholder="กรอกอีเมล"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="specialRequests">หมายเหตุพิเศษ</Label>
+                    <Textarea
+                      id="specialRequests"
+                      value={specialRequests}
+                      onChange={(e) => setSpecialRequests(e.target.value)}
+                      placeholder="ความต้องการพิเศษ (ถ้ามี)"
+                      className="resize-none"
+                      rows={3}
+                    />
+                  </div>
+                </div>
+
                 {/* Date Selection */}
                 <div className="space-y-2">
                   <Label htmlFor="date">วันที่เดินทาง</Label>
@@ -336,7 +475,7 @@ const PackageDetails = () => {
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    min={new Date().toISOString().split("T")[0]}
+                    min={packageData.available_from || new Date().toISOString().split("T")[0]}
                     max={packageData.available_to || undefined}
                     required
                   />
@@ -425,7 +564,8 @@ const PackageDetails = () => {
                   size="lg"
                   onClick={handleBooking}
                   disabled={
-                    bookingLoading || availableSpots === 0 || !selectedDate
+                    bookingLoading || availableSpots === 0 || !selectedDate || 
+                    !contactName || !contactPhone || !contactEmail
                   }
                 >
                   {bookingLoading

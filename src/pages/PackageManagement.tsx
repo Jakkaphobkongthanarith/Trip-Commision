@@ -266,7 +266,7 @@ export default function PackageManagement() {
         image_url: formData.image_url,
         is_active: formData.is_active,
         advertiser_id: formData.advertiser_id || null,
-        tags: formData.tags,
+        tags: Array.isArray(formData.tags) ? `{${formData.tags.join(',')}}` : formData.tags,
         available_from: formData.available_from || null,
         available_to: formData.available_to || null,
         max_guests: parseInt(formData.max_guests),

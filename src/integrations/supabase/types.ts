@@ -17,6 +17,9 @@ export type Database = {
       bookings: {
         Row: {
           booking_date: string
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
           created_at: string
           customer_id: string
           discount_amount: number | null
@@ -35,6 +38,9 @@ export type Database = {
         }
         Insert: {
           booking_date: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string
           customer_id: string
           discount_amount?: number | null
@@ -53,6 +59,9 @@ export type Database = {
         }
         Update: {
           booking_date?: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string
           customer_id?: string
           discount_amount?: number | null
@@ -278,17 +287,17 @@ export type Database = {
           description: string | null
           discount_percentage: number | null
           display_id: number
-          duration: number
+          duration: number | null
           id: string
           image_url: string | null
           is_active: boolean | null
-          location: string
+          location: string | null
           max_guests: number | null
-          price: number
+          price: number | null
           rating: number | null
           review_count: number | null
-          tags: string[] | null
-          title: string
+          tags: string | null
+          title: string | null
           updated_at: string
         }
         Insert: {
@@ -300,17 +309,17 @@ export type Database = {
           description?: string | null
           discount_percentage?: number | null
           display_id?: number
-          duration: number
+          duration?: number | null
           id?: string
           image_url?: string | null
           is_active?: boolean | null
-          location: string
+          location?: string | null
           max_guests?: number | null
-          price: number
+          price?: number | null
           rating?: number | null
           review_count?: number | null
-          tags?: string[] | null
-          title: string
+          tags?: string | null
+          title?: string | null
           updated_at?: string
         }
         Update: {
@@ -322,38 +331,41 @@ export type Database = {
           description?: string | null
           discount_percentage?: number | null
           display_id?: number
-          duration?: number
+          duration?: number | null
           id?: string
           image_url?: string | null
           is_active?: boolean | null
-          location?: string
+          location?: string | null
           max_guests?: number | null
-          price?: number
+          price?: number | null
           rating?: number | null
           review_count?: number | null
-          tags?: string[] | null
-          title?: string
+          tags?: string | null
+          title?: string | null
           updated_at?: string
         }
         Relationships: []
       }
       user_roles: {
         Row: {
-          created_at: string
+          created_at: string | null
           id: string
           role: Database["public"]["Enums"]["app_role"]
+          updated_at: string | null
           user_id: string
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string | null
           user_id: string
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []

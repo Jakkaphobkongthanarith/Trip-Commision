@@ -29,9 +29,9 @@ serve(async (req) => {
 
     // Parse request body
     const body = await req.json();
-    const { packageId, guestCount, bookingDate, totalAmount, finalAmount } = body;
+    const { packageId, guestCount, bookingDate, totalAmount, finalAmount, contact_name, contact_phone, contact_email, special_requests } = body;
 
-    if (!packageId || !guestCount || !bookingDate || !totalAmount || !finalAmount) {
+    if (!packageId || !guestCount || !bookingDate || !totalAmount || !finalAmount || !contact_name || !contact_phone || !contact_email) {
       throw new Error("Missing required booking information");
     }
 
@@ -40,7 +40,10 @@ serve(async (req) => {
       guestCount, 
       totalAmount, 
       finalAmount, 
-      userId: user.id 
+      userId: user.id,
+      contact_name,
+      contact_phone,
+      contact_email
     });
 
     // Initialize Stripe
@@ -66,7 +69,11 @@ serve(async (req) => {
         total_amount: totalAmount,
         final_amount: finalAmount,
         payment_status: 'pending',
-        status: 'pending'
+        status: 'pending',
+        contact_name: contact_name,
+        contact_phone: contact_phone,
+        contact_email: contact_email,
+        special_requests: special_requests || null
       })
       .select()
       .single();

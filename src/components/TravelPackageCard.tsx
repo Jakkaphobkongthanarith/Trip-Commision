@@ -6,8 +6,9 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Clock, Users, Star } from "lucide-react";
+import { MapPin, Clock, Users, Star, Calendar } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { format } from "date-fns";
 
 interface TravelPackage {
   id: string;
@@ -26,6 +27,8 @@ interface TravelPackage {
   reviewCount?: number;
   review_count?: number;
   date?: string;
+  available_from?: string;
+  available_to?: string;
 }
 
 interface TravelPackageCardProps {
@@ -141,8 +144,13 @@ const TravelPackageCard: React.FC<TravelPackageCardProps> = ({
             <Users className="h-4 w-4" />
             <span>เหลือ {availableSpots} ที่นั่ง</span>
           </div>
-          {pkg.date && (
-            <span className="text-muted-foreground">วันที่: {pkg.date}</span>
+          {pkg.available_from && pkg.available_to && (
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <Calendar className="h-4 w-4" />
+              <span className="text-xs">
+                {format(new Date(pkg.available_from), "dd MMM")} - {format(new Date(pkg.available_to), "dd MMM")}
+              </span>
+            </div>
           )}
         </div>
       </CardContent>
