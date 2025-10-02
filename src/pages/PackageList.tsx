@@ -39,11 +39,19 @@ const PackageList = () => {
 
         // Filter เฉพาะ is_active ใน frontend (หรือจะเพิ่ม filter ใน backend ก็ได้)
         const activePackages = data.filter((pkg) => pkg.is_active !== false);
-        // Normalize tags for all packages
-        const normalizedData = activePackages.map(pkg => ({
-          ...pkg,
-          tags: normalizeTags(pkg.tags)
-        }));
+        // Normalize tags and apply discount for all packages
+        const normalizedData = activePackages.map(pkg => {
+          const hasDiscount = pkg.discount_percentage && pkg.discount_percentage > 0;
+          const originalPrice = hasDiscount 
+            ? pkg.price / (1 - pkg.discount_percentage / 100)
+            : undefined;
+          
+          return {
+            ...pkg,
+            tags: normalizeTags(pkg.tags),
+            originalPrice: originalPrice
+          };
+        });
         setPackages(normalizedData);
       } catch (error) {
         console.error("Error fetching packages:", error);

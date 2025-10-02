@@ -85,7 +85,17 @@ const PackageDetails = () => {
         console.log("id ->", id);
         const data = await packageAPI.getById(id);
         console.log("package data ->", data);
-        setPackageData(data);
+        
+        // Apply discount if exists
+        const hasDiscount = data.discount_percentage && data.discount_percentage > 0;
+        const originalPrice = hasDiscount 
+          ? data.price / (1 - data.discount_percentage / 100)
+          : undefined;
+        
+        setPackageData({
+          ...data,
+          originalPrice: originalPrice
+        });
       } catch (error) {
         console.error("Error fetching package:", error);
         setPackageData(null);

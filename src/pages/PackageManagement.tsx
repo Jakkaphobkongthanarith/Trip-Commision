@@ -529,49 +529,42 @@ export default function PackageManagement() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <Label htmlFor="price">ราคา (บาท) *</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="price"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={formData.price}
-                      onChange={(e) =>
-                        setFormData({ ...formData, price: e.target.value })
-                      }
-                      required
-                      className="flex-1"
-                    />
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" size="icon">
-                          <Percent className="h-4 w-4" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-40">
-                        <div className="space-y-2">
-                          <Label htmlFor="discount">ส่วนลด (%)</Label>
-                          <Input
-                            id="discount"
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="0.01"
-                            value={formData.discount_percentage}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                discount_percentage: e.target.value,
-                              })
-                            }
-                          />
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
+                  <Label htmlFor="price">ราคาหลังลด (บาท) *</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.price}
+                    onChange={(e) =>
+                      setFormData({ ...formData, price: e.target.value })
+                    }
+                    required
+                  />
+                  {formData.discount_percentage && parseFloat(formData.discount_percentage) > 0 && formData.price && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      ราคาเต็ม: ฿{(parseFloat(formData.price) / (1 - parseFloat(formData.discount_percentage) / 100)).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="discount">ส่วนลด (%)</Label>
+                  <Input
+                    id="discount"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={formData.discount_percentage}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        discount_percentage: e.target.value,
+                      })
+                    }
+                  />
                 </div>
                 <div>
                   <Label htmlFor="duration">ระยะเวลา (วัน) *</Label>
