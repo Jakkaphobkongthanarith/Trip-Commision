@@ -1,13 +1,24 @@
+// @ts-ignore
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+// @ts-ignore
 import Stripe from "https://esm.sh/stripe@18.5.0";
+// @ts-ignore
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+
+// Declare Deno global for TypeScript
+declare const Deno: {
+  env: {
+    get: (key: string) => string | undefined;
+  };
+};
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
-serve(async (req) => {
+serve(async (req: any) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -25,25 +36,43 @@ serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const { data } = await supabaseClient.auth.getUser(token);
     const user = data.user;
-    if (!user?.email) throw new Error("User not authenticated or email not available");
+    if (!user?.email)
+      throw new Error("User not authenticated or email not available");
 
     // Parse request body
     const body = await req.json();
-    const { packageId, guestCount, bookingDate, totalAmount, finalAmount, contact_name, contact_phone, contact_email, special_requests } = body;
+    const {
+      packageId,
+      guestCount,
+      totalAmount,
+      finalAmount,
+      contact_name,
+      contact_phone,
+      contact_email,
+      special_requests,
+    } = body;
 
-    if (!packageId || !guestCount || !bookingDate || !totalAmount || !finalAmount || !contact_name || !contact_phone || !contact_email) {
+    if (
+      !packageId ||
+      !guestCount ||
+      !totalAmount ||
+      !finalAmount ||
+      !contact_name ||
+      !contact_phone ||
+      !contact_email
+    ) {
       throw new Error("Missing required booking information");
     }
 
-    console.log("Creating booking payment for:", { 
-      packageId, 
-      guestCount, 
-      totalAmount, 
-      finalAmount, 
+    console.log("Creating booking payment for:", {
+      packageId,
+      guestCount,
+      totalAmount,
+      finalAmount,
       userId: user.id,
       contact_name,
       contact_phone,
-      contact_email
+      contact_email,
     });
 
     // Initialize Stripe
@@ -52,15 +81,21 @@ serve(async (req) => {
     });
 
     // Check if a Stripe customer record exists for this user
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+    const customers = await stripe.customers.list({
+      email: user.email,
+      limit: 1,
+    });
     let customerId;
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
     }
 
+    // สร้าง booking date เป็นวันที่ปัจจุบัน
+    const bookingDate = new Date().toISOString().split("T")[0]; // Format: YYYY-MM-DD
+
     // Create booking record with pending status
     const { data: booking, error: bookingError } = await supabaseClient
-      .from('bookings')
+      .from("bookings")
       .insert({
         customer_id: user.id,
         package_id: packageId,
@@ -68,12 +103,12 @@ serve(async (req) => {
         booking_date: bookingDate,
         total_amount: totalAmount,
         final_amount: finalAmount,
-        payment_status: 'pending',
-        status: 'pending',
+        payment_status: "pending",
+        status: "pending",
         contact_name: contact_name,
         contact_phone: contact_phone,
         contact_email: contact_email,
-        special_requests: special_requests || null
+        special_requests: special_requests || null,
       })
       .select()
       .single();
@@ -103,31 +138,40 @@ serve(async (req) => {
         },
       ],
       mode: "payment",
-      success_url: `${req.headers.get("origin")}/payment-success?booking_id=${booking.id}`,
+      success_url: `${req.headers.get("origin")}/payment-success?booking_id=${
+        booking.id
+      }`,
       cancel_url: `${req.headers.get("origin")}/packages/${packageId}`,
       metadata: {
         booking_id: booking.id,
       },
-      expires_at: Math.floor(Date.now() / 1000) + (30 * 60), // 30 minutes expiry
+      expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // 30 minutes expiry
     });
 
     console.log("Stripe checkout session created:", session.id);
 
-    return new Response(JSON.stringify({ 
-      url: session.url,
-      booking_id: booking.id,
-      expires_at: session.expires_at 
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+    return new Response(
+      JSON.stringify({
+        url: session.url,
+        booking_id: booking.id,
+        expires_at: session.expires_at,
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      }
+    );
   } catch (error) {
     console.error("Error in create-booking-payment:", error);
-    return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : "An unknown error occurred" 
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
-    });
+    return new Response(
+      JSON.stringify({
+        error:
+          error instanceof Error ? error.message : "An unknown error occurred",
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+      }
+    );
   }
 });

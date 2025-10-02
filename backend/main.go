@@ -64,10 +64,10 @@ func main() {
 		log.Fatal("Unable to connect to database with GORM:", err)
 	}
 
-	// Auto migrate UserRole table
-	err = db.AutoMigrate(&models.UserRole{})
+	// Auto migrate tables
+	err = db.AutoMigrate(&models.UserRole{}, &models.TravelPackage{})
 	if err != nil {
-		log.Printf("Warning during UserRole migration: %v", err)
+		log.Printf("Warning during migration: %v", err)
 	}
 	fmt.Println("Database migration completed")
 

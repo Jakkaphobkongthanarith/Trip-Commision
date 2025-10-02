@@ -17,10 +17,13 @@ const Index = () => {
   // Helper function to normalize tags
   const normalizeTags = (tags: any): string[] => {
     if (!tags) return [];
-    if (Array.isArray(tags)) return tags.filter(t => typeof t === 'string');
-    if (typeof tags === 'string') {
-      const cleanedTags = tags.replace(/[{}]/g, '');
-      return cleanedTags.split(',').map(t => t.trim()).filter(t => t);
+    if (Array.isArray(tags)) return tags.filter((t) => typeof t === "string");
+    if (typeof tags === "string") {
+      const cleanedTags = tags.replace(/[{}]/g, "");
+      return cleanedTags
+        .split(",")
+        .map((t) => t.trim())
+        .filter((t) => t);
     }
     return [];
   };
@@ -30,9 +33,9 @@ const Index = () => {
       try {
         const data = await packageAPI.getAll();
         // Normalize tags for all packages
-        const normalizedData = (data || []).map(pkg => ({
+        const normalizedData = (data || []).map((pkg) => ({
           ...pkg,
-          tags: normalizeTags(pkg.tags)
+          tags: normalizeTags(pkg.tags),
         }));
         setPackages(normalizedData);
       } catch (error) {
@@ -58,7 +61,7 @@ const Index = () => {
     if (selectedTag) {
       navigate(`/packages?tag=${encodeURIComponent(selectedTag)}`);
     } else {
-      navigate('/packages');
+      navigate("/packages");
     }
   };
 
@@ -168,13 +171,14 @@ const Index = () => {
           {/* ปุ่มดูแพคเกจทั้งหมด */}
           {!loading && hasMorePackages && (
             <div className="text-center mt-12">
-              <Button 
+              <Button
                 onClick={viewAllPackages}
                 variant="outline"
                 size="lg"
                 className="px-8 py-3 text-lg"
               >
-                ดูแพคเกจทั้งหมด ({filteredPackages.length - visibleCount} รายการเพิ่มเติม)
+                ดูแพคเกจทั้งหมด ({filteredPackages.length - visibleCount}{" "}
+                รายการเพิ่มเติม)
               </Button>
             </div>
           )}
@@ -183,7 +187,8 @@ const Index = () => {
           {!loading && filteredPackages.length > 0 && (
             <div className="text-center mt-6">
               <p className="text-muted-foreground">
-                แสดง {Math.min(visibleCount, filteredPackages.length)} จาก {filteredPackages.length} รายการ
+                แสดง {Math.min(visibleCount, filteredPackages.length)} จาก{" "}
+                {filteredPackages.length} รายการ
               </p>
             </div>
           )}

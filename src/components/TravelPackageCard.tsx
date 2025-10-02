@@ -18,6 +18,7 @@ interface TravelPackage {
   image_url?: string;
   price: number;
   originalPrice?: number;
+  discount_percentage?: number;
   duration: number | string;
   location: string;
   max_guests?: number;
@@ -41,9 +42,16 @@ const TravelPackageCard: React.FC<TravelPackageCardProps> = ({
   onTagClick,
 }) => {
   const navigate = useNavigate();
-  const discount = pkg.originalPrice
-    ? Math.round(((pkg.originalPrice - pkg.price) / pkg.originalPrice) * 100)
-    : 0;
+
+  // คำนวณราคาส่วนลดอย่างถูกต้อง
+  const discountPercentage = pkg.discount_percentage || 0;
+  const originalPrice = pkg.price; // ราคาเต็ม
+  const discountedPrice =
+    discountPercentage > 0
+      ? pkg.price * (1 - discountPercentage / 100)
+      : pkg.price;
+  const hasDiscount = discountPercentage > 0;
+
   console.log("pkg.max_guests", pkg.max_guests);
   const availableSpots = pkg.max_guests
     ? pkg.max_guests - (pkg.current_bookings || 0)
@@ -60,12 +68,11 @@ const TravelPackageCard: React.FC<TravelPackageCardProps> = ({
           alt={pkg.title}
           className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500"
         />
-        {discount > 0 && (
+        {hasDiscount && (
           <Badge className="absolute top-3 left-3 bg-secondary text-secondary-foreground font-semibold">
-            ลด {discount}%
+            ลด {discountPercentage.toFixed(0)}%
           </Badge>
         )}
-       
       </div>
 
       <CardHeader className="pb-3">
@@ -142,7 +149,8 @@ const TravelPackageCard: React.FC<TravelPackageCardProps> = ({
             <div className="flex items-center gap-1 text-muted-foreground">
               <Calendar className="h-4 w-4" />
               <span className="text-xs">
-                {format(new Date(pkg.available_from), "dd MMM")} - {format(new Date(pkg.available_to), "dd MMM")}
+                {format(new Date(pkg.available_from), "dd MMM")} -{" "}
+                {format(new Date(pkg.available_to), "dd MMM")}
               </span>
             </div>
           )}
@@ -152,11 +160,11 @@ const TravelPackageCard: React.FC<TravelPackageCardProps> = ({
       <CardFooter className="flex items-center justify-between pt-4">
         <div className="flex items-center gap-2">
           <span className="text-2xl font-bold text-primary">
-            ฿{pkg.price.toLocaleString()}
+            ฿{discountedPrice.toLocaleString()}
           </span>
-          {pkg.originalPrice && (
+          {hasDiscount && (
             <span className="text-sm text-muted-foreground line-through">
-              ฿{pkg.originalPrice.toLocaleString()}
+              ฿{originalPrice.toLocaleString()}
             </span>
           )}
         </div>

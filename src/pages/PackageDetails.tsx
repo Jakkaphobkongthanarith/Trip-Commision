@@ -35,7 +35,6 @@ const PackageDetails = () => {
   const [loading, setLoading] = useState(true);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [guestCount, setGuestCount] = useState(1);
-  const [selectedDate, setSelectedDate] = useState("");
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [contactEmail, setContactEmail] = useState("");
@@ -85,16 +84,19 @@ const PackageDetails = () => {
         console.log("id ->", id);
         const data = await packageAPI.getById(id);
         console.log("package data ->", data);
-        
+
         // Apply discount if exists
-        const hasDiscount = data.discount_percentage && data.discount_percentage > 0;
-        const originalPrice = hasDiscount 
-          ? data.price / (1 - data.discount_percentage / 100)
-          : undefined;
-        
+        const hasDiscount =
+          data.discount_percentage && data.discount_percentage > 0;
+        const originalPrice = data.price; // ราคาเต็ม
+        const discountedPrice = hasDiscount
+          ? data.price * (1 - data.discount_percentage / 100)
+          : data.price;
+
         setPackageData({
           ...data,
-          originalPrice: originalPrice
+          originalPrice: originalPrice,
+          finalPrice: discountedPrice, // ราคาหลังส่วนลด
         });
       } catch (error) {
         console.error("Error fetching package:", error);
@@ -130,16 +132,18 @@ const PackageDetails = () => {
     );
   }
 
-  const discount = packageData?.originalPrice
-    ? Math.round(
-        ((packageData.originalPrice - packageData.price) /
-          packageData.originalPrice) *
-          100
-      )
-    : 0;
+  const discount = packageData?.discount_percentage || 0;
   const availableSpots = packageData?.max_guests
     ? packageData.max_guests - (packageData.current_bookings || 0)
     : 0;
+
+  const handleCLG = async () => {
+    console.log("bookingLoading  ->", bookingLoading);
+    console.log("availableSpots  ->", availableSpots);
+    console.log("contactName  ->", contactName);
+    console.log("contactPhone  ->", contactPhone);
+    console.log("contactEmail  ->", contactEmail);
+  };
 
   const handleBooking = async () => {
     if (!user) {
@@ -184,7 +188,8 @@ const PackageDetails = () => {
 
     setBookingLoading(true);
     try {
-      const totalAmount = packageData.price * guestCount;
+      const totalAmount =
+        (packageData.finalPrice || packageData.price) * guestCount;
       const discountAmount = packageData.discount_percentage
         ? (totalAmount * packageData.discount_percentage) / 100
         : 0;
@@ -205,7 +210,6 @@ const PackageDetails = () => {
           body: {
             packageId: packageData.id,
             guestCount,
-            bookingDate: selectedDate,
             totalAmount,
             finalAmount,
             contact_name: contactName,
@@ -388,7 +392,10 @@ const PackageDetails = () => {
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="text-3xl font-bold text-primary">
-                      ฿{packageData.price.toLocaleString()}
+                      ฿
+                      {(
+                        packageData.finalPrice || packageData.price
+                      ).toLocaleString()}
                     </span>
                     {packageData.originalPrice && (
                       <span className="text-lg text-muted-foreground line-through">
@@ -515,7 +522,12 @@ const PackageDetails = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>ราคาต่อคน:</span>
-                    <span>฿{packageData.price.toLocaleString()}</span>
+                    <span>
+                      ฿
+                      {(
+                        packageData.finalPrice || packageData.price
+                      ).toLocaleString()}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>จำนวนผู้เดินทาง:</span>
@@ -527,10 +539,9 @@ const PackageDetails = () => {
                       <span>
                         -฿
                         {(
-                          (packageData.price *
-                            guestCount *
-                            packageData.discount_percentage) /
-                          100
+                          packageData.originalPrice * guestCount -
+                          (packageData.finalPrice || packageData.price) *
+                            guestCount
                         ).toLocaleString()}
                       </span>
                     </div>
@@ -541,9 +552,8 @@ const PackageDetails = () => {
                     <span>
                       ฿
                       {(
-                        packageData.price *
-                        guestCount *
-                        (1 - (packageData.discount_percentage || 0) / 100)
+                        (packageData.finalPrice || packageData.price) *
+                        guestCount
                       ).toLocaleString()}
                     </span>
                   </div>
@@ -553,14 +563,13 @@ const PackageDetails = () => {
                   className="w-full"
                   size="lg"
                   onClick={handleBooking}
-                  disabled={
-                    bookingLoading ||
-                    availableSpots === 0 ||
-                    !selectedDate ||
-                    !contactName ||
-                    !contactPhone ||
-                    !contactEmail
-                  }
+                  // disabled={
+                  //   bookingLoading ||
+                  //   availableSpots === 0 ||
+                  //   !contactName ||
+                  //   !contactPhone ||
+                  //   !contactEmail
+                  // }
                 >
                   {bookingLoading
                     ? "กำลังดำเนินการ..."

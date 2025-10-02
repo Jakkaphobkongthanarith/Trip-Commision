@@ -20,4 +20,5 @@ type TravelPackage struct {
 	AvailableTo      *string   `json:"available_to" gorm:"column:available_to;type:date"`
 	Tags             string    `json:"-" gorm:"column:tags"` // ไม่ส่งออกใน JSON โดยตรง
 	TagsArray        []string  `json:"tags" gorm:"-"` // ส่งออกใน JSON แต่ไม่เก็บใน DB
+	DiscountPercentage float64 `json:"discount_percentage" gorm:"column:discount_percentage;default:0"`
 }

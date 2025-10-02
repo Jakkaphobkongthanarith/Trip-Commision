@@ -24,10 +24,13 @@ const PackageList = () => {
   // Helper function to normalize tags
   const normalizeTags = (tags: any): string[] => {
     if (!tags) return [];
-    if (Array.isArray(tags)) return tags.filter(t => typeof t === 'string');
-    if (typeof tags === 'string') {
-      const cleanedTags = tags.replace(/[{}]/g, '');
-      return cleanedTags.split(',').map(t => t.trim()).filter(t => t);
+    if (Array.isArray(tags)) return tags.filter((t) => typeof t === "string");
+    if (typeof tags === "string") {
+      const cleanedTags = tags.replace(/[{}]/g, "");
+      return cleanedTags
+        .split(",")
+        .map((t) => t.trim())
+        .filter((t) => t);
     }
     return [];
   };
@@ -40,16 +43,17 @@ const PackageList = () => {
         // Filter เฉพาะ is_active ใน frontend (หรือจะเพิ่ม filter ใน backend ก็ได้)
         const activePackages = data.filter((pkg) => pkg.is_active !== false);
         // Normalize tags and apply discount for all packages
-        const normalizedData = activePackages.map(pkg => {
-          const hasDiscount = pkg.discount_percentage && pkg.discount_percentage > 0;
-          const originalPrice = hasDiscount 
+        const normalizedData = activePackages.map((pkg) => {
+          const hasDiscount =
+            pkg.discount_percentage && pkg.discount_percentage > 0;
+          const originalPrice = hasDiscount
             ? pkg.price / (1 - pkg.discount_percentage / 100)
             : undefined;
-          
+
           return {
             ...pkg,
             tags: normalizeTags(pkg.tags),
-            originalPrice: originalPrice
+            originalPrice: originalPrice,
           };
         });
         setPackages(normalizedData);
@@ -87,7 +91,7 @@ const PackageList = () => {
 
   // ฟังก์ชันโหลดเพิ่ม
   const loadMore = () => {
-    setVisibleCount(prev => prev + 9); // เพิ่มทีละ 9 รายการ (3 แถว)
+    setVisibleCount((prev) => prev + 9); // เพิ่มทีละ 9 รายการ (3 แถว)
   };
 
   // รีเซ็ตการแสดงผลเมื่อเปลี่ยน filter
@@ -175,13 +179,14 @@ const PackageList = () => {
                   {/* ปุ่ม Load More */}
                   {hasMorePackages && (
                     <div className="text-center mt-12">
-                      <Button 
+                      <Button
                         onClick={loadMore}
                         variant="outline"
                         size="lg"
                         className="px-8 py-3 text-lg"
                       >
-                        โหลดเพิ่มเติม ({filteredPackages.length - visibleCount} รายการ)
+                        โหลดเพิ่มเติม ({filteredPackages.length - visibleCount}{" "}
+                        รายการ)
                       </Button>
                     </div>
                   )}
@@ -190,7 +195,8 @@ const PackageList = () => {
                   {filteredPackages.length > 0 && (
                     <div className="text-center mt-6">
                       <p className="text-muted-foreground">
-                        แสดง {Math.min(visibleCount, filteredPackages.length)} จาก {filteredPackages.length} รายการ
+                        แสดง {Math.min(visibleCount, filteredPackages.length)}{" "}
+                        จาก {filteredPackages.length} รายการ
                       </p>
                     </div>
                   )}
