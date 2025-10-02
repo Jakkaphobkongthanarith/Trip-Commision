@@ -14,15 +14,15 @@ const PaymentSuccess = () => {
   const [loading, setLoading] = useState(true);
   const [verificationComplete, setVerificationComplete] = useState(false);
 
-  const bookingId = searchParams.get('booking_id');
-  const sessionId = searchParams.get('session_id');
+  const bookingId = searchParams.get("booking_id");
+  const sessionId = searchParams.get("session_id");
 
   useEffect(() => {
     const verifyPayment = async () => {
-      if (!bookingId || !sessionId) {
+      if (!sessionId) {
         toast({
           title: "ข้อมูลไม่ครบถ้วน",
-          description: "ไม่พบข้อมูลการจองหรือการชำระเงิน",
+          description: "ไม่พบข้อมูลการชำระเงิน",
           variant: "destructive",
         });
         navigate("/");
@@ -30,12 +30,28 @@ const PaymentSuccess = () => {
       }
 
       try {
-        const { data, error } = await supabase.functions.invoke('verify-payment', {
-          body: {
-            sessionId,
-            bookingId,
-          },
-        });
+        // Check if this is a mock payment (session_id starts with cs_test_mock_)
+        if (sessionId.startsWith("cs_test_mock_")) {
+          // Mock payment mode - automatically mark as successful
+          setVerificationComplete(true);
+          toast({
+            title: "การชำระเงินสำเร็จ (โหมดทดสอบ)",
+            description: "ขอบคุณสำหรับการจอง การจองของคุณได้รับการยืนยันแล้ว",
+          });
+          setLoading(false);
+          return;
+        }
+
+        // Real Stripe payment verification
+        const { data, error } = await supabase.functions.invoke(
+          "verify-payment",
+          {
+            body: {
+              sessionId,
+              bookingId,
+            },
+          }
+        );
 
         if (error) throw error;
 
@@ -53,12 +69,21 @@ const PaymentSuccess = () => {
           });
         }
       } catch (error) {
-        console.error('Payment verification error:', error);
-        toast({
-          title: "เกิดข้อผิดพลาด",
-          description: "ไม่สามารถตรวจสอบการชำระเงินได้",
-          variant: "destructive",
-        });
+        console.error("Payment verification error:", error);
+        // In mock mode, treat errors as success for demo purposes
+        if (sessionId.startsWith("cs_test_mock_")) {
+          setVerificationComplete(true);
+          toast({
+            title: "การชำระเงินสำเร็จ (โหมดทดสอบ)",
+            description: "ขอบคุณสำหรับการจอง การจองของคุณได้รับการยืนยันแล้ว",
+          });
+        } else {
+          toast({
+            title: "เกิดข้อผิดพลาด",
+            description: "ไม่สามารถตรวจสอบการชำระเงินได้",
+            variant: "destructive",
+          });
+        }
       } finally {
         setLoading(false);
       }
@@ -70,7 +95,7 @@ const PaymentSuccess = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
+
       <div className="container mx-auto px-4 py-24">
         <div className="max-w-md mx-auto">
           <Card className="text-center">
@@ -79,14 +104,18 @@ const PaymentSuccess = () => {
                 <CheckCircle className="h-16 w-16 text-green-600 mx-auto" />
               </div>
               <CardTitle className="text-2xl text-green-600">
-                การชำระเงินสำเร็จ!
+                {sessionId && sessionId.startsWith("cs_test_mock_")
+                  ? "การจองสำเร็จ! (โหมดทดสอบ)"
+                  : "การชำระเงินสำเร็จ!"}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {loading ? (
                 <div className="space-y-2">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                  <p className="text-muted-foreground">กำลังตรวจสอบการชำระเงิน...</p>
+                  <p className="text-muted-foreground">
+                    กำลังตรวจสอบการชำระเงิน...
+                  </p>
                 </div>
               ) : verificationComplete ? (
                 <div className="space-y-4">
@@ -97,13 +126,13 @@ const PaymentSuccess = () => {
                     คุณสามารถดูรายละเอียดการจองได้ในหน้าโปรไฟล์
                   </p>
                   <div className="space-y-2">
-                    <Button 
+                    <Button
                       onClick={() => navigate("/profile")}
                       className="w-full"
                     >
                       ดูประวัติการจอง
                     </Button>
-                    <Button 
+                    <Button
                       variant="outline"
                       onClick={() => navigate("/")}
                       className="w-full"
@@ -118,7 +147,7 @@ const PaymentSuccess = () => {
                   <p className="text-muted-foreground">
                     การชำระเงินไม่สำเร็จ กรุณาลองใหม่อีกครั้ง
                   </p>
-                  <Button 
+                  <Button
                     onClick={() => navigate("/packages")}
                     className="w-full"
                   >

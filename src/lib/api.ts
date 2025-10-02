@@ -106,3 +106,22 @@ export const authAPI = {
       body: JSON.stringify(data),
     }),
 };
+
+export const bookingAPI = {
+  createPayment: (data: any) =>
+    apiRequest("/api/booking/payment", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  // ดึง bookings ทั้งหมด
+  getAll: () => apiRequest("/api/bookings"),
+
+  // ดึง bookings ตาม package ID
+  getByPackageId: (packageId: string) =>
+    apiRequest(`/api/bookings?package_id=${packageId}`),
+
+  // ดึง bookings ตาม package ID (alternative route)
+  getByPackage: (packageId: string) =>
+    apiRequest(`/api/bookings/package/${packageId}`),
+};

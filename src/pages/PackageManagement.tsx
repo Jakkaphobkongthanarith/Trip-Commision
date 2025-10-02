@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
+import { packageAPI, bookingAPI } from "@/lib/api";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -402,45 +403,27 @@ export default function PackageManagement() {
     packageTitle: string
   ) => {
     try {
-      // First get bookings
-      const { data: bookingsData, error: bookingsError } = await supabase
-        .from("bookings")
-        .select("id, customer_id, booking_date, guest_count, status")
-        .eq("package_id", packageId)
-        .order("booking_date", { ascending: false });
+      // เรียกใช้ Backend API แทน Supabase โดยตรง
+      const response = await bookingAPI.getByPackageId(packageId);
+      console.log("Bookings response:", response);
+      const bookingsData = response.bookings || [];
 
-      if (bookingsError) throw bookingsError;
-
-      if (!bookingsData || bookingsData.length === 0) {
+      if (bookingsData.length === 0) {
         setSelectedPackageBookings([]);
         setSelectedPackageTitle(packageTitle);
         setBookingsDialogOpen(true);
         return;
       }
 
-      // Get customer profiles
-      const customerIds = bookingsData.map((booking) => booking.customer_id);
-      const { data: profilesData, error: profilesError } = await supabase
-        .from("profiles")
-        .select("user_id, display_name, phone")
-        .in("user_id", customerIds);
-
-      if (profilesError) throw profilesError;
-
-      // Combine data
-      const bookingsWithProfiles = bookingsData.map((booking) => {
-        const profile = profilesData?.find(
-          (p) => p.user_id === booking.customer_id
-        );
-        return {
-          ...booking,
-          profiles: {
-            display_name: profile?.display_name || "ไม่ระบุชื่อ",
-            phone: profile?.phone || "ไม่ระบุเบอร์",
-            email: "",
-          },
-        };
-      });
+      // ใช้ข้อมูล contact ที่มีอยู่ใน booking object โดยตรง
+      const bookingsWithProfiles = bookingsData.map((booking) => ({
+        ...booking,
+        profiles: {
+          display_name: booking.contact_name || "ไม่ระบุชื่อ",
+          phone: booking.contact_phone || "ไม่ระบุเบอร์",
+          email: booking.contact_email || "ไม่ระบุอีเมล",
+        },
+      }));
 
       setSelectedPackageBookings(bookingsWithProfiles);
       setSelectedPackageTitle(packageTitle);
@@ -543,11 +526,19 @@ export default function PackageManagement() {
                     }
                     required
                   />
-                  {formData.discount_percentage && parseFloat(formData.discount_percentage) > 0 && formData.price && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      ราคาเต็ม: ฿{(parseFloat(formData.price) / (1 - parseFloat(formData.discount_percentage) / 100)).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                    </p>
-                  )}
+                  {formData.discount_percentage &&
+                    parseFloat(formData.discount_percentage) > 0 &&
+                    formData.price && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        ราคาเต็ม: ฿
+                        {(
+                          parseFloat(formData.price) /
+                          (1 - parseFloat(formData.discount_percentage) / 100)
+                        ).toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}
+                      </p>
+                    )}
                 </div>
                 <div>
                   <Label htmlFor="discount">ส่วนลด (%)</Label>
@@ -943,6 +934,7 @@ export default function PackageManagement() {
                         </h4>
                         <div className="text-sm text-muted-foreground space-y-1">
                           <p>📞 {booking.profiles.phone}</p>
+                          <p>Email: {booking.profiles.email}</p>
                           <p>
                             📅 วันที่จอง:{" "}
                             {new Date(booking.booking_date).toLocaleDateString(

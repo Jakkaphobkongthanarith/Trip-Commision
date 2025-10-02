@@ -56,11 +56,28 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 
 	// Bookings routes
 	r.GET("/api/bookings", func(c *gin.Context) {
-		GetAllBookingsHandler(c, db)
+		// รองรับทั้ง query parameter และ path parameter
+		packageID := c.Query("package_id")
+		if packageID != "" {
+			// ถ้ามี package_id ใน query parameter ให้แสดงเฉพาะของ package นั้น
+			GetBookingsByPackageQueryHandler(c, db)
+		} else {
+			// ถ้าไม่มี package_id ให้แสดงทั้งหมด
+			GetAllBookingsHandler(c, db)
+		}
 	})
 	r.GET("/api/bookings/package/:packageId", func(c *gin.Context) {
 		GetBookingsByPackageHandler(c, db)
 	})
+	
+	// Protected booking routes (require authentication)
+	authorized := r.Group("/")
+	authorized.Use(AuthMiddleware())
+	{
+		authorized.POST("/api/booking/payment", func(c *gin.Context) {
+			CreateBookingPaymentHandler(c, db)
+		})
+	}
 
 	// Reviews routes
 	r.GET("/api/reviews", func(c *gin.Context) {

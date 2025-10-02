@@ -2,7 +2,10 @@ module trip-trader-backend
 
 go 1.24.0
 
-require github.com/gin-gonic/gin v1.10.1
+require (
+	github.com/gin-gonic/gin v1.10.1
+	github.com/stripe/stripe-go/v78 v78.12.0
+)
 
 require (
 	github.com/bytedance/sonic/loader v0.2.4 // indirect

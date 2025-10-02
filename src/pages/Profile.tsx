@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
+import { profileAPI, bookingAPI } from "@/lib/api";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { User, Calendar, MapPin, CreditCard, ArrowLeft } from "lucide-react";
@@ -84,34 +85,25 @@ const Profile = () => {
 
   const fetchBookings = async () => {
     try {
-      const { data, error } = await supabase
-        .from("bookings")
-        .select(
-          `
-          id,
-          booking_date,
-          guest_count,
-          total_amount,
-          final_amount,
-          status,
-          payment_status,
-          travel_packages (
-            title,
-            location,
-            image_url
-          )
-        `
-        )
-        .eq("customer_id", user?.id)
-        .order("booking_date", { ascending: false });
+      // เรียกใช้ Backend API แทน Supabase โดยตรง
+      const response = await bookingAPI.getAll();
 
-      if (error) {
-        console.error("Error fetching bookings:", error);
-      } else {
-        setBookings(data || []);
-      }
+      // กรองเฉพาะ bookings ของ user ปัจจุบัน
+      const userBookings = (response.bookings || []).filter(
+        (booking: any) => booking.customer_id === user?.id
+      );
+
+      // เรียงลำดับตาม booking_date (ใหม่ที่สุดก่อน)
+      const sortedBookings = userBookings.sort(
+        (a: any, b: any) =>
+          new Date(b.booking_date).getTime() -
+          new Date(a.booking_date).getTime()
+      );
+
+      setBookings(sortedBookings);
     } catch (error) {
       console.error("Error fetching bookings:", error);
+      setBookings([]);
     } finally {
       setLoading(false);
     }

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import { packageAPI } from "@/lib/api";
+import { packageAPI, bookingAPI } from "@/lib/api";
 import { supabase } from "@/integrations/supabase/client";
 import {
   MapPin,
@@ -195,32 +195,17 @@ const PackageDetails = () => {
         : 0;
       const finalAmount = totalAmount - discountAmount;
 
-      // Get auth token
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error("No active session");
-      }
-
-      // Call Supabase edge function for booking
-      const { data, error } = await supabase.functions.invoke(
-        "create-booking-payment",
-        {
-          body: {
-            packageId: packageData.id,
-            guestCount,
-            totalAmount,
-            finalAmount,
-            contact_name: contactName,
-            contact_phone: contactPhone,
-            contact_email: contactEmail,
-            special_requests: specialRequests || null,
-          },
-        }
-      );
-
-      if (error) throw error;
+      // Call backend API for booking payment
+      const data = await bookingAPI.createPayment({
+        packageId: packageData.id,
+        guestCount,
+        totalAmount,
+        finalAmount,
+        contact_name: contactName,
+        contact_phone: contactPhone,
+        contact_email: contactEmail,
+        special_requests: specialRequests || null,
+      });
 
       if (data?.url) {
         // Update current_bookings
@@ -232,13 +217,26 @@ const PackageDetails = () => {
           console.error("Error updating current bookings:", updateError);
         }
 
-        // Open Stripe checkout in new tab
-        window.open(data.url, "_blank");
+        if (data.mock_mode) {
+          // Mock payment mode - redirect directly to success page
+          toast({
+            title: "การชำระเงินสำเร็จ (โหมดทดสอบ)",
+            description: "การจองเสร็จสมบูรณ์ กำลังเปลี่ยนหน้า...",
+          });
 
-        toast({
-          title: "กำลังเปิดหน้าชำระเงิน",
-          description: "จะเปิดหน้าต่างใหม่สำหรับชำระเงิน",
-        });
+          // Redirect to success page after a short delay
+          setTimeout(() => {
+            navigate(data.url.replace(window.location.origin, ""));
+          }, 1500);
+        } else {
+          // Real Stripe checkout - open in new tab
+          window.open(data.url, "_blank");
+
+          toast({
+            title: "กำลังเปิดหน้าชำระเงิน",
+            description: "จะเปิดหน้าต่างใหม่สำหรับชำระเงิน",
+          });
+        }
       }
     } catch (error) {
       console.error("Booking error:", error);
@@ -575,12 +573,17 @@ const PackageDetails = () => {
                     ? "กำลังดำเนินการ..."
                     : availableSpots === 0
                     ? "จองเต็มแล้ว"
-                    : "จองเลย"}
+                    : "จองเลย (โหมดทดสอบ)"}
                 </Button>
 
-                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                  <Shield className="h-4 w-4" />
-                  <span>การันตีความปลอดภัยในการชำระเงิน</span>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    <span className="font-medium">โหมดทดสอบ (Demo)</span>
+                  </div>
+                  <p className="mt-1 text-xs">
+                    นี่คือการจองแบบทดสอบ ไม่มีการเรียกเก็บเงินจริง
+                  </p>
                 </div>
               </CardContent>
             </Card>
