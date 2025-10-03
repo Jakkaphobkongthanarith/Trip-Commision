@@ -224,9 +224,25 @@ const PackageDetails = () => {
             description: "การจองเสร็จสมบูรณ์ กำลังเปลี่ยนหน้า...",
           });
 
-          // Redirect to success page after a short delay
+          // เตรียมข้อมูลที่จะส่งไปหน้า PaymentSuccess
+          const bookingData = {
+            title: packageData.title,
+            guests: guestCount.toString(),
+            amount: finalAmount.toString(),
+            contact_name: contactName,
+            contact_phone: contactPhone,
+            contact_email: contactEmail,
+            package_id: packageData.id,
+            booking_id: data.booking_id,
+          };
+
+          // Redirect to success page with state data
           setTimeout(() => {
-            navigate(data.url.replace(window.location.origin, ""));
+            const successUrl = data.url.replace(window.location.origin, "");
+            navigate(successUrl, {
+              state: { bookingData },
+              replace: true,
+            });
           }, 1500);
         } else {
           // Real Stripe checkout - open in new tab

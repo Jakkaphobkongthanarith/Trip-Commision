@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, ArrowLeft } from "lucide-react";
+import { CheckCircle, CreditCard, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/Navbar";
@@ -10,12 +10,37 @@ import Navbar from "@/components/Navbar";
 const PaymentSuccess = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [verificationComplete, setVerificationComplete] = useState(false);
 
   const bookingId = searchParams.get("booking_id");
   const sessionId = searchParams.get("session_id");
+
+  // รับข้อมูล state จากหน้าก่อน
+  const bookingData = location.state?.bookingData || {
+    title: searchParams.get("title") || "ไม่ระบุแพ็คเกจ",
+    guests: searchParams.get("guests") || "1",
+    amount: searchParams.get("amount") || "0",
+    contact_name: searchParams.get("contact_name") || "",
+    contact_phone: searchParams.get("contact_phone") || "",
+    contact_email: searchParams.get("contact_email") || "",
+    package_id: searchParams.get("package_id") || "",
+  };
+
+  const handleConfirmBooking = () => {
+    const params = new URLSearchParams({
+      title: bookingData.title,
+      guests: bookingData.guests,
+      amount: bookingData.amount,
+      contact_name: bookingData.contact_name,
+      contact_phone: bookingData.contact_phone,
+      contact_email: bookingData.contact_email,
+    });
+
+    navigate(`/payment/confirm/${bookingId}?${params.toString()}`);
+  };
 
   useEffect(() => {
     const verifyPayment = async () => {
@@ -119,6 +144,27 @@ const PaymentSuccess = () => {
                 </div>
               ) : verificationComplete ? (
                 <div className="space-y-4">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                    <h3 className="font-semibold text-green-800 mb-2">
+                      รายละเอียดการจอง
+                    </h3>
+                    <div className="text-sm text-green-700 space-y-1">
+                      <div>
+                        <strong>แพ็คเกจ:</strong> {bookingData.title}
+                      </div>
+                      <div>
+                        <strong>จำนวนผู้เดินทาง:</strong> {bookingData.guests}{" "}
+                        ท่าน
+                      </div>
+                      <div>
+                        <strong>ยอดรวม:</strong> ฿
+                        {parseInt(bookingData.amount).toLocaleString()}
+                      </div>
+                      <div>
+                        <strong>ผู้ติดต่อ:</strong> {bookingData.contact_name}
+                      </div>
+                    </div>
+                  </div>
                   <p className="text-muted-foreground">
                     ขอบคุณสำหรับการจอง! การจองของคุณได้รับการยืนยันแล้ว
                   </p>
@@ -126,6 +172,16 @@ const PaymentSuccess = () => {
                     คุณสามารถดูรายละเอียดการจองได้ในหน้าโปรไฟล์
                   </p>
                   <div className="space-y-2">
+                    <div className="mt-4 pt-3 border-t">
+                      <Button
+                        onClick={handleConfirmBooking}
+                        className="w-full bg-green-600 hover:bg-green-700"
+                        size="sm"
+                      >
+                        <CreditCard className="h-4 w-4 mr-2" />
+                        ยืนยันการจอง (ชำระเงิน)
+                      </Button>
+                    </div>
                     <Button
                       onClick={() => navigate("/profile")}
                       className="w-full"

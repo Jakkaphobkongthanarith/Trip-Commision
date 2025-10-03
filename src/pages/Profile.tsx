@@ -87,11 +87,15 @@ const Profile = () => {
     try {
       // เรียกใช้ Backend API แทน Supabase โดยตรง
       const response = await bookingAPI.getAll();
+      console.log("All bookings response:", response);
 
       // กรองเฉพาะ bookings ของ user ปัจจุบัน
       const userBookings = (response.bookings || []).filter(
         (booking: any) => booking.customer_id === user?.id
       );
+
+      console.log("Filtered user bookings:", userBookings);
+      console.log("Current user ID:", user?.id);
 
       // เรียงลำดับตาม booking_date (ใหม่ที่สุดก่อน)
       const sortedBookings = userBookings.sort(
@@ -155,11 +159,25 @@ const Profile = () => {
     return status;
   };
 
+  // ฟังก์ชันสำหรับยืนยันการจอง (ไปหน้าชำระเงิน)
+  const handleConfirmBooking = (booking: any) => {
+    const params = new URLSearchParams({
+      title: booking.travel_packages?.title || "ไม่ระบุแพ็คเกจ",
+      guests: booking.guest_count.toString(),
+      amount: booking.final_amount.toString(),
+      contact_name: booking.contact_name || "",
+      contact_phone: booking.contact_phone || "",
+      contact_email: booking.contact_email || "",
+    });
+
+    navigate(`/payment/confirm/${booking.id}?${params.toString()}`);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      <div className="container mx-auto px-4 py-24">
+      <div className="container mx-auto px-4 py-24 h-full">
         <div className="mb-6">
           <Button
             variant="ghost"
@@ -329,6 +347,20 @@ const Profile = () => {
                             </p>
                           </div>
                         </div>
+
+                        {/* ปุ่มยืนยันการจอง สำหรับ payment_status pending */}
+                        {booking.payment_status === "pending" && (
+                          <div className="mt-4 pt-3 border-t">
+                            <Button
+                              onClick={() => handleConfirmBooking(booking)}
+                              className="w-full bg-green-600 hover:bg-green-700"
+                              size="sm"
+                            >
+                              <CreditCard className="h-4 w-4 mr-2" />
+                              ยืนยันการจอง (ชำระเงิน)
+                            </Button>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   ))}

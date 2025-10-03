@@ -185,3 +185,40 @@ func GetBookingsByPackageQueryHandler(c *gin.Context, db *gorm.DB) {
 		"package_id": packageID,
 	})
 }
+
+// ConfirmPaymentHandler - ยืนยันการชำระเงินแบบ mockup
+func ConfirmPaymentHandler(c *gin.Context, db *gorm.DB) {
+	bookingID := c.Param("bookingId")
+	if bookingID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "booking_id is required"})
+		return
+	}
+
+	// อัปเดต payment_status และ status ของ booking
+	result := db.Model(&models.Booking{}).
+		Where("id = ?", bookingID).
+		Updates(map[string]interface{}{
+			"payment_status": "paid",
+			"status":         "confirmed",
+		})
+
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to update booking status",
+			"details": result.Error.Error(),
+		})
+		return
+	}
+
+	if result.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Booking not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Payment confirmed successfully",
+		"booking_id": bookingID,
+		"status": "confirmed",
+		"payment_status": "paid",
+	})
+}

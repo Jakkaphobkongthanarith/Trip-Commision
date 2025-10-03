@@ -25,4 +25,7 @@ type Booking struct {
 	SpecialRequests       *string   `json:"special_requests" gorm:"type:text"`
 	CreatedAt             time.Time `json:"created_at" gorm:"type:timestamp with time zone;autoCreateTime"`
 	UpdatedAt             time.Time `json:"updated_at" gorm:"type:timestamp with time zone;autoUpdateTime"`
+
+	// Relationships
+	TravelPackages *TravelPackage `json:"travel_packages" gorm:"foreignKey:PackageID"`
 }

@@ -33,7 +33,18 @@ func UpdateUserRoleHandler(c *gin.Context, db *gorm.DB) {
 }
 
 func GetAllBookingsHandler(c *gin.Context, db *gorm.DB) {
-	c.JSON(200, gin.H{"message": "GetAllBookings - Not implemented yet", "data": []interface{}{}})
+	var bookings []models.Booking
+	result := db.Preload("TravelPackages").Find(&bookings)
+
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch bookings"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"bookings": bookings,
+		"total":    len(bookings),
+	})
 }
 
 func GetBookingsByPackageHandler(c *gin.Context, db *gorm.DB) {

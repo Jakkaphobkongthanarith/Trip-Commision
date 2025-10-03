@@ -11,6 +11,7 @@ import PackageDetails from "./pages/PackageDetails";
 import PackageList from "./pages/PackageList";
 import Profile from "./pages/Profile";
 import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentConfirmation from "./pages/PaymentConfirmation";
 import AdvertiserDashboard from "./pages/AdvertiserDashboard";
 import MemberManagement from "./pages/MemberManagement";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -41,6 +42,10 @@ const App = () => (
               }
             />
             <Route path="/payment/success" element={<PaymentSuccess />} />
+            <Route
+              path="/payment/confirm/:bookingId"
+              element={<PaymentConfirmation />}
+            />
             <Route
               path="/advertiser"
               element={

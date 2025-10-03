@@ -124,4 +124,10 @@ export const bookingAPI = {
   // ดึง bookings ตาม package ID (alternative route)
   getByPackage: (packageId: string) =>
     apiRequest(`/api/bookings/package/${packageId}`),
+
+  // ยืนยันการชำระเงิน (mockup)
+  confirmPayment: (bookingId: string) =>
+    apiRequest(`/api/booking/${bookingId}/confirm-payment`, {
+      method: "PUT",
+    }),
 };

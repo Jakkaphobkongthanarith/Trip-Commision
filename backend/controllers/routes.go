@@ -77,6 +77,9 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		authorized.POST("/api/booking/payment", func(c *gin.Context) {
 			CreateBookingPaymentHandler(c, db)
 		})
+		authorized.PUT("/api/booking/:bookingId/confirm-payment", func(c *gin.Context) {
+			ConfirmPaymentHandler(c, db)
+		})
 	}
 
 	// Reviews routes
