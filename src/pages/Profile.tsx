@@ -27,6 +27,10 @@ interface Booking {
   final_amount: number;
   status: string;
   payment_status: string;
+  expires_at?: string;
+  contact_name?: string;
+  contact_phone?: string;
+  contact_email?: string;
   travel_packages: {
     title: string;
     location: string;
@@ -57,6 +61,16 @@ const Profile = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Timer สำหรับอัปเดตเวลาที่เหลือ
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -155,8 +169,34 @@ const Profile = () => {
     if (paymentStatus === "completed") return "ชำระเงินแล้ว";
     if (paymentStatus === "pending") return "รอชำระเงิน";
     if (paymentStatus === "failed") return "ชำระเงินไม่สำเร็จ";
+    if (paymentStatus === "expired") return "หมดเวลาชำระ";
     if (status === "cancelled") return "ยกเลิกแล้ว";
     return status;
+  };
+
+  // ฟังก์ชันตรวจสอบว่าการจองหมดเวลาแล้วหรือไม่
+  const isBookingExpired = (booking: any) => {
+    if (!booking.expires_at || booking.payment_status !== "pending")
+      return false;
+    return new Date(booking.expires_at) < new Date();
+  };
+
+  // ฟังก์ชันคำนวณเวลาที่เหลือ
+  const getTimeRemaining = (expiresAt: string) => {
+    const now = new Date();
+    const expires = new Date(expiresAt);
+    const diff = expires.getTime() - now.getTime();
+
+    if (diff <= 0) return "หมดเวลาแล้ว";
+
+    const minutes = Math.floor(diff / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    if (minutes > 0) {
+      return `เหลือ ${minutes} นาที ${seconds} วินาที`;
+    } else {
+      return `เหลือ ${seconds} วินาที`;
+    }
   };
 
   // ฟังก์ชันสำหรับยืนยันการจอง (ไปหน้าชำระเงิน)
@@ -348,19 +388,35 @@ const Profile = () => {
                           </div>
                         </div>
 
-                        {/* ปุ่มยืนยันการจอง สำหรับ payment_status pending */}
-                        {booking.payment_status === "pending" && (
-                          <div className="mt-4 pt-3 border-t">
-                            <Button
-                              onClick={() => handleConfirmBooking(booking)}
-                              className="w-full bg-green-600 hover:bg-green-700"
-                              size="sm"
-                            >
-                              <CreditCard className="h-4 w-4 mr-2" />
-                              ยืนยันการจอง (ชำระเงิน)
-                            </Button>
-                          </div>
-                        )}
+                        {/* แสดงเวลาหมดอายุสำหรับการจองที่รอชำระ */}
+                        {booking.payment_status === "pending" &&
+                          booking.expires_at && (
+                            <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                              <div className="flex items-center gap-2 text-yellow-800">
+                                <Calendar className="h-4 w-4" />
+                                <span className="text-sm font-medium">
+                                  {isBookingExpired(booking)
+                                    ? "หมดเวลาชำระแล้ว"
+                                    : getTimeRemaining(booking.expires_at)}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                        {/* ปุ่มยืนยันการจอง สำหรับ payment_status pending และยังไม่หมดเวลา */}
+                        {booking.payment_status === "pending" &&
+                          !isBookingExpired(booking) && (
+                            <div className="mt-4 pt-3 border-t">
+                              <Button
+                                onClick={() => handleConfirmBooking(booking)}
+                                className="w-full bg-green-600 hover:bg-green-700"
+                                size="sm"
+                              >
+                                <CreditCard className="h-4 w-4 mr-2" />
+                                ยืนยันการจอง (ชำระเงิน)
+                              </Button>
+                            </div>
+                          )}
                       </CardContent>
                     </Card>
                   ))}

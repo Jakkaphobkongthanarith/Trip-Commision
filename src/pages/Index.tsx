@@ -126,6 +126,7 @@ const Index = () => {
       </section>
 
       {/* Packages Section */}
+
       <section className="py-16 px-6">
         <div className="container mx-auto">
           <div className="text-center mb-12">
@@ -136,6 +137,19 @@ const Index = () => {
               เลือกจากแพคเกจท่องเที่ยวคุณภาพสูงที่คัดสรรมาเป็นพิเศษ
               พร้อมส่วนลดและโปรโมชั่นสุดพิเศษ
             </p>
+            {/* ปุ่มดูแพคเกจทั้งหมด */}
+            {!loading && hasMorePackages && (
+              <div className="text-center mt-12">
+                <Button
+                  onClick={viewAllPackages}
+                  variant="outline"
+                  size="lg"
+                  className="px-8 py-3 text-lg"
+                >
+                  ดูแพคเกจทั้งหมด
+                </Button>
+              </div>
+            )}
             {selectedTag && (
               <div className="flex items-center justify-center gap-2 mt-4">
                 <span className="text-muted-foreground">
@@ -167,31 +181,6 @@ const Index = () => {
               ))
             )}
           </div>
-
-          {/* ปุ่มดูแพคเกจทั้งหมด */}
-          {!loading && hasMorePackages && (
-            <div className="text-center mt-12">
-              <Button
-                onClick={viewAllPackages}
-                variant="outline"
-                size="lg"
-                className="px-8 py-3 text-lg"
-              >
-                ดูแพคเกจทั้งหมด ({filteredPackages.length - visibleCount}{" "}
-                รายการเพิ่มเติม)
-              </Button>
-            </div>
-          )}
-
-          {/* แสดงจำนวนรายการปัจจุบัน */}
-          {!loading && filteredPackages.length > 0 && (
-            <div className="text-center mt-6">
-              <p className="text-muted-foreground">
-                แสดง {Math.min(visibleCount, filteredPackages.length)} จาก{" "}
-                {filteredPackages.length} รายการ
-              </p>
-            </div>
-          )}
 
           {selectedTag && filteredPackages.length === 0 && (
             <div className="text-center py-12">

@@ -64,7 +64,8 @@ func CreateBookingPaymentHandler(c *gin.Context, db *gorm.DB) {
 		return
 	}
 
-	// Create booking record
+	// Create booking record with expiration time (10 minutes from now)
+	expiresAt := time.Now().Add(10 * time.Minute)
 	booking := models.Booking{
 		CustomerID:      userUUID,
 		PackageID:       req.PackageID,
@@ -75,6 +76,7 @@ func CreateBookingPaymentHandler(c *gin.Context, db *gorm.DB) {
 		FinalAmount:     req.FinalAmount,
 		Status:          "pending",
 		PaymentStatus:   "pending",
+		ExpiresAt:       &expiresAt,
 		ContactName:     req.ContactName,
 		ContactPhone:    req.ContactPhone,
 		ContactEmail:    req.ContactEmail,
@@ -169,7 +171,7 @@ func GetBookingsByPackageQueryHandler(c *gin.Context, db *gorm.DB) {
 	}
 
 	var bookings []models.Booking
-	result := db.Select("id, customer_id, package_id, booking_date, guest_count, status, payment_status, contact_name, contact_phone, contact_email").
+	result := db.Select("id, customer_id, package_id, booking_date, guest_count, status, payment_status, contact_name, contact_phone, contact_email, special_requests, total_amount, final_amount, expires_at, created_at, updated_at").
 		Where("package_id = ?", packageID).
 		Order("booking_date DESC").
 		Find(&bookings)
@@ -194,12 +196,13 @@ func ConfirmPaymentHandler(c *gin.Context, db *gorm.DB) {
 		return
 	}
 
-	// อัปเดต payment_status และ status ของ booking
+	// อัปเดต payment_status และ status ของ booking และล้าง expires_at
 	result := db.Model(&models.Booking{}).
 		Where("id = ?", bookingID).
 		Updates(map[string]interface{}{
 			"payment_status": "paid",
 			"status":         "confirmed",
+			"expires_at":     nil, // ล้าง expiration เมื่อชำระสำเร็จ
 		})
 
 	if result.Error != nil {

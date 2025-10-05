@@ -23,6 +23,7 @@ type Booking struct {
 	ContactPhone          string    `json:"contact_phone" gorm:"type:text"`
 	ContactEmail          string    `json:"contact_email" gorm:"type:text"`
 	SpecialRequests       *string   `json:"special_requests" gorm:"type:text"`
+	ExpiresAt             *time.Time `json:"expires_at" gorm:"type:timestamp with time zone"`
 	CreatedAt             time.Time `json:"created_at" gorm:"type:timestamp with time zone;autoCreateTime"`
 	UpdatedAt             time.Time `json:"updated_at" gorm:"type:timestamp with time zone;autoUpdateTime"`
 

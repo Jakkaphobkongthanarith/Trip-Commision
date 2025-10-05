@@ -8,6 +8,7 @@ import (
 
 	"trip-trader-backend/controllers"
 	"trip-trader-backend/models"
+	"trip-trader-backend/services"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -73,6 +74,9 @@ func main() {
 
 	// Setup routes ผ่าน controllers package
 	controllers.SetupRoutes(r, db)
+
+	// เริ่ม Auto-Cancel Scheduler สำหรับยกเลิกการจองที่หมดเวลา
+	services.StartAutoCancelScheduler(db)
 
 	// ใช้ PORT จาก environment หรือ default 8000
 	port := os.Getenv("PORT")

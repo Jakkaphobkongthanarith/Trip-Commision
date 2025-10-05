@@ -75,6 +75,7 @@ interface Booking {
   id: string;
   customer_id: string;
   booking_date: string;
+  special_requests: string | null;
   guest_count: number;
   status: string;
   profiles: {
@@ -935,6 +936,7 @@ export default function PackageManagement() {
                         <div className="text-sm text-muted-foreground space-y-1">
                           <p>📞 {booking.profiles.phone}</p>
                           <p>Email: {booking.profiles.email}</p>
+                          <p>ความต้องการพิเศษ: {booking.special_requests}</p>
                           <p>
                             📅 วันที่จอง:{" "}
                             {new Date(booking.booking_date).toLocaleDateString(
