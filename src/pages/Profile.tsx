@@ -168,6 +168,8 @@ const Profile = () => {
   const getStatusText = (status: string, paymentStatus: string) => {
     if (paymentStatus === "completed") return "ชำระเงินแล้ว";
     if (paymentStatus === "pending") return "รอชำระเงิน";
+    if (paymentStatus === "failed" && status === "cancelled")
+      return "หมดเวลาชำระ"; // แสดง "หมดเวลาชำระ" เมื่อ failed + cancelled
     if (paymentStatus === "failed") return "ชำระเงินไม่สำเร็จ";
     if (paymentStatus === "expired") return "หมดเวลาชำระ";
     if (status === "cancelled") return "ยกเลิกแล้ว";

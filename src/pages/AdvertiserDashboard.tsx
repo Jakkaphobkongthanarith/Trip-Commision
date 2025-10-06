@@ -62,6 +62,7 @@ interface UpcomingTrip {
 
 const AdvertiserDashboard = () => {
   const { user } = useAuth();
+  console.log("Current user in AdvertiserDashboard:", user);
 
   // Early returns ต้องอยู่ก่อน hooks ทั้งหมด
   if (!user) {
@@ -102,6 +103,7 @@ const AdvertiserDashboard = () => {
       console.log("User role data:", roleData);
 
       if (roleData) {
+        console.log("Setting user role:", roleData);
         setUserRole(roleData as string);
       } else {
         setUserRole("");
@@ -115,15 +117,35 @@ const AdvertiserDashboard = () => {
     if (!user) return;
 
     try {
+      // สำหรับ customer ไม่ต้องดึงข้อมูล commission
+      if (userRole === "customer") {
+        setCommissions([]);
+        setMonthlyCommission(0);
+        return;
+      }
+
       const data = await apiRequest(
         `/api/commissions?advertiser_id=${user.id}&order=created_at.desc`
       );
-      setCommissions(data);
+
+      // ตรวจสอบว่า data เป็น array หรือไม่
+      const commissionsArray = Array.isArray(data)
+        ? data
+        : data?.commissions || [];
+
+      if (!Array.isArray(commissionsArray)) {
+        console.log("Invalid commissions data format:", data);
+        setCommissions([]);
+        setMonthlyCommission(0);
+        return;
+      }
+
+      setCommissions(commissionsArray);
 
       // Calculate monthly commission
       const currentMonth = new Date().getMonth();
       const currentYear = new Date().getFullYear();
-      const monthlyTotal = data
+      const monthlyTotal = commissionsArray
         .filter((commission: any) => {
           const commissionDate = new Date(commission.created_at);
           return (
@@ -140,6 +162,8 @@ const AdvertiserDashboard = () => {
       setMonthlyCommission(monthlyTotal);
     } catch (error) {
       console.error("Error fetching commissions:", error);
+      setCommissions([]);
+      setMonthlyCommission(0);
     }
   };
 
@@ -149,29 +173,49 @@ const AdvertiserDashboard = () => {
         "/api/reviews?limit=10&order=created_at.desc"
       );
 
+      // ตรวจสอบว่า data เป็น array หรือไม่
+      const reviewsArray = Array.isArray(data) ? data : data?.reviews || [];
+
+      if (!Array.isArray(reviewsArray) || reviewsArray.length === 0) {
+        console.log("No reviews data or invalid format:", data);
+        setReviews([]);
+        return;
+      }
+
       // Fetch related data separately
       const reviewsWithDetails = await Promise.all(
-        data.map(async (review: any) => {
-          const [packageData, profileData] = await Promise.all([
-            apiRequest(`/api/packages/${review.package_id}`),
-            apiRequest(`/api/profiles/${review.customer_id}`),
-          ]);
+        reviewsArray.map(async (review: any) => {
+          try {
+            const [packageData, profileData] = await Promise.all([
+              apiRequest(`/package/${review.package_id}`),
+              apiRequest(`/api/profile/${review.customer_id}`),
+            ]);
 
-          return {
-            ...review,
-            travel_packages: { title: packageData.title },
-            profiles: { display_name: profileData.display_name },
-          };
+            return {
+              ...review,
+              travel_packages: { title: packageData?.title || "ไม่ระบุ" },
+              profiles: {
+                display_name: profileData?.display_name || "ไม่ระบุ",
+              },
+            };
+          } catch (error) {
+            console.error(
+              `Error fetching details for review ${review.id}:`,
+              error
+            );
+            return {
+              ...review,
+              travel_packages: { title: "ไม่ระบุ" },
+              profiles: { display_name: "ไม่ระบุ" },
+            };
+          }
         })
       );
 
-      setReviews(
-        reviewsWithDetails.filter(
-          (r) => r.travel_packages && r.profiles
-        ) as Review[]
-      );
+      setReviews(reviewsWithDetails as Review[]);
     } catch (error) {
       console.error("Error fetching reviews:", error);
+      setReviews([]);
     }
   };
 
@@ -183,32 +227,52 @@ const AdvertiserDashboard = () => {
         `/api/bookings?booking_date.gte=${today}&limit=10&order=booking_date.asc`
       );
 
+      // ตรวจสอบว่า data เป็น array หรือไม่
+      const bookingsArray = Array.isArray(data) ? data : data?.bookings || [];
+
+      if (!Array.isArray(bookingsArray) || bookingsArray.length === 0) {
+        console.log("No upcoming trips data or invalid format:", data);
+        setUpcomingTrips([]);
+        return;
+      }
+
       // Fetch related data separately
       const tripsWithDetails = await Promise.all(
-        data.map(async (trip: any) => {
-          const [packageData, profileData] = await Promise.all([
-            apiRequest(`/api/packages/${trip.package_id}`),
-            apiRequest(`/api/profiles/${trip.customer_id}`),
-          ]);
+        bookingsArray.map(async (trip: any) => {
+          try {
+            const [packageData, profileData] = await Promise.all([
+              apiRequest(`/package/${trip.package_id}`),
+              apiRequest(`/api/profile/${trip.customer_id}`),
+            ]);
 
-          return {
-            ...trip,
-            travel_packages: {
-              title: packageData.title,
-              location: packageData.location,
-            },
-            profiles: { display_name: profileData.display_name },
-          };
+            return {
+              ...trip,
+              travel_packages: {
+                title: packageData?.title || "ไม่ระบุ",
+                location: packageData?.location || "ไม่ระบุ",
+              },
+              profiles: {
+                display_name: profileData?.display_name || "ไม่ระบุ",
+              },
+            };
+          } catch (error) {
+            console.error(`Error fetching details for trip ${trip.id}:`, error);
+            return {
+              ...trip,
+              travel_packages: {
+                title: "ไม่ระบุ",
+                location: "ไม่ระบุ",
+              },
+              profiles: { display_name: "ไม่ระบุ" },
+            };
+          }
         })
       );
 
-      setUpcomingTrips(
-        tripsWithDetails.filter(
-          (t) => t.travel_packages && t.profiles
-        ) as UpcomingTrip[]
-      );
+      setUpcomingTrips(tripsWithDetails as UpcomingTrip[]);
     } catch (error) {
       console.error("Error fetching upcoming trips:", error);
+      setUpcomingTrips([]);
     }
   };
 
@@ -221,8 +285,8 @@ const AdvertiserDashboard = () => {
     );
   }
 
-  // Role check - redirect if not advertiser
-  if (userRole && userRole !== "advertiser") {
+  // Role check - allow both advertiser and customer to access
+  if (userRole !== "advertiser" && userRole !== "customer") {
     return <Navigate to="/" replace />;
   }
 
@@ -231,25 +295,49 @@ const AdvertiserDashboard = () => {
       <Navbar />
       <div className="container mx-auto p-6 pt-24">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">แดชบอร์ดคนกลาง</h1>
-          <p className="text-white/80">ภาพรวมและสถิติของคุณ</p>
+          <h1 className="text-3xl font-bold text-white mb-2">
+            {userRole === "customer"
+              ? "แดชบอร์ดนักท่องเที่ยว"
+              : "แดชบอร์ดคนกลาง"}
+          </h1>
+          <p className="text-white/80">
+            {userRole === "customer"
+              ? "ข้อมูลการเดินทางและรีวิวของคุณ"
+              : "ภาพรวมและสถิติของคุณ"}
+          </p>
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-white/95 backdrop-blur-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                ค่าคอมมิชชั่นเดือนนี้
-              </CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                ฿{monthlyCommission.toLocaleString()}
-              </div>
-            </CardContent>
-          </Card>
+          {userRole === "advertiser" && (
+            <Card className="bg-white/95 backdrop-blur-sm">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  ค่าคอมมิชชั่นเดือนนี้
+                </CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  ฿{monthlyCommission.toLocaleString()}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {userRole === "customer" && (
+            <Card className="bg-white/95 backdrop-blur-sm">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  การจองทั้งหมด
+                </CardTitle>
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{upcomingTrips.length}</div>
+              </CardContent>
+            </Card>
+          )}
 
           <Card className="bg-white/95 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -273,7 +361,7 @@ const AdvertiserDashboard = () => {
           <Card className="bg-white/95 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                ทริปที่จะมาถึง
+                {userRole === "customer" ? "ทริปที่จะมาถึง" : "ทริปที่จะมาถึง"}
               </CardTitle>
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
@@ -410,57 +498,59 @@ const AdvertiserDashboard = () => {
           </Card>
         </div>
 
-        {/* Commission History */}
-        <Card className="mt-6 bg-white/95 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle>ประวัติค่าคอมมิชชั่น</CardTitle>
-            <CardDescription>รายการค่าคอมมิชชั่นที่ได้รับ</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {commissions.length === 0 ? (
-              <p className="text-muted-foreground text-center py-4">
-                ยังไม่มีข้อมูลค่าคอมมิชชั่น
-              </p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>วันที่</TableHead>
-                    <TableHead>จำนวนเงิน</TableHead>
-                    <TableHead>เปอร์เซ็นต์</TableHead>
-                    <TableHead>สถานะ</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {commissions.slice(0, 10).map((commission) => (
-                    <TableRow key={commission.id}>
-                      <TableCell>
-                        {new Date(commission.created_at).toLocaleDateString(
-                          "th-TH"
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        ฿{commission.commission_amount.toLocaleString()}
-                      </TableCell>
-                      <TableCell>{commission.commission_percentage}%</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            commission.status === "paid"
-                              ? "default"
-                              : "secondary"
-                          }
-                        >
-                          {commission.status === "paid" ? "จ่ายแล้ว" : "รอจ่าย"}
-                        </Badge>
-                      </TableCell>
+        {/* Commission History - Only for advertisers */}
+        {userRole === "advertiser" && (
+          <Card className="mt-6 bg-white/95 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle>ประวัติค่าคอมมิชชั่น</CardTitle>
+              <CardDescription>รายการค่าคอมมิชชั่นที่ได้รับ</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {commissions.length === 0 ? (
+                <p className="text-muted-foreground text-center py-4">
+                  ยังไม่มีข้อมูลค่าคอมมิชชั่น
+                </p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>วันที่</TableHead>
+                      <TableHead>จำนวนเงิน</TableHead>
+                      <TableHead>เปอร์เซ็นต์</TableHead>
+                      <TableHead>สถานะ</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {commissions.slice(0, 10).map((commission) => (
+                      <TableRow key={commission.id}>
+                        <TableCell>
+                          {new Date(commission.created_at).toLocaleDateString(
+                            "th-TH"
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          ฿{commission.commission_amount.toLocaleString()}
+                        </TableCell>
+                        <TableCell>{commission.commission_percentage}%</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              commission.status === "paid"
+                                ? "default"
+                                : "secondary"
+                            }
+                          >
+                            {commission.status === "paid" ? "จ่ายแล้ว" : "รอจ่าย"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

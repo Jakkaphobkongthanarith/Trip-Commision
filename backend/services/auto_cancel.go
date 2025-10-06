@@ -10,38 +10,47 @@ import (
 
 // AutoCancelExpiredBookings - ยกเลิกการจองที่หมดเวลาอัตโนมัติ
 func AutoCancelExpiredBookings(db *gorm.DB) {
-	log.Println("Starting auto-cancel expired bookings check...")
+	log.Printf("[AUTO-CANCEL] Starting expired bookings check at %v", time.Now())
 
 	// หาการจองที่หมดเวลาแล้ว และยังไม่ได้ชำระเงิน
 	var expiredBookings []models.Booking
+	currentTime := time.Now()
+	log.Printf("[AUTO-CANCEL] Searching for bookings with expires_at < %v AND payment_status = 'pending' AND status = 'pending'", currentTime)
+	
 	result := db.Where("expires_at < ? AND payment_status = ? AND status = ?", 
-		time.Now(), "pending", "pending").Find(&expiredBookings)
+		currentTime, "pending", "pending").Find(&expiredBookings)
+
+	log.Printf("[AUTO-CANCEL] Query executed. Found %d bookings. Error: %v", len(expiredBookings), result.Error)
 
 	if result.Error != nil {
-		log.Printf("Error fetching expired bookings: %v", result.Error)
+		log.Printf("[AUTO-CANCEL] Error fetching expired bookings: %v", result.Error)
 		return
 	}
 
 	if len(expiredBookings) == 0 {
-		log.Println("No expired bookings found")
+		log.Println("[AUTO-CANCEL] No expired bookings found")
 		return
 	}
 
 	log.Printf("Found %d expired bookings to cancel", len(expiredBookings))
 
 	// ยกเลิกการจองทีละรายการ
-	for _, booking := range expiredBookings {
+	for i, booking := range expiredBookings {
+		log.Printf("[AUTO-CANCEL] Processing booking %d/%d: ID=%s, Expires=%v, Package=%s, Guests=%d", 
+			i+1, len(expiredBookings), booking.ID, booking.ExpiresAt, booking.PackageID, booking.GuestCount)
+		
 		// อัปเดตสถานะเป็น cancelled
 		updateResult := db.Model(&booking).Updates(map[string]interface{}{
 			"status":         "cancelled",
-			"payment_status": "expired",
+			"payment_status": "failed", // ใช้ "failed" ที่อนุญาตแล้ว
 			"updated_at":     time.Now(),
 		})
 
 		if updateResult.Error != nil {
-			log.Printf("Error cancelling booking %s: %v", booking.ID, updateResult.Error)
+			log.Printf("[AUTO-CANCEL] Error cancelling booking %s: %v", booking.ID, updateResult.Error)
 			continue
 		}
+		log.Printf("[AUTO-CANCEL] Booking %s status updated to cancelled", booking.ID)
 
 		// ลด current_bookings ของ package
 		packageUpdateResult := db.Model(&models.TravelPackage{}).
@@ -49,10 +58,12 @@ func AutoCancelExpiredBookings(db *gorm.DB) {
 			Update("current_bookings", gorm.Expr("current_bookings - ?", booking.GuestCount))
 
 		if packageUpdateResult.Error != nil {
-			log.Printf("Error updating package bookings for booking %s: %v", booking.ID, packageUpdateResult.Error)
+			log.Printf("[AUTO-CANCEL] Error updating package bookings for booking %s: %v", booking.ID, packageUpdateResult.Error)
+		} else {
+			log.Printf("[AUTO-CANCEL] Package %s current_bookings decreased by %d", booking.PackageID, booking.GuestCount)
 		}
 
-		log.Printf("Successfully cancelled expired booking %s for package %s", booking.ID, booking.PackageID)
+		log.Printf("[AUTO-CANCEL] Successfully cancelled expired booking %s for package %s", booking.ID, booking.PackageID)
 	}
 
 	log.Printf("Auto-cancel completed: %d bookings cancelled", len(expiredBookings))
@@ -66,10 +77,14 @@ func StartAutoCancelScheduler(db *gorm.DB) {
 	ticker := time.NewTicker(1 * time.Minute)
 	
 	go func() {
+		defer ticker.Stop()
+		log.Println("[AUTO-CANCEL] Goroutine started successfully")
 		for {
 			select {
 			case <-ticker.C:
+				log.Println("[AUTO-CANCEL] Ticker triggered, calling AutoCancelExpiredBookings...")
 				AutoCancelExpiredBookings(db)
+				log.Println("[AUTO-CANCEL] AutoCancelExpiredBookings completed")
 			}
 		}
 	}()
