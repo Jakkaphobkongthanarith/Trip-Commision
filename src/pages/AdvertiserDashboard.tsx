@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -19,8 +19,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/api";
-import { DollarSign, Star, Calendar, TrendingUp } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { DollarSign, Calendar, Package, Phone, Mail, User } from "lucide-react";
+import { format } from "date-fns";
 import { th } from "date-fns/locale";
 import Navbar from "@/components/Navbar";
 
@@ -33,24 +33,18 @@ interface Commission {
   created_at: string;
 }
 
-interface Review {
-  id: string;
-  rating: number;
-  comment: string;
-  created_at: string;
-  travel_packages: {
-    title: string;
-  };
-  profiles: {
-    display_name: string;
-  };
-}
-
 interface UpcomingTrip {
   id: string;
+  package_id: string;
   booking_date: string;
   guest_count: number;
   status: string;
+  contact_name: string;
+  contact_phone: string;
+  contact_email: string;
+  special_requests?: string;
+  total_amount: number;
+  final_amount: number;
   travel_packages: {
     title: string;
     location: string;
@@ -62,6 +56,7 @@ interface UpcomingTrip {
 
 const AdvertiserDashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Early returns ต้องอยู่ก่อน hooks ทั้งหมด
   if (!user) {
@@ -70,7 +65,6 @@ const AdvertiserDashboard = () => {
 
   const [userRole, setUserRole] = useState<string>("");
   const [commissions, setCommissions] = useState<Commission[]>([]);
-  const [reviews, setReviews] = useState<Review[]>([]);
   const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>([]);
   const [monthlyCommission, setMonthlyCommission] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -83,7 +77,6 @@ const AdvertiserDashboard = () => {
       await Promise.allSettled([
         fetchUserRole(),
         fetchCommissions(),
-        fetchReviews(),
         fetchUpcomingTrips(),
       ]);
       if (!isCancelled) setLoading(false);
@@ -143,37 +136,6 @@ const AdvertiserDashboard = () => {
     }
   };
 
-  const fetchReviews = async () => {
-    try {
-      const data = await apiRequest(
-        "/api/reviews?limit=10&order=created_at.desc"
-      );
-
-      // Fetch related data separately
-      const reviewsWithDetails = await Promise.all(
-        data.map(async (review: any) => {
-          const [packageData, profileData] = await Promise.all([
-            apiRequest(`/api/packages/${review.package_id}`),
-            apiRequest(`/api/profiles/${review.customer_id}`),
-          ]);
-
-          return {
-            ...review,
-            travel_packages: { title: packageData.title },
-            profiles: { display_name: profileData.display_name },
-          };
-        })
-      );
-
-      setReviews(
-        reviewsWithDetails.filter(
-          (r) => r.travel_packages && r.profiles
-        ) as Review[]
-      );
-    } catch (error) {
-      console.error("Error fetching reviews:", error);
-    }
-  };
 
   const fetchUpcomingTrips = async () => {
     const today = new Date().toISOString().split("T")[0];
@@ -236,7 +198,7 @@ const AdvertiserDashboard = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card className="bg-white/95 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -247,25 +209,6 @@ const AdvertiserDashboard = () => {
             <CardContent>
               <div className="text-2xl font-bold">
                 ฿{monthlyCommission.toLocaleString()}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/95 backdrop-blur-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                คะแนนรีวิวเฉลี่ย
-              </CardTitle>
-              <Star className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {reviews.length > 0
-                  ? (
-                      reviews.reduce((sum, review) => sum + review.rating, 0) /
-                      reviews.length
-                    ).toFixed(1)
-                  : "0.0"}
               </div>
             </CardContent>
           </Card>
@@ -285,111 +228,45 @@ const AdvertiserDashboard = () => {
           <Card className="bg-white/95 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                รีวิวทั้งหมด
+                จำนวนแพคเกจทั้งหมด
               </CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <Package className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{reviews.length}</div>
+              <div className="text-2xl font-bold">{commissions.length}</div>
             </CardContent>
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recent Reviews */}
-          <Card className="bg-white/95 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle>รีวิวล่าสุด</CardTitle>
-              <CardDescription>ความคิดเห็นจากนักท่องเที่ยว</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {reviews.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">
-                  ยังไม่มีรีวิว
-                </p>
-              ) : (
-                <div className="space-y-4">
-                  {reviews.slice(0, 5).map((review) => (
-                    <div
-                      key={review.id}
-                      className="border-b pb-4 last:border-b-0"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-2">
-                          <span className="font-medium">
-                            {review.profiles?.display_name}
-                          </span>
-                          <div className="flex">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`w-4 h-4 ${
-                                  i < review.rating
-                                    ? "text-yellow-400 fill-current"
-                                    : "text-gray-300"
-                                }`}
-                              />
-                            ))}
-                          </div>
+        {/* Upcoming Trips - Full Width with Contact Info */}
+        <Card className="mb-6 bg-white/95 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle>ทริปที่จะมาถึง</CardTitle>
+            <CardDescription>รายการจองพร้อมข้อมูลติดต่อลูกค้า</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {upcomingTrips.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">
+                ไม่มีทริปที่จะมาถึง
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {upcomingTrips.map((trip) => (
+                  <Card
+                    key={trip.id}
+                    className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary"
+                    onClick={() => navigate(`/package/${trip.package_id}`)}
+                  >
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg">
+                            {trip.travel_packages?.title}
+                          </CardTitle>
+                          <CardDescription>
+                            {trip.travel_packages?.location}
+                          </CardDescription>
                         </div>
-                        <span className="text-sm text-muted-foreground">
-                          {formatDistanceToNow(new Date(review.created_at), {
-                            addSuffix: true,
-                            locale: th,
-                          })}
-                        </span>
-                      </div>
-                      <p className="text-sm font-medium mb-1">
-                        {review.travel_packages?.title}
-                      </p>
-                      {review.comment && (
-                        <p className="text-sm text-muted-foreground">
-                          {review.comment}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Upcoming Trips */}
-          <Card className="bg-white/95 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle>ทริปที่จะมาถึง</CardTitle>
-              <CardDescription>รายการจองที่จะเกิดขึ้น</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {upcomingTrips.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">
-                  ไม่มีทริปที่จะมาถึง
-                </p>
-              ) : (
-                <div className="space-y-4">
-                  {upcomingTrips.slice(0, 5).map((trip) => (
-                    <div
-                      key={trip.id}
-                      className="flex items-center justify-between border-b pb-4 last:border-b-0"
-                    >
-                      <div>
-                        <p className="font-medium">
-                          {trip.travel_packages?.title}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {trip.travel_packages?.location} • {trip.guest_count}{" "}
-                          คน
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          โดย {trip.profiles?.display_name}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium">
-                          {new Date(trip.booking_date).toLocaleDateString(
-                            "th-TH"
-                          )}
-                        </p>
                         <Badge
                           variant={
                             trip.status === "confirmed"
@@ -402,13 +279,72 @@ const AdvertiserDashboard = () => {
                             : "รอดำเนินการ"}
                         </Badge>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">วันที่เดินทาง:</span>
+                        <span className="font-medium">
+                          {format(new Date(trip.booking_date), "d MMMM yyyy", { locale: th })}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">จำนวนผู้เดินทาง:</span>
+                        <span className="font-medium">{trip.guest_count} คน</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">ยอดรวม:</span>
+                        <span className="font-medium text-primary">
+                          ฿{trip.final_amount.toLocaleString()}
+                        </span>
+                      </div>
+                      
+                      <div className="border-t pt-3 mt-3 space-y-2">
+                        <p className="text-sm font-semibold text-muted-foreground mb-2">
+                          ข้อมูลติดต่อลูกค้า:
+                        </p>
+                        <div className="flex items-center gap-2 text-sm">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{trip.contact_name}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Phone className="h-4 w-4 text-muted-foreground" />
+                          <a
+                            href={`tel:${trip.contact_phone}`}
+                            className="text-primary hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {trip.contact_phone}
+                          </a>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Mail className="h-4 w-4 text-muted-foreground" />
+                          <a
+                            href={`mailto:${trip.contact_email}`}
+                            className="text-primary hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {trip.contact_email}
+                          </a>
+                        </div>
+                      </div>
+
+                      {trip.special_requests && (
+                        <div className="border-t pt-3 mt-3">
+                          <p className="text-sm font-semibold text-muted-foreground mb-1">
+                            คำขอพิเศษ:
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {trip.special_requests}
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Commission History */}
         <Card className="mt-6 bg-white/95 backdrop-blur-sm">
