@@ -470,7 +470,7 @@ export default function PackageManagement() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 pt-24">
       <Navbar />
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">จัดการแพคเกจท่องเที่ยว</h1>
@@ -784,6 +784,7 @@ export default function PackageManagement() {
       </div>
 
       {/* Search Bar */}
+
       <div className="mb-6">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />

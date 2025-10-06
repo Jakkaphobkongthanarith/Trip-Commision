@@ -26,7 +26,15 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/api";
-import { DollarSign, Star, Calendar, TrendingUp, User, Phone, Mail } from "lucide-react";
+import {
+  DollarSign,
+  Star,
+  Calendar,
+  TrendingUp,
+  User,
+  Phone,
+  Mail,
+} from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import Navbar from "@/components/Navbar";
@@ -67,11 +75,21 @@ interface UpcomingTrip {
   final_amount: number;
   discount_amount?: number;
   discount_code?: string;
-  travel_packages: {
+  travel_packages?: {
     title: string;
     location: string;
   };
-  profiles: {
+  TravelPackages?: {
+    title: string;
+    location: string;
+  };
+  profiles?: {
+    display_name: string;
+  };
+  Profile?: {
+    display_name: string;
+  };
+  profile?: {
     display_name: string;
   };
 }
@@ -92,8 +110,13 @@ const AdvertiserDashboard = () => {
   const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>([]);
   const [monthlyCommission, setMonthlyCommission] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [selectedPackageBookings, setSelectedPackageBookings] = useState<UpcomingTrip[] | null>(null);
-  const [selectedPackageInfo, setSelectedPackageInfo] = useState<{title: string, location: string} | null>(null);
+  const [selectedPackageBookings, setSelectedPackageBookings] = useState<
+    UpcomingTrip[] | null
+  >(null);
+  const [selectedPackageInfo, setSelectedPackageInfo] = useState<{
+    title: string;
+    location: string;
+  } | null>(null);
 
   useEffect(() => {
     let isCancelled = false;
@@ -143,9 +166,7 @@ const AdvertiserDashboard = () => {
         return;
       }
 
-      const data = await apiRequest(
-        `/api/commissions`
-      );
+      const data = await apiRequest(`/api/commissions`);
 
       // ตรวจสอบว่า data เป็น array หรือไม่
       const commissionsArray = Array.isArray(data)
@@ -188,9 +209,7 @@ const AdvertiserDashboard = () => {
 
   const fetchReviews = async () => {
     try {
-      const data = await apiRequest(
-        "/api/reviews"
-      );
+      const data = await apiRequest("/api/reviews");
 
       // ตรวจสอบว่า data เป็น array หรือไม่
       const reviewsArray = Array.isArray(data) ? data : data?.reviews || [];
@@ -240,9 +259,7 @@ const AdvertiserDashboard = () => {
 
   const fetchUpcomingTrips = async () => {
     try {
-      const data = await apiRequest(
-        `/api/bookings`
-      );
+      const data = await apiRequest(`/api/bookings`);
 
       // ตรวจสอบว่า data เป็น array หรือไม่
       const bookingsArray = Array.isArray(data) ? data : data?.bookings || [];
@@ -253,56 +270,19 @@ const AdvertiserDashboard = () => {
         return;
       }
 
-      // Fetch related data separately
-      const tripsWithDetails = await Promise.all(
-        bookingsArray.map(async (trip: any) => {
-          try {
-            const fetchPromises = [
-              apiRequest(`/package/${trip.package_id}`),
-              apiRequest(`/api/profile/${trip.customer_id}`),
-            ];
+      // ใช้ข้อมูลจาก /api/bookings โดยตรง เพราะเราจะดึงรายละเอียดครบใน Modal แล้ว
+      const processedTrips = bookingsArray.map((trip: any) => ({
+        ...trip,
+        travel_packages: {
+          title: "แพคเกจ ID: " + trip.package_id?.substring(0, 8) + "...",
+          location: "คลิกเพื่อดูรายละเอียด",
+        },
+        profiles: {
+          display_name: "ผู้จอง",
+        },
+      }));
 
-            // Fetch discount code if exists
-            if (trip.discount_code_id) {
-              fetchPromises.push(
-                apiRequest(`/api/discount_codes/${trip.discount_code_id}`)
-              );
-            }
-
-            const results = await Promise.all(fetchPromises);
-            const packageData = results[0];
-            const profileData = results[1];
-            const discountData = results[2];
-
-            return {
-              ...trip,
-              discount_code: discountData?.code,
-              travel_packages: {
-                title: packageData?.title || "ไม่ระบุ",
-                location: packageData?.location || "ไม่ระบุ",
-              },
-              profiles: { display_name: profileData?.display_name || "ไม่ระบุ" },
-            };
-          } catch (error) {
-            console.error(`Error fetching details for trip ${trip.id}:`, error);
-            return {
-              ...trip,
-              discount_code: null,
-              travel_packages: {
-                title: "ไม่ระบุ",
-                location: "ไม่ระบุ",
-              },
-              profiles: { display_name: "ไม่ระบุ" },
-            };
-          }
-        })
-      );
-
-      setUpcomingTrips(
-        tripsWithDetails.filter(
-          (t) => t.travel_packages && t.profiles
-        ) as UpcomingTrip[]
-      );
+      setUpcomingTrips(processedTrips);
     } catch (error) {
       console.error("Error fetching upcoming trips:", error);
       setUpcomingTrips([]);
@@ -311,15 +291,15 @@ const AdvertiserDashboard = () => {
 
   // Group bookings by package
   const groupedPackages = upcomingTrips.reduce((acc: any, trip) => {
-    const packageTitle = trip.travel_packages?.title || 'ไม่ระบุ';
-    const packageLocation = trip.travel_packages?.location || 'ไม่ระบุ';
-    
+    const packageTitle = trip.travel_packages?.title || "ไม่ระบุ";
+    const packageLocation = trip.travel_packages?.location || "ไม่ระบุ";
+
     if (!acc[packageTitle]) {
       acc[packageTitle] = {
         title: packageTitle,
         location: packageLocation,
         package_id: trip.package_id,
-        bookings: []
+        bookings: [],
       };
     }
     acc[packageTitle].bookings.push(trip);
@@ -328,11 +308,41 @@ const AdvertiserDashboard = () => {
 
   const packageList = Object.values(groupedPackages);
 
-  const handlePackageClick = (packageInfo: any) => {
-    setSelectedPackageBookings(packageInfo.bookings);
-    setSelectedPackageInfo({title: packageInfo.title, location: packageInfo.location});
+  const handlePackageClick = async (packageInfo: any) => {
+    try {
+      // เรียก API เส้นใหม่เพื่อดึงรายชื่อผู้จองที่ confirmed แล้ว พร้อมข้อมูลครบถ้วน
+      const confirmedBookings = await apiRequest(
+        `/package/userList/${packageInfo.package_id}`
+      );
+
+      // ข้อมูลจาก API ใหม่จะมีข้อมูล TravelPackage และ Profile ครบแล้ว
+      setSelectedPackageBookings(confirmedBookings);
+
+      // ใช้ข้อมูลจาก booking แรกเพื่อแสดงชื่อแพคเกจ
+      const packageTitle =
+        confirmedBookings[0]?.TravelPackages?.title ||
+        confirmedBookings[0]?.travel_packages?.title ||
+        packageInfo.title;
+      const packageLocation =
+        confirmedBookings[0]?.TravelPackages?.location ||
+        confirmedBookings[0]?.travel_packages?.location ||
+        packageInfo.location;
+
+      setSelectedPackageInfo({
+        title: packageTitle,
+        location: packageLocation,
+      });
+    } catch (error) {
+      console.error("Error fetching confirmed bookings:", error);
+      setSelectedPackageBookings([]);
+      setSelectedPackageInfo({
+        title: packageInfo.title,
+        location: packageInfo.location,
+      });
+    }
   };
 
+  // Loading state
   // Loading state
   if (loading) {
     return (
@@ -469,9 +479,7 @@ const AdvertiserDashboard = () => {
                     <TableRow key={index}>
                       <TableCell>
                         <div>
-                          <p className="font-medium">
-                            {packageInfo.title}
-                          </p>
+                          <p className="font-medium">{packageInfo.title}</p>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -485,7 +493,12 @@ const AdvertiserDashboard = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {packageInfo.bookings.reduce((total: number, booking: any) => total + booking.guest_count, 0)} คน
+                        {packageInfo.bookings.reduce(
+                          (total: number, booking: any) =>
+                            total + booking.guest_count,
+                          0
+                        )}{" "}
+                        คน
                       </TableCell>
                       <TableCell>
                         <Button
@@ -528,24 +541,39 @@ const AdvertiserDashboard = () => {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="bg-blue-50 p-4 rounded-lg border">
                     <p className="text-sm text-blue-600 mb-1">จำนวนการจอง</p>
-                    <p className="text-2xl font-bold text-blue-700">{selectedPackageBookings.length}</p>
+                    <p className="text-2xl font-bold text-blue-700">
+                      {selectedPackageBookings.length}
+                    </p>
                   </div>
                   <div className="bg-green-50 p-4 rounded-lg border">
-                    <p className="text-sm text-green-600 mb-1">รวมผู้เข้าร่วม</p>
+                    <p className="text-sm text-green-600 mb-1">
+                      รวมผู้เข้าร่วม
+                    </p>
                     <p className="text-2xl font-bold text-green-700">
-                      {selectedPackageBookings.reduce((total, booking) => total + booking.guest_count, 0)} คน
+                      {selectedPackageBookings.reduce(
+                        (total, booking) => total + booking.guest_count,
+                        0
+                      )}{" "}
+                      คน
                     </p>
                   </div>
                   <div className="bg-amber-50 p-4 rounded-lg border">
                     <p className="text-sm text-amber-600 mb-1">รายได้รวม</p>
                     <p className="text-2xl font-bold text-amber-700">
-                      ฿{selectedPackageBookings.reduce((total, booking) => total + (booking.final_amount || 0), 0).toLocaleString()}
+                      ฿
+                      {selectedPackageBookings
+                        .reduce(
+                          (total, booking) =>
+                            total + (booking.final_amount || 0),
+                          0
+                        )
+                        .toLocaleString()}
                     </p>
                   </div>
                   <div className="bg-purple-50 p-4 rounded-lg border">
                     <p className="text-sm text-purple-600 mb-1">การจองยืนยัน</p>
                     <p className="text-2xl font-bold text-purple-700">
-                      {selectedPackageBookings.filter(booking => booking.status === 'confirmed').length}
+                      {selectedPackageBookings.length}
                     </p>
                   </div>
                 </div>
@@ -569,18 +597,28 @@ const AdvertiserDashboard = () => {
                         <TableRow key={booking.id}>
                           <TableCell>
                             <div>
-                              <p className="font-medium">{booking.contact_name}</p>
-                              {booking.profiles?.display_name && (
+                              <p className="font-medium">
+                                {booking.contact_name}
+                              </p>
+                              {(booking.Profile?.display_name ||
+                                booking.profile?.display_name) && (
                                 <p className="text-sm text-muted-foreground">
-                                  ({booking.profiles.display_name})
+                                  (
+                                  {booking.Profile?.display_name ||
+                                    booking.profile?.display_name}
+                                  )
                                 </p>
                               )}
                             </div>
                           </TableCell>
                           <TableCell>
-                            {format(new Date(booking.booking_date), "dd/MM/yyyy", {
-                              locale: th,
-                            })}
+                            {format(
+                              new Date(booking.booking_date),
+                              "dd/MM/yyyy",
+                              {
+                                locale: th,
+                              }
+                            )}
                           </TableCell>
                           <TableCell>{booking.guest_count} คน</TableCell>
                           <TableCell>
@@ -626,19 +664,29 @@ const AdvertiserDashboard = () => {
                 </div>
 
                 {/* Special Requests Summary */}
-                {selectedPackageBookings.some(booking => booking.special_requests) && (
+                {selectedPackageBookings.some(
+                  (booking) => booking.special_requests
+                ) && (
                   <div className="border rounded-lg p-4 bg-purple-50">
-                    <h3 className="font-semibold mb-3 text-purple-800">คำขอพิเศษ</h3>
+                    <h3 className="font-semibold mb-3 text-purple-800">
+                      คำขอพิเศษ
+                    </h3>
                     <div className="space-y-3">
                       {selectedPackageBookings
-                        .filter(booking => booking.special_requests)
+                        .filter((booking) => booking.special_requests)
                         .map((booking) => (
-                          <div key={booking.id} className="bg-white p-3 rounded border">
-                            <p className="font-medium text-sm mb-1">{booking.contact_name}:</p>
-                            <p className="text-sm text-gray-600">{booking.special_requests}</p>
+                          <div
+                            key={booking.id}
+                            className="bg-white p-3 rounded border"
+                          >
+                            <p className="font-medium text-sm mb-1">
+                              {booking.contact_name}:
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              {booking.special_requests}
+                            </p>
                           </div>
-                        ))
-                      }
+                        ))}
                     </div>
                   </div>
                 )}
@@ -648,7 +696,9 @@ const AdvertiserDashboard = () => {
                   <Button
                     onClick={() => {
                       if (selectedPackageBookings[0]?.package_id) {
-                        navigate(`/packages/${selectedPackageBookings[0].package_id}`);
+                        navigate(
+                          `/packages/${selectedPackageBookings[0].package_id}`
+                        );
                       }
                     }}
                     variant="outline"

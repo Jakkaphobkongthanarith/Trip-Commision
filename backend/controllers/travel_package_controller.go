@@ -59,11 +59,10 @@ func GetAllPackagesHandler(c *gin.Context, db *gorm.DB) {
 	c.JSON(200, packages)
 }
 
-// ดึง travel package โดย ID
+// ดึง travel package โดย ID - แสดงเป็น packageList ที่ filter ด้วย packageId
 func GetPackageByIDHandler(c *gin.Context, db *gorm.DB) {
 	id := c.Param("id")
 	var pkg models.TravelPackage
-	println("cat")
 	
 	// Debug log
 	println("Searching for package with ID:", id)
@@ -82,7 +81,8 @@ func GetPackageByIDHandler(c *gin.Context, db *gorm.DB) {
 	// แปลง tags เป็น array ก่อนส่งกลับ
 	convertTagsToArray(&pkg)
 	
-	c.JSON(200, pkg)
+	// ส่งกลับเป็น array แทนที่จะเป็น object เดียว (ตามที่ขอให้เป็น packageList)
+	c.JSON(200, []models.TravelPackage{pkg})
 }
 
 // สร้าง travel package ใหม่
@@ -138,6 +138,25 @@ func UpdateCurrentBookingsHandler(c *gin.Context, db *gorm.DB) {
 		"message": "Current bookings updated successfully",
 		"package": updatedPkg,
 	})
+}
+
+// ดึงรายชื่อผู้จองที่ยืนยันแล้วสำหรับแพคเกจ
+func GetPackageConfirmedUsersHandler(c *gin.Context, db *gorm.DB) {
+	packageID := c.Param("packageId")
+	
+	// ดึงข้อมูลการจองที่มี status = confirmed สำหรับแพคเกจนี้
+	var bookings []models.Booking
+	result := db.Where("package_id = ? AND status = ?", packageID, "confirmed").
+		Preload("TravelPackages").  // โหลดข้อมูลแพคเกจ
+		Preload("Profile").         // โหลดข้อมูลโปรไฟล์ผู้จอง (แก้ไขชื่อให้ตรงกับ model)
+		Find(&bookings)
+	
+	if result.Error != nil {
+		c.JSON(500, gin.H{"error": result.Error.Error()})
+		return
+	}
+	
+	c.JSON(200, bookings)
 }
 
 

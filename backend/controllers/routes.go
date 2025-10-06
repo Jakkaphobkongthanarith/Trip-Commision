@@ -28,6 +28,9 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	r.PUT("/package/:id/bookings", func(c *gin.Context) {
 		UpdateCurrentBookingsHandler(c, db)
 	})
+	r.GET("/package/userList/:packageId", func(c *gin.Context) {
+		GetPackageConfirmedUsersHandler(c, db)
+	})
 
 	// Profile/User routes (สำหรับ profiles table)
 	r.GET("/api/profiles", func(c *gin.Context) {

@@ -29,4 +29,5 @@ type Booking struct {
 
 	// Relationships
 	TravelPackages *TravelPackage `json:"travel_packages" gorm:"foreignKey:PackageID"`
+	Profile        *Profile       `json:"profile" gorm:"foreignKey:CustomerID;references:UserID"`
 }
