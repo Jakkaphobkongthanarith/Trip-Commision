@@ -9,6 +9,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -45,6 +52,8 @@ interface UpcomingTrip {
   special_requests?: string;
   total_amount: number;
   final_amount: number;
+  discount_amount?: number;
+  discount_code?: string;
   travel_packages: {
     title: string;
     location: string;
@@ -68,6 +77,7 @@ const AdvertiserDashboard = () => {
   const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>([]);
   const [monthlyCommission, setMonthlyCommission] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [selectedTrip, setSelectedTrip] = useState<UpcomingTrip | null>(null);
 
   useEffect(() => {
     let isCancelled = false;
@@ -148,13 +158,24 @@ const AdvertiserDashboard = () => {
       // Fetch related data separately
       const tripsWithDetails = await Promise.all(
         data.map(async (trip: any) => {
-          const [packageData, profileData] = await Promise.all([
+          const fetchPromises = [
             apiRequest(`/api/packages/${trip.package_id}`),
             apiRequest(`/api/profiles/${trip.customer_id}`),
-          ]);
+          ];
+
+          // Fetch discount code if exists
+          if (trip.discount_code_id) {
+            fetchPromises.push(apiRequest(`/api/discount_codes/${trip.discount_code_id}`));
+          }
+
+          const results = await Promise.all(fetchPromises);
+          const packageData = results[0];
+          const profileData = results[1];
+          const discountData = results[2];
 
           return {
             ...trip,
+            discount_code: discountData?.code,
             travel_packages: {
               title: packageData.title,
               location: packageData.location,
@@ -238,11 +259,11 @@ const AdvertiserDashboard = () => {
           </Card>
         </div>
 
-        {/* Upcoming Trips - Full Width with Contact Info */}
+        {/* Upcoming Trips */}
         <Card className="mb-6 bg-white/95 backdrop-blur-sm">
           <CardHeader>
             <CardTitle>ทริปที่จะมาถึง</CardTitle>
-            <CardDescription>รายการจองพร้อมข้อมูลติดต่อลูกค้า</CardDescription>
+            <CardDescription>คลิกเพื่อดูรายละเอียดผู้จองและข้อมูลติดต่อ</CardDescription>
           </CardHeader>
           <CardContent>
             {upcomingTrips.length === 0 ? (
@@ -250,94 +271,47 @@ const AdvertiserDashboard = () => {
                 ไม่มีทริปที่จะมาถึง
               </p>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {upcomingTrips.map((trip) => (
                   <Card
                     key={trip.id}
                     className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary"
-                    onClick={() => navigate(`/package/${trip.package_id}`)}
+                    onClick={() => setSelectedTrip(trip)}
                   >
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-lg">
-                            {trip.travel_packages?.title}
-                          </CardTitle>
-                          <CardDescription>
-                            {trip.travel_packages?.location}
-                          </CardDescription>
-                        </div>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <CardTitle className="text-base line-clamp-2">
+                          {trip.travel_packages?.title}
+                        </CardTitle>
                         <Badge
                           variant={
                             trip.status === "confirmed"
                               ? "default"
                               : "secondary"
                           }
+                          className="shrink-0"
                         >
-                          {trip.status === "confirmed"
-                            ? "ยืนยันแล้ว"
-                            : "รอดำเนินการ"}
+                          {trip.status === "confirmed" ? "ยืนยัน" : "รอ"}
                         </Badge>
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-3">
+                    <CardContent className="space-y-2">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">วันที่เดินทาง:</span>
+                        <span className="text-muted-foreground">วันที่:</span>
                         <span className="font-medium">
-                          {format(new Date(trip.booking_date), "d MMMM yyyy", { locale: th })}
+                          {format(new Date(trip.booking_date), "d MMM yyyy", { locale: th })}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">จำนวนผู้เดินทาง:</span>
+                        <span className="text-muted-foreground">ผู้เดินทาง:</span>
                         <span className="font-medium">{trip.guest_count} คน</span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">ยอดรวม:</span>
+                        <span className="text-muted-foreground">ยอดชำระ:</span>
                         <span className="font-medium text-primary">
                           ฿{trip.final_amount.toLocaleString()}
                         </span>
                       </div>
-                      
-                      <div className="border-t pt-3 mt-3 space-y-2">
-                        <p className="text-sm font-semibold text-muted-foreground mb-2">
-                          ข้อมูลติดต่อลูกค้า:
-                        </p>
-                        <div className="flex items-center gap-2 text-sm">
-                          <User className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">{trip.contact_name}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Phone className="h-4 w-4 text-muted-foreground" />
-                          <a
-                            href={`tel:${trip.contact_phone}`}
-                            className="text-primary hover:underline"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {trip.contact_phone}
-                          </a>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Mail className="h-4 w-4 text-muted-foreground" />
-                          <a
-                            href={`mailto:${trip.contact_email}`}
-                            className="text-primary hover:underline"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {trip.contact_email}
-                          </a>
-                        </div>
-                      </div>
-
-                      {trip.special_requests && (
-                        <div className="border-t pt-3 mt-3">
-                          <p className="text-sm font-semibold text-muted-foreground mb-1">
-                            คำขอพิเศษ:
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {trip.special_requests}
-                          </p>
-                        </div>
-                      )}
                     </CardContent>
                   </Card>
                 ))}
@@ -345,6 +319,132 @@ const AdvertiserDashboard = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Trip Details Modal */}
+        <Dialog open={!!selectedTrip} onOpenChange={() => setSelectedTrip(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="text-xl">
+                {selectedTrip?.travel_packages?.title}
+              </DialogTitle>
+              <DialogDescription>
+                {selectedTrip?.travel_packages?.location}
+              </DialogDescription>
+            </DialogHeader>
+            
+            {selectedTrip && (
+              <div className="space-y-4">
+                {/* Booking Details */}
+                <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">วันที่เดินทาง</p>
+                    <p className="font-medium">
+                      {format(new Date(selectedTrip.booking_date), "d MMMM yyyy", { locale: th })}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">จำนวนผู้เดินทาง</p>
+                    <p className="font-medium">{selectedTrip.guest_count} คน</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">สถานะ</p>
+                    <Badge variant={selectedTrip.status === "confirmed" ? "default" : "secondary"}>
+                      {selectedTrip.status === "confirmed" ? "ยืนยันแล้ว" : "รอดำเนินการ"}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">ยอดชำระ</p>
+                    <p className="font-bold text-primary">
+                      ฿{selectedTrip.final_amount.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Discount Info */}
+                {selectedTrip.discount_code && (
+                  <div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+                    <p className="text-sm font-semibold text-green-800 dark:text-green-200 mb-2">
+                      ใช้โค้ดส่วนลด
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-mono font-bold text-green-700 dark:text-green-300">
+                          {selectedTrip.discount_code}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          ส่วนลด: ฿{selectedTrip.discount_amount?.toLocaleString() || 0}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">ราคาเต็ม</p>
+                        <p className="line-through text-muted-foreground">
+                          ฿{selectedTrip.total_amount.toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Customer Contact */}
+                <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
+                  <p className="font-semibold mb-3">ข้อมูลติดต่อลูกค้า</p>
+                  <div className="flex items-center gap-3">
+                    <User className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">ชื่อผู้จอง</p>
+                      <p className="font-medium">{selectedTrip.contact_name}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Phone className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">เบอร์โทรศัพท์</p>
+                      <a
+                        href={`tel:${selectedTrip.contact_phone}`}
+                        className="font-medium text-primary hover:underline"
+                      >
+                        {selectedTrip.contact_phone}
+                      </a>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Mail className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">อีเมล</p>
+                      <a
+                        href={`mailto:${selectedTrip.contact_email}`}
+                        className="font-medium text-primary hover:underline"
+                      >
+                        {selectedTrip.contact_email}
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Special Requests */}
+                {selectedTrip.special_requests && (
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <p className="font-semibold mb-2">คำขอพิเศษ</p>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedTrip.special_requests}
+                    </p>
+                  </div>
+                )}
+
+                {/* View Package Button */}
+                <Button
+                  onClick={() => {
+                    navigate(`/package/${selectedTrip.package_id}`);
+                    setSelectedTrip(null);
+                  }}
+                  className="w-full"
+                >
+                  ดูรายละเอียดแพคเกจ
+                </Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Commission History */}
         <Card className="mt-6 bg-white/95 backdrop-blur-sm">
