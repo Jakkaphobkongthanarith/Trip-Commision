@@ -133,7 +133,7 @@ func CreateBookingPaymentHandler(c *gin.Context, db *gorm.DB) {
 		},
 		Mode: stripe.String(string(stripe.CheckoutSessionModePayment)),
 		SuccessURL: stripe.String(os.Getenv("FRONTEND_URL") + "/payment/success?session_id={CHECKOUT_SESSION_ID}"),
-		CancelURL:  stripe.String(os.Getenv("FRONTEND_URL") + "/package/" + req.PackageID.String()),
+		CancelURL:  stripe.String(os.Getenv("FRONTEND_URL") + "/packages/" + req.PackageID.String()),
 		ClientReferenceID: stripe.String(booking.ID.String()),
 		CustomerEmail: stripe.String(req.ContactEmail),
 		Metadata: map[string]string{

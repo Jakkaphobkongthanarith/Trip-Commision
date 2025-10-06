@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -8,6 +8,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -19,8 +26,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/api";
-import { DollarSign, Star, Calendar, TrendingUp } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { DollarSign, Star, Calendar, TrendingUp, User, Phone, Mail } from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import Navbar from "@/components/Navbar";
 
@@ -48,9 +55,18 @@ interface Review {
 
 interface UpcomingTrip {
   id: string;
+  package_id: string;
   booking_date: string;
   guest_count: number;
   status: string;
+  contact_name: string;
+  contact_phone: string;
+  contact_email: string;
+  special_requests?: string;
+  total_amount: number;
+  final_amount: number;
+  discount_amount?: number;
+  discount_code?: string;
   travel_packages: {
     title: string;
     location: string;
@@ -69,12 +85,15 @@ const AdvertiserDashboard = () => {
     return <Navigate to="/auth" replace />;
   }
 
+  const navigate = useNavigate();
   const [userRole, setUserRole] = useState<string>("");
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>([]);
   const [monthlyCommission, setMonthlyCommission] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [selectedPackageBookings, setSelectedPackageBookings] = useState<UpcomingTrip[] | null>(null);
+  const [selectedPackageInfo, setSelectedPackageInfo] = useState<{title: string, location: string} | null>(null);
 
   useEffect(() => {
     let isCancelled = false;
@@ -125,7 +144,7 @@ const AdvertiserDashboard = () => {
       }
 
       const data = await apiRequest(
-        `/api/commissions?advertiser_id=${user.id}&order=created_at.desc`
+        `/api/commissions`
       );
 
       // ตรวจสอบว่า data เป็น array หรือไม่
@@ -170,7 +189,7 @@ const AdvertiserDashboard = () => {
   const fetchReviews = async () => {
     try {
       const data = await apiRequest(
-        "/api/reviews?limit=10&order=created_at.desc"
+        "/api/reviews"
       );
 
       // ตรวจสอบว่า data เป็น array หรือไม่
@@ -220,11 +239,9 @@ const AdvertiserDashboard = () => {
   };
 
   const fetchUpcomingTrips = async () => {
-    const today = new Date().toISOString().split("T")[0];
-
     try {
       const data = await apiRequest(
-        `/api/bookings?booking_date.gte=${today}&limit=10&order=booking_date.asc`
+        `/api/bookings`
       );
 
       // ตรวจสอบว่า data เป็น array หรือไม่
@@ -240,25 +257,37 @@ const AdvertiserDashboard = () => {
       const tripsWithDetails = await Promise.all(
         bookingsArray.map(async (trip: any) => {
           try {
-            const [packageData, profileData] = await Promise.all([
+            const fetchPromises = [
               apiRequest(`/package/${trip.package_id}`),
               apiRequest(`/api/profile/${trip.customer_id}`),
-            ]);
+            ];
+
+            // Fetch discount code if exists
+            if (trip.discount_code_id) {
+              fetchPromises.push(
+                apiRequest(`/api/discount_codes/${trip.discount_code_id}`)
+              );
+            }
+
+            const results = await Promise.all(fetchPromises);
+            const packageData = results[0];
+            const profileData = results[1];
+            const discountData = results[2];
 
             return {
               ...trip,
+              discount_code: discountData?.code,
               travel_packages: {
                 title: packageData?.title || "ไม่ระบุ",
                 location: packageData?.location || "ไม่ระบุ",
               },
-              profiles: {
-                display_name: profileData?.display_name || "ไม่ระบุ",
-              },
+              profiles: { display_name: profileData?.display_name || "ไม่ระบุ" },
             };
           } catch (error) {
             console.error(`Error fetching details for trip ${trip.id}:`, error);
             return {
               ...trip,
+              discount_code: null,
               travel_packages: {
                 title: "ไม่ระบุ",
                 location: "ไม่ระบุ",
@@ -269,11 +298,39 @@ const AdvertiserDashboard = () => {
         })
       );
 
-      setUpcomingTrips(tripsWithDetails as UpcomingTrip[]);
+      setUpcomingTrips(
+        tripsWithDetails.filter(
+          (t) => t.travel_packages && t.profiles
+        ) as UpcomingTrip[]
+      );
     } catch (error) {
       console.error("Error fetching upcoming trips:", error);
       setUpcomingTrips([]);
     }
+  };
+
+  // Group bookings by package
+  const groupedPackages = upcomingTrips.reduce((acc: any, trip) => {
+    const packageTitle = trip.travel_packages?.title || 'ไม่ระบุ';
+    const packageLocation = trip.travel_packages?.location || 'ไม่ระบุ';
+    
+    if (!acc[packageTitle]) {
+      acc[packageTitle] = {
+        title: packageTitle,
+        location: packageLocation,
+        package_id: trip.package_id,
+        bookings: []
+      };
+    }
+    acc[packageTitle].bookings.push(trip);
+    return acc;
+  }, {});
+
+  const packageList = Object.values(groupedPackages);
+
+  const handlePackageClick = (packageInfo: any) => {
+    setSelectedPackageBookings(packageInfo.bookings);
+    setSelectedPackageInfo({title: packageInfo.title, location: packageInfo.location});
   };
 
   // Loading state
@@ -383,120 +440,237 @@ const AdvertiserDashboard = () => {
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recent Reviews */}
-          <Card className="bg-white/95 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle>รีวิวล่าสุด</CardTitle>
-              <CardDescription>ความคิดเห็นจากนักท่องเที่ยว</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {reviews.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">
-                  ยังไม่มีรีวิว
-                </p>
-              ) : (
-                <div className="space-y-4">
-                  {reviews.slice(0, 5).map((review) => (
-                    <div
-                      key={review.id}
-                      className="border-b pb-4 last:border-b-0"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-2">
-                          <span className="font-medium">
-                            {review.profiles?.display_name}
-                          </span>
-                          <div className="flex">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`w-4 h-4 ${
-                                  i < review.rating
-                                    ? "text-yellow-400 fill-current"
-                                    : "text-gray-300"
-                                }`}
-                              />
-                            ))}
-                          </div>
+        {/* Upcoming Trips */}
+        <Card className="mb-6 bg-white/95 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle>แพคเกจที่มีการจอง</CardTitle>
+            <CardDescription>
+              คลิกเพื่อดูรายชื่อผู้จองและข้อมูลติดต่อ
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {packageList.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">
+                ไม่มีแพคเกจที่มีการจอง
+              </p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ชื่อแพคเกจ</TableHead>
+                    <TableHead>สถานที่</TableHead>
+                    <TableHead>จำนวนการจอง</TableHead>
+                    <TableHead>รวมผู้เข้าร่วม</TableHead>
+                    <TableHead>การดำเนินการ</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {packageList.map((packageInfo: any, index) => (
+                    <TableRow key={index}>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">
+                            {packageInfo.title}
+                          </p>
                         </div>
-                        <span className="text-sm text-muted-foreground">
-                          {formatDistanceToNow(new Date(review.created_at), {
-                            addSuffix: true,
-                            locale: th,
-                          })}
-                        </span>
-                      </div>
-                      <p className="text-sm font-medium mb-1">
-                        {review.travel_packages?.title}
-                      </p>
-                      {review.comment && (
+                      </TableCell>
+                      <TableCell>
                         <p className="text-sm text-muted-foreground">
-                          {review.comment}
+                          {packageInfo.location}
                         </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Upcoming Trips */}
-          <Card className="bg-white/95 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle>ทริปที่จะมาถึง</CardTitle>
-              <CardDescription>รายการจองที่จะเกิดขึ้น</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {upcomingTrips.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">
-                  ไม่มีทริปที่จะมาถึง
-                </p>
-              ) : (
-                <div className="space-y-4">
-                  {upcomingTrips.slice(0, 5).map((trip) => (
-                    <div
-                      key={trip.id}
-                      className="flex items-center justify-between border-b pb-4 last:border-b-0"
-                    >
-                      <div>
-                        <p className="font-medium">
-                          {trip.travel_packages?.title}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {trip.travel_packages?.location} • {trip.guest_count}{" "}
-                          คน
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          โดย {trip.profiles?.display_name}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium">
-                          {new Date(trip.booking_date).toLocaleDateString(
-                            "th-TH"
-                          )}
-                        </p>
-                        <Badge
-                          variant={
-                            trip.status === "confirmed"
-                              ? "default"
-                              : "secondary"
-                          }
-                        >
-                          {trip.status === "confirmed"
-                            ? "ยืนยันแล้ว"
-                            : "รอดำเนินการ"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">
+                          {packageInfo.bookings.length} รายการ
                         </Badge>
-                      </div>
-                    </div>
+                      </TableCell>
+                      <TableCell>
+                        {packageInfo.bookings.reduce((total: number, booking: any) => total + booking.guest_count, 0)} คน
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePackageClick(packageInfo)}
+                        >
+                          ดูรายชื่อผู้จอง
+                        </Button>
+                      </TableCell>
+                    </TableRow>
                   ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Package Bookings Modal */}
+        <Dialog
+          open={!!selectedPackageBookings}
+          onOpenChange={() => {
+            setSelectedPackageBookings(null);
+            setSelectedPackageInfo(null);
+          }}
+        >
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-xl">
+                รายชื่อผู้จอง: {selectedPackageInfo?.title}
+              </DialogTitle>
+              <DialogDescription>
+                สถานที่: {selectedPackageInfo?.location}
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedPackageBookings && (
+              <div className="space-y-6">
+                {/* Summary */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="bg-blue-50 p-4 rounded-lg border">
+                    <p className="text-sm text-blue-600 mb-1">จำนวนการจอง</p>
+                    <p className="text-2xl font-bold text-blue-700">{selectedPackageBookings.length}</p>
+                  </div>
+                  <div className="bg-green-50 p-4 rounded-lg border">
+                    <p className="text-sm text-green-600 mb-1">รวมผู้เข้าร่วม</p>
+                    <p className="text-2xl font-bold text-green-700">
+                      {selectedPackageBookings.reduce((total, booking) => total + booking.guest_count, 0)} คน
+                    </p>
+                  </div>
+                  <div className="bg-amber-50 p-4 rounded-lg border">
+                    <p className="text-sm text-amber-600 mb-1">รายได้รวม</p>
+                    <p className="text-2xl font-bold text-amber-700">
+                      ฿{selectedPackageBookings.reduce((total, booking) => total + (booking.final_amount || 0), 0).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="bg-purple-50 p-4 rounded-lg border">
+                    <p className="text-sm text-purple-600 mb-1">การจองยืนยัน</p>
+                    <p className="text-2xl font-bold text-purple-700">
+                      {selectedPackageBookings.filter(booking => booking.status === 'confirmed').length}
+                    </p>
+                  </div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+
+                {/* Bookings List */}
+                <div className="border rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>ชื่อผู้จอง</TableHead>
+                        <TableHead>วันที่เดินทาง</TableHead>
+                        <TableHead>จำนวนคน</TableHead>
+                        <TableHead>เบอร์โทร</TableHead>
+                        <TableHead>อีเมล</TableHead>
+                        <TableHead>ยอดชำระ</TableHead>
+                        <TableHead>สถานะ</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedPackageBookings.map((booking) => (
+                        <TableRow key={booking.id}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{booking.contact_name}</p>
+                              {booking.profiles?.display_name && (
+                                <p className="text-sm text-muted-foreground">
+                                  ({booking.profiles.display_name})
+                                </p>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {format(new Date(booking.booking_date), "dd/MM/yyyy", {
+                              locale: th,
+                            })}
+                          </TableCell>
+                          <TableCell>{booking.guest_count} คน</TableCell>
+                          <TableCell>
+                            <a
+                              href={`tel:${booking.contact_phone}`}
+                              className="text-blue-600 hover:underline"
+                            >
+                              {booking.contact_phone}
+                            </a>
+                          </TableCell>
+                          <TableCell>
+                            <a
+                              href={`mailto:${booking.contact_email}`}
+                              className="text-blue-600 hover:underline break-all"
+                            >
+                              {booking.contact_email}
+                            </a>
+                          </TableCell>
+                          <TableCell>
+                            ฿{booking.final_amount?.toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                booking.status === "confirmed"
+                                  ? "default"
+                                  : booking.status === "pending"
+                                  ? "secondary"
+                                  : "destructive"
+                              }
+                            >
+                              {booking.status === "confirmed"
+                                ? "ยืนยันแล้ว"
+                                : booking.status === "pending"
+                                ? "รอยืนยัน"
+                                : "ยกเลิก"}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Special Requests Summary */}
+                {selectedPackageBookings.some(booking => booking.special_requests) && (
+                  <div className="border rounded-lg p-4 bg-purple-50">
+                    <h3 className="font-semibold mb-3 text-purple-800">คำขอพิเศษ</h3>
+                    <div className="space-y-3">
+                      {selectedPackageBookings
+                        .filter(booking => booking.special_requests)
+                        .map((booking) => (
+                          <div key={booking.id} className="bg-white p-3 rounded border">
+                            <p className="font-medium text-sm mb-1">{booking.contact_name}:</p>
+                            <p className="text-sm text-gray-600">{booking.special_requests}</p>
+                          </div>
+                        ))
+                      }
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-4 border-t">
+                  <Button
+                    onClick={() => {
+                      if (selectedPackageBookings[0]?.package_id) {
+                        navigate(`/packages/${selectedPackageBookings[0].package_id}`);
+                      }
+                    }}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    ดูรายละเอียดแพคเกจ
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setSelectedPackageBookings(null);
+                      setSelectedPackageInfo(null);
+                    }}
+                    variant="default"
+                    className="flex-1"
+                  >
+                    ปิด
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Commission History - Only for advertisers */}
         {userRole === "advertiser" && (
@@ -531,7 +705,9 @@ const AdvertiserDashboard = () => {
                         <TableCell>
                           ฿{commission.commission_amount.toLocaleString()}
                         </TableCell>
-                        <TableCell>{commission.commission_percentage}%</TableCell>
+                        <TableCell>
+                          {commission.commission_percentage}%
+                        </TableCell>
                         <TableCell>
                           <Badge
                             variant={
@@ -540,7 +716,9 @@ const AdvertiserDashboard = () => {
                                 : "secondary"
                             }
                           >
-                            {commission.status === "paid" ? "จ่ายแล้ว" : "รอจ่าย"}
+                            {commission.status === "paid"
+                              ? "จ่ายแล้ว"
+                              : "รอจ่าย"}
                           </Badge>
                         </TableCell>
                       </TableRow>
