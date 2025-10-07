@@ -81,8 +81,8 @@ func GetPackageByIDHandler(c *gin.Context, db *gorm.DB) {
 	// แปลง tags เป็น array ก่อนส่งกลับ
 	convertTagsToArray(&pkg)
 	
-	// ส่งกลับเป็น array แทนที่จะเป็น object เดียว (ตามที่ขอให้เป็น packageList)
-	c.JSON(200, []models.TravelPackage{pkg})
+	// ส่งกลับเป็น object เดียว (ตามเดิม)
+	c.JSON(200, pkg)
 }
 
 // สร้าง travel package ใหม่

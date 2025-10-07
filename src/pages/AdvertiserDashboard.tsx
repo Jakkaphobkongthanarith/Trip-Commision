@@ -1,5 +1,18 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+
+interface DiscountCode {
+  id: string;
+  code: string;
+  discount_percentage: number;
+  max_uses: number;
+  current_uses: number;
+  usage_percentage: number;
+  commission_rate: number;
+  tier: string;
+  is_active: boolean;
+  expires_at?: string;
+}
 import { Navigate, useNavigate } from "react-router-dom";
 import {
   Card,
@@ -41,6 +54,16 @@ import Navbar from "@/components/Navbar";
 
 interface Commission {
   id: string;
+  booking_id: string;
+  commission_amount: number;
+  commission_percentage: number;
+  status: string;
+  created_at: string;
+}
+
+interface DiscountCommission {
+  id: string;
+  advertiser_id: string;
   booking_id: string;
   commission_amount: number;
   commission_percentage: number;
@@ -108,6 +131,10 @@ const AdvertiserDashboard = () => {
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>([]);
+  const [discountCodes, setDiscountCodes] = useState<DiscountCode[]>([]);
+  const [discountCommissions, setDiscountCommissions] = useState<
+    DiscountCommission[]
+  >([]);
   const [monthlyCommission, setMonthlyCommission] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selectedPackageBookings, setSelectedPackageBookings] = useState<
@@ -128,6 +155,8 @@ const AdvertiserDashboard = () => {
         fetchCommissions(),
         fetchReviews(),
         fetchUpcomingTrips(),
+        fetchDiscountCodes(),
+        fetchDiscountCommissions(),
       ]);
       if (!isCancelled) setLoading(false);
     };
@@ -254,6 +283,32 @@ const AdvertiserDashboard = () => {
     } catch (error) {
       console.error("Error fetching reviews:", error);
       setReviews([]);
+    }
+  };
+
+  const fetchDiscountCodes = async () => {
+    if (!user || userRole !== "advertiser") return;
+
+    try {
+      const data = await apiRequest(
+        `/api/advertiser/${user.id}/discount-codes`
+      );
+      setDiscountCodes(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error fetching discount codes:", error);
+      setDiscountCodes([]);
+    }
+  };
+
+  const fetchDiscountCommissions = async () => {
+    if (!user || userRole !== "advertiser") return;
+
+    try {
+      const data = await apiRequest(`/api/advertiser/${user.id}/commissions`);
+      setDiscountCommissions(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error fetching discount commissions:", error);
+      setDiscountCommissions([]);
     }
   };
 
@@ -409,43 +464,12 @@ const AdvertiserDashboard = () => {
           <Card className="bg-white/95 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                คะแนนรีวิวเฉลี่ย
-              </CardTitle>
-              <Star className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {reviews.length > 0
-                  ? (
-                      reviews.reduce((sum, review) => sum + review.rating, 0) /
-                      reviews.length
-                    ).toFixed(1)
-                  : "0.0"}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/95 backdrop-blur-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
                 {userRole === "customer" ? "ทริปที่จะมาถึง" : "ทริปที่จะมาถึง"}
               </CardTitle>
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{upcomingTrips.length}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/95 backdrop-blur-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                รีวิวทั้งหมด
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{reviews.length}</div>
             </CardContent>
           </Card>
         </div>
@@ -724,60 +748,227 @@ const AdvertiserDashboard = () => {
 
         {/* Commission History - Only for advertisers */}
         {userRole === "advertiser" && (
-          <Card className="mt-6 bg-white/95 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle>ประวัติค่าคอมมิชชั่น</CardTitle>
-              <CardDescription>รายการค่าคอมมิชชั่นที่ได้รับ</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {commissions.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">
-                  ยังไม่มีข้อมูลค่าคอมมิชชั่น
-                </p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>วันที่</TableHead>
-                      <TableHead>จำนวนเงิน</TableHead>
-                      <TableHead>เปอร์เซ็นต์</TableHead>
-                      <TableHead>สถานะ</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {commissions.slice(0, 10).map((commission) => (
-                      <TableRow key={commission.id}>
-                        <TableCell>
-                          {new Date(commission.created_at).toLocaleDateString(
-                            "th-TH"
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          ฿{commission.commission_amount.toLocaleString()}
-                        </TableCell>
-                        <TableCell>
-                          {commission.commission_percentage}%
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              commission.status === "paid"
-                                ? "default"
-                                : "secondary"
-                            }
-                          >
-                            {commission.status === "paid"
-                              ? "จ่ายแล้ว"
-                              : "รอจ่าย"}
-                          </Badge>
-                        </TableCell>
+          <>
+            {/* Promo Codes Section */}
+            <Card className="mt-6 bg-white/95 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle>โค้ดส่วนลดของคุณ</CardTitle>
+                <CardDescription>
+                  โค้ดส่วนลดที่สร้างสำหรับแพคเกจของคุณ
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {discountCodes.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">
+                    ยังไม่มีโค้ดส่วนลด
+                  </p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>โค้ด</TableHead>
+                        <TableHead>ส่วนลด</TableHead>
+                        <TableHead>การใช้งาน</TableHead>
+                        <TableHead>เปอร์เซ็นต์การใช้</TableHead>
+                        <TableHead>ค่าคอมมิชชั่น</TableHead>
+                        <TableHead>สถานะ</TableHead>
+                        <TableHead>หมดอายุ</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {discountCodes.map((discountCode) => (
+                        <TableRow key={discountCode.id}>
+                          <TableCell className="font-mono font-bold">
+                            {discountCode.code}
+                          </TableCell>
+                          <TableCell>
+                            {discountCode.discount_percentage}%
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              <div className="text-sm">
+                                {discountCode.current_uses}/
+                                {discountCode.max_uses}
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div
+                                  className="bg-blue-600 h-2 rounded-full"
+                                  style={{
+                                    width: `${discountCode.usage_percentage}%`,
+                                  }}
+                                ></div>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm font-medium">
+                              {discountCode.usage_percentage.toFixed(1)}%
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                discountCode.commission_rate > 0
+                                  ? "default"
+                                  : "secondary"
+                              }
+                            >
+                              {discountCode.commission_rate}% (
+                              {discountCode.tier})
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                discountCode.is_active
+                                  ? "default"
+                                  : "destructive"
+                              }
+                            >
+                              {discountCode.is_active
+                                ? "ใช้งานได้"
+                                : "ปิดใช้งาน"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {discountCode.expires_at
+                              ? new Date(
+                                  discountCode.expires_at
+                                ).toLocaleDateString("th-TH")
+                              : "ไม่หมดอายุ"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Promo Commission History */}
+            <Card className="mt-6 bg-white/95 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle>ค่าคอมมิชชั่นจากโค้ดส่วนลด</CardTitle>
+                <CardDescription>
+                  รายการค่าคอมมิชชั่นจากการใช้โค้ดส่วนลด
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {discountCommissions.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">
+                    ยังไม่มีค่าคอมมิชชั่นจากโค้ดส่วนลด
+                  </p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>วันที่</TableHead>
+                        <TableHead>Booking ID</TableHead>
+                        <TableHead>อัตราคอมมิชชั่น</TableHead>
+                        <TableHead>จำนวนเงิน</TableHead>
+                        <TableHead>สถานะ</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {discountCommissions.slice(0, 10).map((commission) => (
+                        <TableRow key={commission.id}>
+                          <TableCell>
+                            {new Date(commission.created_at).toLocaleDateString(
+                              "th-TH"
+                            )}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">
+                            {commission.booking_id.slice(0, 8)}...
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {commission.commission_percentage}%
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span className="font-semibold text-green-600">
+                              ฿{commission.commission_amount.toLocaleString()}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                commission.status === "paid"
+                                  ? "default"
+                                  : "secondary"
+                              }
+                            >
+                              {commission.status === "paid"
+                                ? "จ่ายแล้ว"
+                                : "รอดำเนินการ"}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Regular Commission History */}
+            <Card className="mt-6 bg-white/95 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle>ประวัติค่าคอมมิชชั่นทั่วไป</CardTitle>
+                <CardDescription>
+                  รายการค่าคอมมิชชั่นจากการจองปกติ
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {commissions.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">
+                    ยังไม่มีข้อมูลค่าคอมมิชชั่น
+                  </p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>วันที่</TableHead>
+                        <TableHead>จำนวนเงิน</TableHead>
+                        <TableHead>เปอร์เซ็นต์</TableHead>
+                        <TableHead>สถานะ</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {commissions.slice(0, 10).map((commission) => (
+                        <TableRow key={commission.id}>
+                          <TableCell>
+                            {new Date(commission.created_at).toLocaleDateString(
+                              "th-TH"
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            ฿{commission.commission_amount.toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            {commission.commission_percentage}%
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                commission.status === "paid"
+                                  ? "default"
+                                  : "secondary"
+                              }
+                            >
+                              {commission.status === "paid"
+                                ? "จ่ายแล้ว"
+                                : "รอจ่าย"}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </>
         )}
       </div>
     </div>

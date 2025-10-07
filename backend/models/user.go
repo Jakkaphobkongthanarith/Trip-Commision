@@ -1,24 +1,63 @@
 package models
 
 import (
+	"database/sql/driver"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
 )
 
+// JSONMap is a custom type for handling JSON data from database
+type JSONMap map[string]interface{}
+
+// Scan implements the Scanner interface for database scanning
+func (j *JSONMap) Scan(value interface{}) error {
+	if value == nil {
+		*j = make(JSONMap)
+		return nil
+	}
+	
+	var bytes []byte
+	switch v := value.(type) {
+	case []byte:
+		bytes = v
+	case string:
+		bytes = []byte(v)
+	default:
+		*j = make(JSONMap)
+		return nil
+	}
+	
+	if len(bytes) == 0 {
+		*j = make(JSONMap)
+		return nil
+	}
+	
+	return json.Unmarshal(bytes, j)
+}
+
+// Value implements the driver Valuer interface for database writing
+func (j JSONMap) Value() (driver.Value, error) {
+	if j == nil {
+		return nil, nil
+	}
+	return json.Marshal(j)
+}
+
 // User represents the auth.users table from Supabase
 type User struct {
-	ID          uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey"`
-	Email       string     `json:"email" gorm:"type:varchar(255);uniqueIndex;not null"`
-	Phone       *string    `json:"phone" gorm:"type:varchar(15)"`
+	ID               uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey"`
+	Email            string     `json:"email" gorm:"type:varchar(255);uniqueIndex;not null"`
+	Phone            *string    `json:"phone" gorm:"type:varchar(15)"`
 	EmailConfirmedAt *time.Time `json:"email_confirmed_at" gorm:"type:timestamp with time zone"`
-	LastSignInAt *time.Time `json:"last_sign_in_at" gorm:"type:timestamp with time zone"`
-	RawAppMetaData map[string]interface{} `json:"raw_app_meta_data" gorm:"type:jsonb"`
-	RawUserMetaData map[string]interface{} `json:"raw_user_meta_data" gorm:"type:jsonb"`
-	CreatedAt   time.Time  `json:"created_at" gorm:"type:timestamp with time zone"`
-	UpdatedAt   time.Time  `json:"updated_at" gorm:"type:timestamp with time zone"`
-	Role        *UserRole  `json:"role" gorm:"foreignKey:UserID;references:ID"`
-	Profile     *Profile   `json:"profile" gorm:"foreignKey:UserID;references:ID"`
+	LastSignInAt     *time.Time `json:"last_sign_in_at" gorm:"type:timestamp with time zone"`
+	RawAppMetaData   JSONMap    `json:"raw_app_meta_data" gorm:"type:jsonb"`
+	RawUserMetaData  JSONMap    `json:"raw_user_meta_data" gorm:"type:jsonb"`
+	CreatedAt        time.Time  `json:"created_at" gorm:"type:timestamp with time zone"`
+	UpdatedAt        time.Time  `json:"updated_at" gorm:"type:timestamp with time zone"`
+	Role             *UserRole  `json:"role" gorm:"foreignKey:UserID;references:ID"`
+	Profile          *Profile   `json:"profile" gorm:"foreignKey:UserID;references:ID"`
 }
 
 // UserRole represents the public.user_roles table

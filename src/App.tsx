@@ -13,6 +13,7 @@ import Profile from "./pages/Profile";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentConfirmation from "./pages/PaymentConfirmation";
 import AdvertiserDashboard from "./pages/AdvertiserDashboard";
+import ManagerDashboard from "./pages/ManagerDashboard";
 import MemberManagement from "./pages/MemberManagement";
 import AdminDashboard from "./pages/AdminDashboard";
 import PackageManagement from "./pages/PackageManagement";
@@ -51,6 +52,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <AdvertiserDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/manager"
+              element={
+                <ProtectedRoute>
+                  <ManagerDashboard />
                 </ProtectedRoute>
               }
             />

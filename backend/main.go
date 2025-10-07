@@ -66,7 +66,7 @@ func main() {
 	}
 
 	// Auto migrate tables
-	err = db.AutoMigrate(&models.UserRole{}, &models.TravelPackage{})
+	err = db.AutoMigrate(&models.UserRole{}, &models.TravelPackage{}, &models.DiscountCode{}, &models.Commission{})
 	if err != nil {
 		log.Printf("Warning during migration: %v", err)
 	}

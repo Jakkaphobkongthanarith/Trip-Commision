@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Popover,
   PopoverContent,
@@ -91,6 +92,23 @@ interface User {
   email: string;
 }
 
+interface DiscountCode {
+  id: string;
+  code: string;
+  advertiser_id: string;
+  advertiser_name: string;
+  package_id?: string;
+  package_name: string;
+  discount_percentage: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+interface CreateDiscountCodeForm {
+  package_id: string;
+  discount_percentage: number;
+}
+
 export default function PackageManagement() {
   const { user } = useAuth();
   const { userRole, loading } = useUserRole();
@@ -109,6 +127,18 @@ export default function PackageManagement() {
   >([]);
   const [selectedPackageTitle, setSelectedPackageTitle] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Discount Code states
+  const [discountCodes, setDiscountCodes] = useState<DiscountCode[]>([]);
+  const [isDiscountDialogOpen, setIsDiscountDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"packages" | "discounts">(
+    "packages"
+  );
+  const [discountForm, setDiscountForm] = useState<CreateDiscountCodeForm>({
+    package_id: "",
+    discount_percentage: 10,
+  });
+  const [isDiscountSubmitting, setIsDiscountSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     location: "",
@@ -133,6 +163,7 @@ export default function PackageManagement() {
       fetchPackages();
       fetchAdvertisers();
       fetchExistingTags();
+      fetchDiscountCodes();
     }
   }, [userRole]);
 
@@ -252,6 +283,109 @@ export default function PackageManagement() {
       setExistingTags(Array.from(allTags).sort());
     } catch (error) {
       console.error("Error fetching existing tags:", error);
+    }
+  };
+
+  // Discount Code API functions
+  const API_BASE_URL =
+    import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
+  const fetchDiscountCodes = async () => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/manager/discount-codes`
+      );
+      if (!response.ok) throw new Error("Failed to fetch discount codes");
+
+      const data = await response.json();
+      setDiscountCodes(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error fetching discount codes:", error);
+      setDiscountCodes([]);
+    }
+  };
+
+  const handleCreateDiscountCode = async () => {
+    if (!discountForm.package_id || discountForm.discount_percentage <= 0) {
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "กรุณากรอกข้อมูลให้ครบถ้วน",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsDiscountSubmitting(true);
+    try {
+      const payload = {
+        package_id:
+          discountForm.package_id === "all" ? null : discountForm.package_id,
+        discount_percentage: discountForm.discount_percentage,
+      };
+
+      const response = await fetch(`${API_BASE_URL}/api/discount-codes`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) throw new Error("Failed to create discount codes");
+
+      toast({
+        title: "สำเร็จ",
+        description: "สร้าง Discount Code สำเร็จ!",
+      });
+
+      setIsDiscountDialogOpen(false);
+      setDiscountForm({
+        package_id: "",
+        discount_percentage: 10,
+      });
+      fetchDiscountCodes();
+    } catch (error) {
+      console.error("Error creating discount code:", error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถสร้าง Discount Code ได้",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDiscountSubmitting(false);
+    }
+  };
+
+  const toggleDiscountCodeStatus = async (
+    codeId: string,
+    currentStatus: boolean
+  ) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/discount-codes/${codeId}/toggle`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ is_active: !currentStatus }),
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to toggle status");
+
+      fetchDiscountCodes();
+      toast({
+        title: "สำเร็จ",
+        description: "เปลี่ยนสถานะ Discount Code แล้ว",
+      });
+    } catch (error) {
+      console.error("Error toggling code status:", error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถเปลี่ยนสถานะได้",
+        variant: "destructive",
+      });
     }
   };
 
@@ -473,446 +607,647 @@ export default function PackageManagement() {
     <div className="container mx-auto px-4 py-8 pt-24">
       <Navbar />
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">จัดการแพคเกจท่องเที่ยว</h1>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={resetForm}>
-              <Plus className="w-4 h-4 mr-2" />
-              สร้างแพคเกจใหม่
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {editingPackage ? "แก้ไขแพคเกจ" : "สร้างแพคเกจใหม่"}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="title">ชื่อแพคเกจ *</Label>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) =>
-                      setFormData({ ...formData, title: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="location">สถานที่ *</Label>
-                  <Input
-                    id="location"
-                    value={formData.location}
-                    onChange={(e) =>
-                      setFormData({ ...formData, location: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-              </div>
+        <h1 className="text-3xl font-bold">จัดการแพคเกจและโค้ดส่วนลด</h1>
+      </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="price">ราคาหลังลด (บาท) *</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.price}
-                    onChange={(e) =>
-                      setFormData({ ...formData, price: e.target.value })
-                    }
-                    required
-                  />
-                  {formData.discount_percentage &&
-                    parseFloat(formData.discount_percentage) > 0 &&
-                    formData.price && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        ราคาเต็ม: ฿
-                        {(
-                          parseFloat(formData.price) /
-                          (1 - parseFloat(formData.discount_percentage) / 100)
-                        ).toLocaleString(undefined, {
-                          maximumFractionDigits: 2,
-                        })}
-                      </p>
-                    )}
-                </div>
-                <div>
-                  <Label htmlFor="discount">ส่วนลด (%)</Label>
-                  <Input
-                    id="discount"
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    value={formData.discount_percentage}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        discount_percentage: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="duration">ระยะเวลา (วัน) *</Label>
-                  <Input
-                    id="duration"
-                    type="number"
-                    min="1"
-                    value={formData.duration}
-                    onChange={(e) =>
-                      setFormData({ ...formData, duration: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-              </div>
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) =>
+          setActiveTab(value as "packages" | "discounts")
+        }
+        className="w-full"
+      >
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="packages">จัดการแพคเกจ</TabsTrigger>
+          <TabsTrigger value="discounts">จัดการโค้ดส่วนลด</TabsTrigger>
+        </TabsList>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="available_from">วันที่เริ่มให้บริการ</Label>
-                  <Input
-                    id="available_from"
-                    type="date"
-                    value={formData.available_from}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        available_from: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="available_to">
-                    วันที่สิ้นสุดการให้บริการ
-                  </Label>
-                  <Input
-                    id="available_to"
-                    type="date"
-                    value={formData.available_to}
-                    onChange={(e) =>
-                      setFormData({ ...formData, available_to: e.target.value })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="max_guests">จำนวนคนสูงสุด *</Label>
-                  <Input
-                    id="max_guests"
-                    type="number"
-                    min="1"
-                    value={formData.max_guests}
-                    onChange={(e) =>
-                      setFormData({ ...formData, max_guests: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-              </div>
+        <TabsContent value="packages" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold">แพคเกจท่องเที่ยว</h2>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={resetForm}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  สร้างแพคเกจใหม่
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingPackage ? "แก้ไขแพคเกจ" : "สร้างแพคเกจใหม่"}
+                  </DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="title">ชื่อแพคเกจ *</Label>
+                      <Input
+                        id="title"
+                        value={formData.title}
+                        onChange={(e) =>
+                          setFormData({ ...formData, title: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="location">สถานที่ *</Label>
+                      <Input
+                        id="location"
+                        value={formData.location}
+                        onChange={(e) =>
+                          setFormData({ ...formData, location: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                  </div>
 
-              <div>
-                <Label htmlFor="advertiser">ผู้โฆษณา</Label>
-                <Select
-                  value={formData.advertiser_id || "none"}
-                  onValueChange={(value) =>
-                    setFormData({
-                      ...formData,
-                      advertiser_id: value === "none" ? "" : value,
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="เลือกผู้โฆษณา (ไม่บังคับ)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">ไม่มีผู้โฆษณา</SelectItem>
-                    {advertisers.map((advertiser) => (
-                      <SelectItem key={advertiser.id} value={advertiser.id}>
-                        {advertiser.display_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="price">ราคาหลังลด (บาท) *</Label>
+                      <Input
+                        id="price"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={formData.price}
+                        onChange={(e) =>
+                          setFormData({ ...formData, price: e.target.value })
+                        }
+                        required
+                      />
+                      {formData.discount_percentage &&
+                        parseFloat(formData.discount_percentage) > 0 &&
+                        formData.price && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            ราคาเต็ม: ฿
+                            {(
+                              parseFloat(formData.price) /
+                              (1 -
+                                parseFloat(formData.discount_percentage) / 100)
+                            ).toLocaleString(undefined, {
+                              maximumFractionDigits: 2,
+                            })}
+                          </p>
+                        )}
+                    </div>
+                    <div>
+                      <Label htmlFor="discount">ส่วนลด (%)</Label>
+                      <Input
+                        id="discount"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        value={formData.discount_percentage}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            discount_percentage: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="duration">ระยะเวลา (วัน) *</Label>
+                      <Input
+                        id="duration"
+                        type="number"
+                        min="1"
+                        value={formData.duration}
+                        onChange={(e) =>
+                          setFormData({ ...formData, duration: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                  </div>
 
-              <div>
-                <Label htmlFor="image_url">URL รูปภาพ</Label>
-                <Input
-                  id="image_url"
-                  type="url"
-                  value={formData.image_url}
-                  onChange={(e) =>
-                    setFormData({ ...formData, image_url: e.target.value })
-                  }
-                />
-              </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="available_from">
+                        วันที่เริ่มให้บริการ
+                      </Label>
+                      <Input
+                        id="available_from"
+                        type="date"
+                        value={formData.available_from}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            available_from: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="available_to">
+                        วันที่สิ้นสุดการให้บริการ
+                      </Label>
+                      <Input
+                        id="available_to"
+                        type="date"
+                        value={formData.available_to}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            available_to: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="max_guests">จำนวนคนสูงสุด *</Label>
+                      <Input
+                        id="max_guests"
+                        type="number"
+                        min="1"
+                        value={formData.max_guests}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            max_guests: e.target.value,
+                          })
+                        }
+                        required
+                      />
+                    </div>
+                  </div>
 
-              <div>
-                <Label htmlFor="description">รายละเอียด</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  rows={4}
-                />
-              </div>
+                  <div>
+                    <Label htmlFor="advertiser">ผู้โฆษณา</Label>
+                    <Select
+                      value={formData.advertiser_id || "none"}
+                      onValueChange={(value) =>
+                        setFormData({
+                          ...formData,
+                          advertiser_id: value === "none" ? "" : value,
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="เลือกผู้โฆษณา (ไม่บังคับ)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">ไม่มีผู้โฆษณา</SelectItem>
+                        {advertisers.map((advertiser) => (
+                          <SelectItem key={advertiser.id} value={advertiser.id}>
+                            {advertiser.display_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <div>
-                <Label htmlFor="tags">แท็ก</Label>
-                <div className="space-y-3">
-                  <Popover open={tagComboOpen} onOpenChange={setTagComboOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={tagComboOpen}
-                        className="w-full justify-between"
+                  <div>
+                    <Label htmlFor="image_url">URL รูปภาพ</Label>
+                    <Input
+                      id="image_url"
+                      type="url"
+                      value={formData.image_url}
+                      onChange={(e) =>
+                        setFormData({ ...formData, image_url: e.target.value })
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="description">รายละเอียด</Label>
+                    <Textarea
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          description: e.target.value,
+                        })
+                      }
+                      rows={4}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="tags">แท็ก</Label>
+                    <div className="space-y-3">
+                      <Popover
+                        open={tagComboOpen}
+                        onOpenChange={setTagComboOpen}
                       >
-                        เลือกแท็กหรือสร้างใหม่...
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-full p-0">
-                      <Command>
-                        <CommandInput
-                          placeholder="ค้นหาหรือพิมพ์แท็กใหม่..."
-                          value={newTag}
-                          onValueChange={setNewTag}
-                        />
-                        <CommandList>
-                          <CommandGroup>
-                            {newTag &&
-                              !existingTags.includes(newTag.trim()) && (
-                                <CommandItem
-                                  value={`create-${newTag}`}
-                                  onSelect={() => addTag(newTag)}
-                                  className="text-green-600"
-                                >
-                                  <Plus className="mr-2 h-4 w-4" />
-                                  สร้าง "{newTag}"
-                                </CommandItem>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={tagComboOpen}
+                            className="w-full justify-between"
+                          >
+                            เลือกแท็กหรือสร้างใหม่...
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0">
+                          <Command>
+                            <CommandInput
+                              placeholder="ค้นหาหรือพิมพ์แท็กใหม่..."
+                              value={newTag}
+                              onValueChange={setNewTag}
+                            />
+                            <CommandList>
+                              <CommandGroup>
+                                {newTag &&
+                                  !existingTags.includes(newTag.trim()) && (
+                                    <CommandItem
+                                      value={`create-${newTag}`}
+                                      onSelect={() => addTag(newTag)}
+                                      className="text-green-600"
+                                    >
+                                      <Plus className="mr-2 h-4 w-4" />
+                                      สร้าง "{newTag}"
+                                    </CommandItem>
+                                  )}
+                                {availableTagsForSelection
+                                  .filter((tag) =>
+                                    tag
+                                      .toLowerCase()
+                                      .includes(newTag.toLowerCase())
+                                  )
+                                  .map((tag) => (
+                                    <CommandItem
+                                      key={tag}
+                                      value={tag}
+                                      onSelect={() => addTag(tag)}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          formData.tags.includes(tag)
+                                            ? "opacity-100"
+                                            : "opacity-0"
+                                        )}
+                                      />
+                                      {tag}
+                                    </CommandItem>
+                                  ))}
+                              </CommandGroup>
+                              {!newTag && existingTags.length === 0 && (
+                                <CommandEmpty>ยังไม่มีแท็กในระบบ</CommandEmpty>
                               )}
-                            {availableTagsForSelection
-                              .filter((tag) =>
-                                tag.toLowerCase().includes(newTag.toLowerCase())
-                              )
-                              .map((tag) => (
-                                <CommandItem
-                                  key={tag}
-                                  value={tag}
-                                  onSelect={() => addTag(tag)}
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-4 w-4",
-                                      formData.tags.includes(tag)
-                                        ? "opacity-100"
-                                        : "opacity-0"
-                                    )}
-                                  />
-                                  {tag}
-                                </CommandItem>
-                              ))}
-                          </CommandGroup>
-                          {!newTag && existingTags.length === 0 && (
-                            <CommandEmpty>ยังไม่มีแท็กในระบบ</CommandEmpty>
-                          )}
-                          {newTag &&
-                            availableTagsForSelection.filter((tag) =>
-                              tag.toLowerCase().includes(newTag.toLowerCase())
-                            ).length === 0 &&
-                            existingTags.includes(newTag.trim()) && (
-                              <CommandEmpty>แท็กนี้มีอยู่แล้ว</CommandEmpty>
-                            )}
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
+                              {newTag &&
+                                availableTagsForSelection.filter((tag) =>
+                                  tag
+                                    .toLowerCase()
+                                    .includes(newTag.toLowerCase())
+                                ).length === 0 &&
+                                existingTags.includes(newTag.trim()) && (
+                                  <CommandEmpty>แท็กนี้มีอยู่แล้ว</CommandEmpty>
+                                )}
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
 
-                  <div className="flex flex-wrap gap-2">
-                    {formData.tags.map((tag, index) => (
-                      <Badge
-                        key={index}
-                        variant="secondary"
-                        className="flex items-center gap-1"
-                      >
-                        {tag}
-                        <X
-                          className="h-3 w-3 cursor-pointer hover:text-destructive"
-                          onClick={() => removeTag(tag)}
-                        />
-                      </Badge>
-                    ))}
+                      <div className="flex flex-wrap gap-2">
+                        {formData.tags.map((tag, index) => (
+                          <Badge
+                            key={index}
+                            variant="secondary"
+                            className="flex items-center gap-1"
+                          >
+                            {tag}
+                            <X
+                              className="h-3 w-3 cursor-pointer hover:text-destructive"
+                              onClick={() => removeTag(tag)}
+                            />
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="is_active"
-                  checked={formData.is_active}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, is_active: checked })
-                  }
-                />
-                <Label htmlFor="is_active">เปิดใช้งาน</Label>
-              </div>
-
-              <div className="flex justify-end space-x-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
-                >
-                  ยกเลิก
-                </Button>
-                <Button type="submit" disabled={isLoading}>
-                  {editingPackage ? "อัปเดต" : "สร้าง"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Search Bar */}
-
-      <div className="mb-6">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="ค้นหาแพคเกจตามชื่อ สถานที่ หรือแท็ก..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-      </div>
-
-      <div className="grid gap-6">
-        {filteredPackages.map((pkg) => (
-          <Card key={pkg.id}>
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle>{pkg.title}</CardTitle>
-                  <p className="text-muted-foreground mt-1">
-                    {pkg.location} • {pkg.duration} วัน • ฿
-                    {pkg.price.toLocaleString()}
-                    {pkg.discount_percentage > 0 && (
-                      <span className="text-red-600 font-medium ml-2">
-                        (ส่วนลด {pkg.discount_percentage}%)
-                      </span>
-                    )}
-                  </p>
-                  <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                    {pkg.max_guests && (
-                      <span className="flex items-center gap-1">
-                        <Users className="w-3 h-3" />
-                        สูงสุด {pkg.max_guests} คน
-                      </span>
-                    )}
-                    {(pkg.available_from || pkg.available_to) && (
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        {pkg.available_from &&
-                          new Date(pkg.available_from).toLocaleDateString(
-                            "th-TH"
-                          )}
-                        {pkg.available_from && pkg.available_to && " - "}
-                        {pkg.available_to &&
-                          new Date(pkg.available_to).toLocaleDateString(
-                            "th-TH"
-                          )}
-                      </span>
-                    )}
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="is_active"
+                      checked={formData.is_active}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, is_active: checked })
+                      }
+                    />
+                    <Label htmlFor="is_active">เปิดใช้งาน</Label>
                   </div>
-                  {pkg.advertiser_id && (
-                    <p className="text-sm text-blue-600 mt-1">
-                      ผู้โฆษณา: {getAdvertiserName(pkg.advertiser_id)}
-                    </p>
-                  )}
-                  {pkg.tags &&
-                    Array.isArray(pkg.tags) &&
-                    pkg.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {pkg.tags.map(
-                          (tag, index) =>
-                            typeof tag === "string" && (
-                              <Badge
-                                key={index}
-                                variant="outline"
-                                className="text-xs"
-                              >
-                                {tag}
-                              </Badge>
-                            )
+
+                  <div className="flex justify-end space-x-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsDialogOpen(false)}
+                    >
+                      ยกเลิก
+                    </Button>
+                    <Button type="submit" disabled={isLoading}>
+                      {editingPackage ? "อัปเดต" : "สร้าง"}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {/* Search Bar */}
+          <div className="mb-6">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="ค้นหาแพคเกจตามชื่อ สถานที่ หรือแท็ก..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-6">
+            {filteredPackages.map((pkg) => (
+              <Card key={pkg.id}>
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle>{pkg.title}</CardTitle>
+                      <p className="text-muted-foreground mt-1">
+                        {pkg.location} • {pkg.duration} วัน • ฿
+                        {pkg.price.toLocaleString()}
+                        {pkg.discount_percentage > 0 && (
+                          <span className="text-red-600 font-medium ml-2">
+                            (ส่วนลด {pkg.discount_percentage}%)
+                          </span>
+                        )}
+                      </p>
+                      <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                        {pkg.max_guests && (
+                          <span className="flex items-center gap-1">
+                            <Users className="w-3 h-3" />
+                            สูงสุด {pkg.max_guests} คน
+                          </span>
+                        )}
+                        {(pkg.available_from || pkg.available_to) && (
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {pkg.available_from &&
+                              new Date(pkg.available_from).toLocaleDateString(
+                                "th-TH"
+                              )}
+                            {pkg.available_from && pkg.available_to && " - "}
+                            {pkg.available_to &&
+                              new Date(pkg.available_to).toLocaleDateString(
+                                "th-TH"
+                              )}
+                          </span>
                         )}
                       </div>
+                      {pkg.advertiser_id && (
+                        <p className="text-sm text-blue-600 mt-1">
+                          ผู้โฆษณา: {getAdvertiserName(pkg.advertiser_id)}
+                        </p>
+                      )}
+                      {pkg.tags &&
+                        Array.isArray(pkg.tags) &&
+                        pkg.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {pkg.tags.map(
+                              (tag, index) =>
+                                typeof tag === "string" && (
+                                  <Badge
+                                    key={index}
+                                    variant="outline"
+                                    className="text-xs"
+                                  >
+                                    {tag}
+                                  </Badge>
+                                )
+                            )}
+                          </div>
+                        )}
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => fetchPackageBookings(pkg.id, pkg.title)}
+                        title="ดูการจอง"
+                      >
+                        <Users className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleEdit(pkg)}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleDelete(pkg.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between">
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs ${
+                        pkg.is_active
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {pkg.is_active ? "เปิดใช้งาน" : "ปิดใช้งาน"}
+                    </span>
+                    {pkg.image_url && (
+                      <img
+                        src={pkg.image_url}
+                        alt={pkg.title}
+                        className="w-16 h-16 object-cover rounded"
+                      />
                     )}
-                </div>
-                <div className="flex space-x-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => fetchPackageBookings(pkg.id, pkg.title)}
-                    title="ดูการจอง"
-                  >
-                    <Users className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleEdit(pkg)}
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => handleDelete(pkg.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <span
-                  className={`px-2 py-1 rounded-full text-xs ${
-                    pkg.is_active
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                  }`}
+                  </div>
+                  {pkg.description && (
+                    <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                      {pkg.description}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="discounts" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold">โค้ดส่วนลด</h2>
+            <Dialog
+              open={isDiscountDialogOpen}
+              onOpenChange={setIsDiscountDialogOpen}
+            >
+              <DialogTrigger asChild>
+                <Button
+                  onClick={() => {
+                    setDiscountForm({
+                      package_id: "",
+                      discount_percentage: 10,
+                    });
+                    setIsDiscountDialogOpen(true);
+                  }}
                 >
-                  {pkg.is_active ? "เปิดใช้งาน" : "ปิดใช้งาน"}
-                </span>
-                {pkg.image_url && (
-                  <img
-                    src={pkg.image_url}
-                    alt={pkg.title}
-                    className="w-16 h-16 object-cover rounded"
-                  />
-                )}
-              </div>
-              {pkg.description && (
-                <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                  {pkg.description}
+                  <Plus className="w-4 h-4 mr-2" />
+                  สร้างโค้ดส่วนลด
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>สร้างโค้ดส่วนลดใหม่</DialogTitle>
+                  <p className="text-sm text-muted-foreground">
+                    เลือกแพคเกจและส่วนลด ระบบจะสร้างโค้ดให้ Advertiser
+                    ทั้งหมดอัตโนมัติ
+                  </p>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="package" className="text-right">
+                      แพคเกจ
+                    </Label>
+                    <Select
+                      value={discountForm.package_id}
+                      onValueChange={(value) =>
+                        setDiscountForm({ ...discountForm, package_id: value })
+                      }
+                    >
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="เลือกแพคเกจ" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">
+                          แพคเกจทั้งหมด (ไม่มีคอมมิชชั่น)
+                        </SelectItem>
+                        {packages.map((pkg) => (
+                          <SelectItem key={pkg.id} value={pkg.id}>
+                            {pkg.title} - {pkg.location}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="discount" className="text-right">
+                      ส่วนลด (%)
+                    </Label>
+                    <Input
+                      id="discount"
+                      type="number"
+                      value={discountForm.discount_percentage}
+                      onChange={(e) =>
+                        setDiscountForm({
+                          ...discountForm,
+                          discount_percentage: Number(e.target.value),
+                        })
+                      }
+                      min="1"
+                      max="50"
+                      className="col-span-3"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsDiscountDialogOpen(false)}
+                  >
+                    ยกเลิก
+                  </Button>
+                  <Button
+                    type="submit"
+                    onClick={handleCreateDiscountCode}
+                    disabled={isDiscountSubmitting}
+                  >
+                    {isDiscountSubmitting
+                      ? "กำลังสร้าง..."
+                      : "สร้างโค้ดทั้งหมด"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {/* Discount Codes List */}
+          {discountCodes.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Percent className="h-12 w-12 text-gray-400 mb-4" />
+                <p className="text-gray-500 mb-4">ยังไม่มีโค้ดส่วนลด</p>
+                <p className="text-sm text-gray-400 text-center">
+                  เริ่มต้นสร้างโค้ดส่วนลดแรกของคุณ
                 </p>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {discountCodes.map((code) => (
+                <Card key={code.id}>
+                  <CardContent className="pt-6">
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono font-bold text-lg bg-gray-100 px-3 py-1 rounded">
+                            {code.code}
+                          </span>
+                          <Badge
+                            variant={
+                              code.package_name === "ทุกแพคเกจ"
+                                ? "secondary"
+                                : "default"
+                            }
+                          >
+                            {code.package_name}
+                          </Badge>
+                          <Badge
+                            variant={code.is_active ? "default" : "destructive"}
+                          >
+                            {code.is_active ? "ใช้งานได้" : "ปิดใช้งาน"}
+                          </Badge>
+                        </div>
+                        <div className="text-sm text-muted-foreground space-y-1">
+                          <p>Advertiser: {code.advertiser_name}</p>
+                          <p>ส่วนลด: {code.discount_percentage}%</p>
+                          <p>
+                            วันที่สร้าง:{" "}
+                            {new Date(code.created_at).toLocaleDateString(
+                              "th-TH"
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            toggleDiscountCodeStatus(code.id, code.is_active)
+                          }
+                        >
+                          {code.is_active ? "ปิด" : "เปิด"}
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
 
       {/* Bookings Dialog */}
       <Dialog open={bookingsDialogOpen} onOpenChange={setBookingsDialogOpen}>

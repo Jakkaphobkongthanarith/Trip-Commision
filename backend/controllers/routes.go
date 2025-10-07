@@ -107,6 +107,29 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		c.JSON(http.StatusOK, gin.H{"message": "pong"})
 	})
 
+	// Discount Code routes (แทน Promo Code)
+	discountCodeController := NewDiscountCodeController(db)
+	
+	// Manager routes - จัดการ discount codes
+	r.GET("/api/manager/discount-codes", discountCodeController.GetAllDiscountCodes)
+	r.GET("/api/manager/packages", discountCodeController.GetAllPackages)
+	r.PUT("/api/discount-codes/:id/toggle", discountCodeController.ToggleDiscountCodeStatus)
+	
+	// Admin only - สร้างโค้ดส่วนลด
+	r.POST("/api/discount-codes", discountCodeController.CreateDiscountCode)
+	
+	// Advertiser - ดูโค้ดของตัวเอง
+	r.GET("/api/advertiser/:advertiser_id/discount-codes", discountCodeController.GetDiscountCodesByAdvertiser)
+	
+	// Advertiser - ดูค่าคอมมิชชั่น
+	r.GET("/api/advertiser/:advertiser_id/commissions", discountCodeController.GetCommissionsByAdvertiser)
+	
+	// Public - ตรวจสอบความถูกต้องของโค้ด
+	r.POST("/api/discount-codes/validate", discountCodeController.ValidateDiscountCode)
+	
+	// Booking - ใช้โค้ดส่วนลด (internal)
+	r.POST("/api/discount-codes/use", discountCodeController.UseDiscountCode)
+
 	r.GET("/greet", func(c *gin.Context) {
 		greeting := "Hello from Supabase!"
 		c.JSON(http.StatusOK, gin.H{"greeting": greeting})
