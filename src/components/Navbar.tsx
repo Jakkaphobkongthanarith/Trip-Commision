@@ -168,18 +168,18 @@ const Navbar = () => {
           ) : (
             <>
               <Button
-                variant="ghost"
-                onClick={() => navigate("/auth")}
-                className="text-foreground hover:text-primary"
-              >
-                ลงทะเบียน
-              </Button>
-              <Button
                 variant="default"
                 onClick={() => navigate("/auth")}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-hero"
               >
                 เข้าสู่ระบบ
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => navigate("/auth?signup=true")}
+                className="text-foreground hover:text-primary"
+              >
+                สมัครสมาชิก
               </Button>
             </>
           )}
