@@ -64,7 +64,7 @@ interface Package {
   description: string;
   image_url: string;
   is_active: boolean;
-  advertiser_id: string | null;
+  advertisers: User[]; // รองรับ advertiser หลายคน
   tags: string[] | string | null;
   available_from: string | null;
   available_to: string | null;
@@ -92,21 +92,33 @@ interface User {
   email: string;
 }
 
-interface DiscountCode {
+interface AdvertiserDiscountCode {
   id: string;
   code: string;
   advertiser_id: string;
   advertiser_name: string;
-  package_id?: string;
-  package_name: string;
   discount_percentage: number;
   is_active: boolean;
   created_at: string;
 }
 
-interface CreateDiscountCodeForm {
-  package_id: string;
+interface GlobalDiscountCode {
+  id: string;
+  code: string;
   discount_percentage: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+interface CreateAdvertiserDiscountForm {
+  advertiser_id: string;
+  discount_percentage: number;
+  expires_at?: string; // วันหมดอายุ (optional)
+}
+
+interface CreateGlobalDiscountForm {
+  discount_percentage: number;
+  expires_at?: string; // วันหมดอายุ (optional)
 }
 
 export default function PackageManagement() {
@@ -114,7 +126,7 @@ export default function PackageManagement() {
   const { userRole, loading } = useUserRole();
   const { toast } = useToast();
 
-  // ย้าย useState ทั้งหมดมาไว้ก่อน early return
+  // Package states
   const [packages, setPackages] = useState<Package[]>([]);
   const [advertisers, setAdvertisers] = useState<User[]>([]);
   const [existingTags, setExistingTags] = useState<string[]>([]);
@@ -129,16 +141,31 @@ export default function PackageManagement() {
   const [searchTerm, setSearchTerm] = useState("");
 
   // Discount Code states
-  const [discountCodes, setDiscountCodes] = useState<DiscountCode[]>([]);
-  const [isDiscountDialogOpen, setIsDiscountDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"packages" | "discounts">(
-    "packages"
-  );
-  const [discountForm, setDiscountForm] = useState<CreateDiscountCodeForm>({
-    package_id: "",
-    discount_percentage: 10,
-  });
+  const [advertiserCodes, setAdvertiserCodes] = useState<
+    AdvertiserDiscountCode[]
+  >([]);
+  const [globalCodes, setGlobalCodes] = useState<GlobalDiscountCode[]>([]);
+  const [isAdvertiserDiscountDialogOpen, setIsAdvertiserDiscountDialogOpen] =
+    useState(false);
+  const [isGlobalDiscountDialogOpen, setIsGlobalDiscountDialogOpen] =
+    useState(false);
+  const [activeTab, setActiveTab] = useState<
+    "packages" | "advertiser-discounts" | "global-discounts"
+  >("packages");
+  const [advertiserDiscountForm, setAdvertiserDiscountForm] =
+    useState<CreateAdvertiserDiscountForm>({
+      advertiser_id: "",
+      discount_percentage: 10,
+      expires_at: "",
+    });
+  const [globalDiscountForm, setGlobalDiscountForm] =
+    useState<CreateGlobalDiscountForm>({
+      discount_percentage: 10,
+      expires_at: "",
+    });
   const [isDiscountSubmitting, setIsDiscountSubmitting] = useState(false);
+
+  // Package form state
   const [formData, setFormData] = useState({
     title: "",
     location: "",
@@ -147,7 +174,7 @@ export default function PackageManagement() {
     description: "",
     image_url: "",
     is_active: true,
-    advertiser_id: "",
+    advertiser_ids: [] as string[], // รองรับ advertiser หลายคน
     tags: [] as string[],
     available_from: "",
     available_to: "",
@@ -157,13 +184,13 @@ export default function PackageManagement() {
   const [newTag, setNewTag] = useState("");
   const [tagComboOpen, setTagComboOpen] = useState(false);
 
-  // useEffect ต้องอยู่หลัง useState แต่ก่อน early return
   useEffect(() => {
     if (userRole === "manager") {
       fetchPackages();
       fetchAdvertisers();
       fetchExistingTags();
-      fetchDiscountCodes();
+      fetchAdvertiserDiscountCodes();
+      fetchGlobalDiscountCodes();
     }
   }, [userRole]);
 
@@ -180,11 +207,13 @@ export default function PackageManagement() {
     return <Navigate to="/" replace />;
   }
 
+  const API_BASE_URL =
+    import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
   const normalizeTags = (tags: string[] | string | null): string[] => {
     if (!tags) return [];
     if (Array.isArray(tags)) return tags;
     if (typeof tags === "string") {
-      // Remove { and } from PostgreSQL array format
       const cleanedTags = tags.replace(/[{}]/g, "");
       return cleanedTags
         .split(",")
@@ -196,21 +225,26 @@ export default function PackageManagement() {
 
   const fetchPackages = async () => {
     try {
-      const { data, error } = await supabase
-        .from("travel_packages")
-        .select("*")
-        .order("created_at", { ascending: false });
+      // ใช้ Backend API ที่ส่งข้อมูล advertiser มาพร้อมกัน
+      const response = await fetch(`${API_BASE_URL}/api/travel-packages`);
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-      // Normalize tags for all packages
-      const normalizedData = (data || []).map((pkg) => ({
+      const data = await response.json();
+
+      // แปลงข้อมูลให้ตรงกับ format ที่ frontend ต้องการ
+      const packagesWithAdvertisers = (data || []).map((pkg: any) => ({
         ...pkg,
         tags: normalizeTags(pkg.tags),
+        // แปลง advertiser object เดี่ยวเป็น advertisers array สำหรับ backward compatibility
+        advertisers: pkg.advertiser ? [pkg.advertiser] : [],
       }));
 
-      setPackages(normalizedData);
+      setPackages(packagesWithAdvertisers);
     } catch (error) {
+      console.error("Error fetching packages:", error);
       toast({
         title: "เกิดข้อผิดพลาด",
         description: "ไม่สามารถโหลดข้อมูลแพคเกจได้",
@@ -221,36 +255,11 @@ export default function PackageManagement() {
 
   const fetchAdvertisers = async () => {
     try {
-      // Get all advertiser user IDs first
-      const { data: roleData, error: roleError } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "advertiser");
+      const response = await fetch(`${API_BASE_URL}/api/manager/advertisers`);
+      if (!response.ok) throw new Error("Failed to fetch advertisers");
 
-      if (roleError) throw roleError;
-
-      if (!roleData || roleData.length === 0) {
-        setAdvertisers([]);
-        return;
-      }
-
-      // Get profiles for those users
-      const userIds = roleData.map((item) => item.user_id);
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("user_id, display_name")
-        .in("user_id", userIds);
-
-      if (profileError) throw profileError;
-
-      const advertiserUsers =
-        profileData?.map((profile) => ({
-          id: profile.user_id,
-          display_name: profile.display_name || "ไม่ระบุชื่อ",
-          email: "",
-        })) || [];
-
-      setAdvertisers(advertiserUsers);
+      const data = await response.json();
+      setAdvertisers(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching advertisers:", error);
       toast({
@@ -272,7 +281,6 @@ export default function PackageManagement() {
 
       if (error) throw error;
 
-      // Flatten and deduplicate tags
       const allTags = new Set<string>();
       data?.forEach((pkg) => {
         if (pkg.tags && Array.isArray(pkg.tags)) {
@@ -286,106 +294,35 @@ export default function PackageManagement() {
     }
   };
 
-  // Discount Code API functions
-  const API_BASE_URL =
-    import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-
-  const fetchDiscountCodes = async () => {
+  const fetchAdvertiserDiscountCodes = async () => {
     try {
       const response = await fetch(
         `${API_BASE_URL}/api/manager/discount-codes`
       );
-      if (!response.ok) throw new Error("Failed to fetch discount codes");
+      if (!response.ok)
+        throw new Error("Failed to fetch advertiser discount codes");
 
       const data = await response.json();
-      setDiscountCodes(Array.isArray(data) ? data : []);
+      setAdvertiserCodes(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error("Error fetching discount codes:", error);
-      setDiscountCodes([]);
+      console.error("Error fetching advertiser discount codes:", error);
+      setAdvertiserCodes([]);
     }
   };
 
-  const handleCreateDiscountCode = async () => {
-    if (!discountForm.package_id || discountForm.discount_percentage <= 0) {
-      toast({
-        title: "เกิดข้อผิดพลาด",
-        description: "กรุณากรอกข้อมูลให้ครบถ้วน",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsDiscountSubmitting(true);
-    try {
-      const payload = {
-        package_id:
-          discountForm.package_id === "all" ? null : discountForm.package_id,
-        discount_percentage: discountForm.discount_percentage,
-      };
-
-      const response = await fetch(`${API_BASE_URL}/api/discount-codes`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) throw new Error("Failed to create discount codes");
-
-      toast({
-        title: "สำเร็จ",
-        description: "สร้าง Discount Code สำเร็จ!",
-      });
-
-      setIsDiscountDialogOpen(false);
-      setDiscountForm({
-        package_id: "",
-        discount_percentage: 10,
-      });
-      fetchDiscountCodes();
-    } catch (error) {
-      console.error("Error creating discount code:", error);
-      toast({
-        title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถสร้าง Discount Code ได้",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDiscountSubmitting(false);
-    }
-  };
-
-  const toggleDiscountCodeStatus = async (
-    codeId: string,
-    currentStatus: boolean
-  ) => {
+  const fetchGlobalDiscountCodes = async () => {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/api/discount-codes/${codeId}/toggle`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ is_active: !currentStatus }),
-        }
+        `${API_BASE_URL}/api/manager/global-discount-codes`
       );
+      if (!response.ok)
+        throw new Error("Failed to fetch global discount codes");
 
-      if (!response.ok) throw new Error("Failed to toggle status");
-
-      fetchDiscountCodes();
-      toast({
-        title: "สำเร็จ",
-        description: "เปลี่ยนสถานะ Discount Code แล้ว",
-      });
+      const data = await response.json();
+      setGlobalCodes(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error("Error toggling code status:", error);
-      toast({
-        title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถเปลี่ยนสถานะได้",
-        variant: "destructive",
-      });
+      console.error("Error fetching global discount codes:", error);
+      setGlobalCodes([]);
     }
   };
 
@@ -402,7 +339,6 @@ export default function PackageManagement() {
         description: formData.description,
         image_url: formData.image_url,
         is_active: formData.is_active,
-        advertiser_id: formData.advertiser_id || null,
         tags: Array.isArray(formData.tags)
           ? `{${formData.tags.join(",")}}`
           : formData.tags,
@@ -420,16 +356,32 @@ export default function PackageManagement() {
 
         if (error) throw error;
 
+        // อัปเดต package-advertiser relationships
+        await updatePackageAdvertisers(
+          editingPackage.id,
+          formData.advertiser_ids
+        );
+
         toast({
           title: "สำเร็จ",
           description: "อัปเดตแพคเกจเรียบร้อยแล้ว",
         });
       } else {
-        const { error } = await supabase
+        const { data: newPackage, error } = await supabase
           .from("travel_packages")
-          .insert([packageData]);
+          .insert([packageData])
+          .select()
+          .single();
 
         if (error) throw error;
+
+        // เพิ่ม package-advertiser relationships
+        if (newPackage && formData.advertiser_ids.length > 0) {
+          await updatePackageAdvertisers(
+            newPackage.id,
+            formData.advertiser_ids
+          );
+        }
 
         toast({
           title: "สำเร็จ",
@@ -438,7 +390,7 @@ export default function PackageManagement() {
       }
 
       fetchPackages();
-      fetchExistingTags(); // Refresh tags after save
+      fetchExistingTags();
       resetForm();
       setIsDialogOpen(false);
     } catch (error) {
@@ -452,6 +404,36 @@ export default function PackageManagement() {
     }
   };
 
+  const updatePackageAdvertisers = async (
+    packageId: string,
+    advertiserIds: string[]
+  ) => {
+    try {
+      // ใช้ Backend API แทน Supabase เพื่ออัปเดต package-advertiser relationships
+      const response = await fetch(
+        `${API_BASE_URL}/api/package/${packageId}/advertisers`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ advertiser_ids: advertiserIds }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to update package advertisers");
+      }
+    } catch (error) {
+      console.error("Error updating package advertisers:", error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถอัปเดตข้อมูลผู้โฆษณาได้",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleEdit = (pkg: Package) => {
     setEditingPackage(pkg);
     setFormData({
@@ -462,7 +444,7 @@ export default function PackageManagement() {
       description: pkg.description || "",
       image_url: pkg.image_url || "",
       is_active: pkg.is_active,
-      advertiser_id: pkg.advertiser_id || "",
+      advertiser_ids: pkg.advertisers?.map((a) => a.id) || [],
       tags: normalizeTags(pkg.tags),
       available_from: pkg.available_from || "",
       available_to: pkg.available_to || "",
@@ -476,12 +458,17 @@ export default function PackageManagement() {
     if (!confirm("คุณแน่ใจหรือไม่ที่จะลบแพคเกจนี้?")) return;
 
     try {
-      const { error } = await supabase
-        .from("travel_packages")
-        .delete()
-        .eq("id", id);
+      // ใช้ Backend API เพื่อลบแพ็กเกจ (จะจัดการ junction table relationships ได้อัตโนมัติ)
+      const response = await fetch(
+        `${API_BASE_URL}/api/travel-packages/${id}`,
+        {
+          method: "DELETE",
+        }
+      );
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error("Failed to delete package");
+      }
 
       toast({
         title: "สำเร็จ",
@@ -507,7 +494,7 @@ export default function PackageManagement() {
       description: "",
       image_url: "",
       is_active: true,
-      advertiser_id: "",
+      advertiser_ids: [],
       tags: [],
       available_from: "",
       available_to: "",
@@ -538,9 +525,7 @@ export default function PackageManagement() {
     packageTitle: string
   ) => {
     try {
-      // เรียกใช้ Backend API แทน Supabase โดยตรง
       const response = await bookingAPI.getByPackageId(packageId);
-      console.log("Bookings response:", response);
       const bookingsData = response.bookings || [];
 
       if (bookingsData.length === 0) {
@@ -550,7 +535,6 @@ export default function PackageManagement() {
         return;
       }
 
-      // ใช้ข้อมูล contact ที่มีอยู่ใน booking object โดยตรง
       const bookingsWithProfiles = bookingsData.map((booking) => ({
         ...booking,
         profiles: {
@@ -573,13 +557,317 @@ export default function PackageManagement() {
     }
   };
 
+  // Notification functions
+  const sendNotificationToAdvertiser = async (
+    advertiserId: string,
+    message: string
+  ) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/notifications`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: advertiserId,
+          title: "โค้ดส่วนลดใหม่!",
+          message: message,
+          type: "discount_code",
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("Failed to send notification to advertiser");
+      }
+    } catch (error) {
+      console.error("Error sending notification:", error);
+    }
+  };
+
+  const sendNotificationToAllUsers = async (message: string) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/notifications/broadcast`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            title: "โค้ดส่วนลดใหม่!",
+            message: message,
+            type: "global_discount",
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        console.error("Failed to send broadcast notification");
+      }
+    } catch (error) {
+      console.error("Error sending broadcast notification:", error);
+    }
+  };
+
+  // Discount Code functions
+  const handleCreateAdvertiserDiscountCode = async () => {
+    if (
+      !advertiserDiscountForm.advertiser_id ||
+      advertiserDiscountForm.discount_percentage <= 0
+    ) {
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "กรุณากรอกข้อมูลให้ครบถ้วน",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsDiscountSubmitting(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/discount-codes/advertiser`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(advertiserDiscountForm),
+        }
+      );
+
+      if (!response.ok)
+        throw new Error("Failed to create advertiser discount code");
+
+      const responseData = await response.json();
+
+      // ส่ง notification ให้ advertiser
+      const selectedAdvertiser = advertisers.find(
+        (adv) => adv.id === advertiserDiscountForm.advertiser_id
+      );
+      if (selectedAdvertiser) {
+        await sendNotificationToAdvertiser(
+          selectedAdvertiser.id,
+          `คุณได้รับโค้ดส่วนลด ${
+            advertiserDiscountForm.discount_percentage
+          }% ใหม่! โค้ด: ${responseData.code || "ตรวจสอบในระบบ"}`
+        );
+      }
+
+      toast({
+        title: "สำเร็จ",
+        description: "สร้าง Discount Code สำหรับ Advertiser เรียบร้อย!",
+      });
+
+      setIsAdvertiserDiscountDialogOpen(false);
+      setAdvertiserDiscountForm({
+        advertiser_id: "",
+        discount_percentage: 10,
+        expires_at: "",
+      });
+      fetchAdvertiserDiscountCodes();
+    } catch (error) {
+      console.error("Error creating advertiser discount code:", error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถสร้าง Discount Code ได้",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDiscountSubmitting(false);
+    }
+  };
+
+  const handleCreateGlobalDiscountCode = async () => {
+    if (globalDiscountForm.discount_percentage <= 0) {
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "กรุณากรอกส่วนลดให้ถูกต้อง",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsDiscountSubmitting(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/global-discount-codes`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(globalDiscountForm),
+        }
+      );
+
+      if (!response.ok)
+        throw new Error("Failed to create global discount code");
+
+      const responseData = await response.json();
+
+      // ส่ง notification ให้ผู้ใช้ทั้งหมด
+      await sendNotificationToAllUsers(
+        `🎉 โค้ดส่วนลดใหม่! ลด ${
+          globalDiscountForm.discount_percentage
+        }% สำหรับทุกแพ็กเกจ โค้ด: ${responseData.code || "ตรวจสอบในระบบ"}`
+      );
+
+      toast({
+        title: "สำเร็จ",
+        description: "สร้าง Global Discount Code เรียบร้อย!",
+      });
+
+      setIsGlobalDiscountDialogOpen(false);
+      setGlobalDiscountForm({
+        discount_percentage: 10,
+        expires_at: "",
+      });
+      fetchGlobalDiscountCodes();
+    } catch (error) {
+      console.error("Error creating global discount code:", error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถสร้าง Global Discount Code ได้",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDiscountSubmitting(false);
+    }
+  };
+
+  const toggleAdvertiserDiscountCodeStatus = async (
+    codeId: string,
+    currentStatus: boolean
+  ) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/discount-codes/${codeId}/toggle`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ is_active: !currentStatus }),
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to toggle status");
+
+      fetchAdvertiserDiscountCodes();
+      toast({
+        title: "สำเร็จ",
+        description: "เปลี่ยนสถานะ Discount Code แล้ว",
+      });
+    } catch (error) {
+      console.error("Error toggling code status:", error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถเปลี่ยนสถานะได้",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // ลบโค้ดส่วนลด Advertiser
+  const deleteAdvertiserDiscountCode = async (codeId: string) => {
+    if (!confirm("คุณแน่ใจหรือไม่ที่จะลบโค้ดส่วนลดนี้?")) return;
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/discount-codes/${codeId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to delete discount code");
+
+      fetchAdvertiserDiscountCodes();
+      toast({
+        title: "สำเร็จ",
+        description: "ลบโค้ดส่วนลดแล้ว",
+      });
+    } catch (error) {
+      console.error("Error deleting discount code:", error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถลบโค้ดส่วนลดได้",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleGlobalDiscountCodeStatus = async (
+    codeId: string,
+    currentStatus: boolean
+  ) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/global-discount-codes/${codeId}/toggle`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ is_active: !currentStatus }),
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to toggle status");
+
+      fetchGlobalDiscountCodes();
+      toast({
+        title: "สำเร็จ",
+        description: "เปลี่ยนสถานะ Global Discount Code แล้ว",
+      });
+    } catch (error) {
+      console.error("Error toggling global code status:", error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถเปลี่ยนสถานะได้",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // ลบโค้ดส่วนลด Global
+  const deleteGlobalDiscountCode = async (codeId: string) => {
+    if (!confirm("คุณแน่ใจหรือไม่ที่จะลบโค้ดส่วนลดนี้?")) return;
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/global-discount-codes/${codeId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok)
+        throw new Error("Failed to delete global discount code");
+
+      fetchGlobalDiscountCodes();
+      toast({
+        title: "สำเร็จ",
+        description: "ลบโค้ดส่วนลดทั่วไปแล้ว",
+      });
+    } catch (error) {
+      console.error("Error deleting global discount code:", error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถลบโค้ดส่วนลดทั่วไปได้",
+        variant: "destructive",
+      });
+    }
+  };
+
   const availableTagsForSelection = existingTags.filter(
     (tag) => !formData.tags.includes(tag)
   );
 
-  const getAdvertiserName = (advertiserId: string) => {
-    const advertiser = advertisers.find((a) => a.id === advertiserId);
-    return advertiser?.display_name || "ไม่ระบุ";
+  const getAdvertiserNames = (advertisers: User[]) => {
+    if (!advertisers || advertisers.length === 0) return "ไม่มีผู้โฆษณา";
+    return advertisers.map((a) => a.display_name).join(", ");
   };
 
   // Filter packages based on search term
@@ -612,14 +900,17 @@ export default function PackageManagement() {
 
       <Tabs
         value={activeTab}
-        onValueChange={(value) =>
-          setActiveTab(value as "packages" | "discounts")
-        }
+        onValueChange={(value) => setActiveTab(value as any)}
         className="w-full"
       >
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="packages">จัดการแพคเกจ</TabsTrigger>
-          <TabsTrigger value="discounts">จัดการโค้ดส่วนลด</TabsTrigger>
+          <TabsTrigger value="advertiser-discounts">
+            โค้ดส่วนลด Advertiser
+          </TabsTrigger>
+          <TabsTrigger value="global-discounts">
+            โค้ดส่วนลดผู้ใช้ทั่วไป
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="packages" className="space-y-6">
@@ -639,6 +930,7 @@ export default function PackageManagement() {
                   </DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Package Form Fields */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="title">ชื่อแพคเกจ *</Label>
@@ -678,20 +970,6 @@ export default function PackageManagement() {
                         }
                         required
                       />
-                      {formData.discount_percentage &&
-                        parseFloat(formData.discount_percentage) > 0 &&
-                        formData.price && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            ราคาเต็ม: ฿
-                            {(
-                              parseFloat(formData.price) /
-                              (1 -
-                                parseFloat(formData.discount_percentage) / 100)
-                            ).toLocaleString(undefined, {
-                              maximumFractionDigits: 2,
-                            })}
-                          </p>
-                        )}
                     </div>
                     <div>
                       <Label htmlFor="discount">ส่วนลด (%)</Label>
@@ -776,29 +1054,49 @@ export default function PackageManagement() {
                     </div>
                   </div>
 
+                  {/* Multiple Advertisers Selection */}
                   <div>
-                    <Label htmlFor="advertiser">ผู้โฆษณา</Label>
-                    <Select
-                      value={formData.advertiser_id || "none"}
-                      onValueChange={(value) =>
-                        setFormData({
-                          ...formData,
-                          advertiser_id: value === "none" ? "" : value,
-                        })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="เลือกผู้โฆษณา (ไม่บังคับ)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">ไม่มีผู้โฆษณา</SelectItem>
-                        {advertisers.map((advertiser) => (
-                          <SelectItem key={advertiser.id} value={advertiser.id}>
+                    <Label htmlFor="advertisers">
+                      ผู้โฆษณา (เลือกได้หลายคน)
+                    </Label>
+                    <div className="space-y-2">
+                      {advertisers.map((advertiser) => (
+                        <div
+                          key={advertiser.id}
+                          className="flex items-center space-x-2"
+                        >
+                          <input
+                            type="checkbox"
+                            id={`advertiser-${advertiser.id}`}
+                            checked={formData.advertiser_ids.includes(
+                              advertiser.id
+                            )}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFormData({
+                                  ...formData,
+                                  advertiser_ids: [
+                                    ...formData.advertiser_ids,
+                                    advertiser.id,
+                                  ],
+                                });
+                              } else {
+                                setFormData({
+                                  ...formData,
+                                  advertiser_ids:
+                                    formData.advertiser_ids.filter(
+                                      (id) => id !== advertiser.id
+                                    ),
+                                });
+                              }
+                            }}
+                          />
+                          <Label htmlFor={`advertiser-${advertiser.id}`}>
                             {advertiser.display_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   <div>
@@ -828,6 +1126,7 @@ export default function PackageManagement() {
                     />
                   </div>
 
+                  {/* Tags Section */}
                   <div>
                     <Label htmlFor="tags">แท็ก</Label>
                     <div className="space-y-3">
@@ -893,15 +1192,6 @@ export default function PackageManagement() {
                               {!newTag && existingTags.length === 0 && (
                                 <CommandEmpty>ยังไม่มีแท็กในระบบ</CommandEmpty>
                               )}
-                              {newTag &&
-                                availableTagsForSelection.filter((tag) =>
-                                  tag
-                                    .toLowerCase()
-                                    .includes(newTag.toLowerCase())
-                                ).length === 0 &&
-                                existingTags.includes(newTag.trim()) && (
-                                  <CommandEmpty>แท็กนี้มีอยู่แล้ว</CommandEmpty>
-                                )}
                             </CommandList>
                           </Command>
                         </PopoverContent>
@@ -966,6 +1256,7 @@ export default function PackageManagement() {
             </div>
           </div>
 
+          {/* Packages List */}
           <div className="grid gap-6">
             {filteredPackages.map((pkg) => (
               <Card key={pkg.id}>
@@ -1004,11 +1295,9 @@ export default function PackageManagement() {
                           </span>
                         )}
                       </div>
-                      {pkg.advertiser_id && (
-                        <p className="text-sm text-blue-600 mt-1">
-                          ผู้โฆษณา: {getAdvertiserName(pkg.advertiser_id)}
-                        </p>
-                      )}
+                      <p className="text-sm text-blue-600 mt-1">
+                        ผู้โฆษณา: {getAdvertiserNames(pkg.advertisers)}
+                      </p>
                       {pkg.tags &&
                         Array.isArray(pkg.tags) &&
                         pkg.tags.length > 0 && (
@@ -1084,56 +1373,57 @@ export default function PackageManagement() {
           </div>
         </TabsContent>
 
-        <TabsContent value="discounts" className="space-y-6">
+        {/* Advertiser Discount Codes Tab */}
+        <TabsContent value="advertiser-discounts" className="space-y-6">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">โค้ดส่วนลด</h2>
+            <h2 className="text-xl font-semibold">โค้ดส่วนลด Advertiser</h2>
             <Dialog
-              open={isDiscountDialogOpen}
-              onOpenChange={setIsDiscountDialogOpen}
+              open={isAdvertiserDiscountDialogOpen}
+              onOpenChange={setIsAdvertiserDiscountDialogOpen}
             >
               <DialogTrigger asChild>
                 <Button
                   onClick={() => {
-                    setDiscountForm({
-                      package_id: "",
+                    setAdvertiserDiscountForm({
+                      advertiser_id: "",
                       discount_percentage: 10,
+                      expires_at: "",
                     });
-                    setIsDiscountDialogOpen(true);
+                    setIsAdvertiserDiscountDialogOpen(true);
                   }}
                 >
                   <Plus className="w-4 h-4 mr-2" />
-                  สร้างโค้ดส่วนลด
+                  สร้างโค้ดส่วนลด Advertiser
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                  <DialogTitle>สร้างโค้ดส่วนลดใหม่</DialogTitle>
+                  <DialogTitle>สร้างโค้ดส่วนลดสำหรับ Advertiser</DialogTitle>
                   <p className="text-sm text-muted-foreground">
-                    เลือกแพคเกจและส่วนลด ระบบจะสร้างโค้ดให้ Advertiser
-                    ทั้งหมดอัตโนมัติ
+                    โค้ดนี้จะใช้ได้กับทุกแพคเกจที่ Advertiser คนนี้โฆษณา
                   </p>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="package" className="text-right">
-                      แพคเกจ
+                    <Label htmlFor="advertiser" className="text-right">
+                      Advertiser
                     </Label>
                     <Select
-                      value={discountForm.package_id}
+                      value={advertiserDiscountForm.advertiser_id}
                       onValueChange={(value) =>
-                        setDiscountForm({ ...discountForm, package_id: value })
+                        setAdvertiserDiscountForm({
+                          ...advertiserDiscountForm,
+                          advertiser_id: value,
+                        })
                       }
                     >
                       <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="เลือกแพคเกจ" />
+                        <SelectValue placeholder="เลือก Advertiser" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">
-                          แพคเกจทั้งหมด (ไม่มีคอมมิชชั่น)
-                        </SelectItem>
-                        {packages.map((pkg) => (
-                          <SelectItem key={pkg.id} value={pkg.id}>
-                            {pkg.title} - {pkg.location}
+                        {advertisers.map((advertiser) => (
+                          <SelectItem key={advertiser.id} value={advertiser.id}>
+                            {advertiser.display_name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1146,10 +1436,10 @@ export default function PackageManagement() {
                     <Input
                       id="discount"
                       type="number"
-                      value={discountForm.discount_percentage}
+                      value={advertiserDiscountForm.discount_percentage}
                       onChange={(e) =>
-                        setDiscountForm({
-                          ...discountForm,
+                        setAdvertiserDiscountForm({
+                          ...advertiserDiscountForm,
                           discount_percentage: Number(e.target.value),
                         })
                       }
@@ -1158,43 +1448,60 @@ export default function PackageManagement() {
                       className="col-span-3"
                     />
                   </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="advertiser-expires" className="text-right">
+                      วันหมดอายุ
+                    </Label>
+                    <Input
+                      id="advertiser-expires"
+                      type="datetime-local"
+                      value={advertiserDiscountForm.expires_at || ""}
+                      onChange={(e) =>
+                        setAdvertiserDiscountForm({
+                          ...advertiserDiscountForm,
+                          expires_at: e.target.value,
+                        })
+                      }
+                      className="col-span-3"
+                    />
+                  </div>
                 </div>
                 <div className="flex justify-end space-x-2">
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setIsDiscountDialogOpen(false)}
+                    onClick={() => setIsAdvertiserDiscountDialogOpen(false)}
                   >
                     ยกเลิก
                   </Button>
                   <Button
                     type="submit"
-                    onClick={handleCreateDiscountCode}
+                    onClick={handleCreateAdvertiserDiscountCode}
                     disabled={isDiscountSubmitting}
                   >
-                    {isDiscountSubmitting
-                      ? "กำลังสร้าง..."
-                      : "สร้างโค้ดทั้งหมด"}
+                    {isDiscountSubmitting ? "กำลังสร้าง..." : "สร้างโค้ด"}
                   </Button>
                 </div>
               </DialogContent>
             </Dialog>
           </div>
 
-          {/* Discount Codes List */}
-          {discountCodes.length === 0 ? (
+          {/* Advertiser Discount Codes List */}
+          {advertiserCodes.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <Percent className="h-12 w-12 text-gray-400 mb-4" />
-                <p className="text-gray-500 mb-4">ยังไม่มีโค้ดส่วนลด</p>
+                <p className="text-gray-500 mb-4">
+                  ยังไม่มีโค้ดส่วนลด Advertiser
+                </p>
                 <p className="text-sm text-gray-400 text-center">
-                  เริ่มต้นสร้างโค้ดส่วนลดแรกของคุณ
+                  เริ่มต้นสร้างโค้ดส่วนลดสำหรับ Advertiser
                 </p>
               </CardContent>
             </Card>
           ) : (
             <div className="grid gap-4">
-              {discountCodes.map((code) => (
+              {advertiserCodes.map((code) => (
                 <Card key={code.id}>
                   <CardContent className="pt-6">
                     <div className="flex justify-between items-start">
@@ -1203,15 +1510,6 @@ export default function PackageManagement() {
                           <span className="font-mono font-bold text-lg bg-gray-100 px-3 py-1 rounded">
                             {code.code}
                           </span>
-                          <Badge
-                            variant={
-                              code.package_name === "ทุกแพคเกจ"
-                                ? "secondary"
-                                : "default"
-                            }
-                          >
-                            {code.package_name}
-                          </Badge>
                           <Badge
                             variant={code.is_active ? "default" : "destructive"}
                           >
@@ -1227,6 +1525,9 @@ export default function PackageManagement() {
                               "th-TH"
                             )}
                           </p>
+                          <p className="text-blue-600">
+                            ใช้ได้กับทุกแพคเกจที่ Advertiser นี้โฆษณา
+                          </p>
                         </div>
                       </div>
                       <div className="flex space-x-2">
@@ -1234,10 +1535,180 @@ export default function PackageManagement() {
                           size="sm"
                           variant="outline"
                           onClick={() =>
-                            toggleDiscountCodeStatus(code.id, code.is_active)
+                            toggleAdvertiserDiscountCodeStatus(
+                              code.id,
+                              code.is_active
+                            )
                           }
                         >
                           {code.is_active ? "ปิด" : "เปิด"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => deleteAdvertiserDiscountCode(code.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Global Discount Codes Tab */}
+        <TabsContent value="global-discounts" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold">โค้ดส่วนลดผู้ใช้ทั่วไป</h2>
+            <Dialog
+              open={isGlobalDiscountDialogOpen}
+              onOpenChange={setIsGlobalDiscountDialogOpen}
+            >
+              <DialogTrigger asChild>
+                <Button
+                  onClick={() => {
+                    setGlobalDiscountForm({
+                      discount_percentage: 10,
+                      expires_at: "",
+                    });
+                    setIsGlobalDiscountDialogOpen(true);
+                  }}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  สร้างโค้ดส่วนลดผู้ใช้ทั่วไป
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>สร้างโค้ดส่วนลดผู้ใช้ทั่วไป</DialogTitle>
+                  <p className="text-sm text-muted-foreground">
+                    โค้ดนี้จะใช้ได้กับทุกแพคเกจ และไม่มีค่าคอมมิชชั่น
+                  </p>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="global-discount" className="text-right">
+                      ส่วนลด (%)
+                    </Label>
+                    <Input
+                      id="global-discount"
+                      type="number"
+                      value={globalDiscountForm.discount_percentage}
+                      onChange={(e) =>
+                        setGlobalDiscountForm({
+                          ...globalDiscountForm,
+                          discount_percentage: Number(e.target.value),
+                        })
+                      }
+                      min="1"
+                      max="50"
+                      className="col-span-3"
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="global-expires" className="text-right">
+                      วันหมดอายุ
+                    </Label>
+                    <Input
+                      id="global-expires"
+                      type="datetime-local"
+                      value={globalDiscountForm.expires_at || ""}
+                      onChange={(e) =>
+                        setGlobalDiscountForm({
+                          ...globalDiscountForm,
+                          expires_at: e.target.value,
+                        })
+                      }
+                      className="col-span-3"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsGlobalDiscountDialogOpen(false)}
+                  >
+                    ยกเลิก
+                  </Button>
+                  <Button
+                    type="submit"
+                    onClick={handleCreateGlobalDiscountCode}
+                    disabled={isDiscountSubmitting}
+                  >
+                    {isDiscountSubmitting ? "กำลังสร้าง..." : "สร้างโค้ด"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {/* Global Discount Codes List */}
+          {globalCodes.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Percent className="h-12 w-12 text-gray-400 mb-4" />
+                <p className="text-gray-500 mb-4">
+                  ยังไม่มีโค้ดส่วนลดผู้ใช้ทั่วไป
+                </p>
+                <p className="text-sm text-gray-400 text-center">
+                  เริ่มต้นสร้างโค้ดส่วนลดสำหรับผู้ใช้ทั่วไป
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {globalCodes.map((code) => (
+                <Card key={code.id}>
+                  <CardContent className="pt-6">
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono font-bold text-lg bg-green-100 px-3 py-1 rounded">
+                            {code.code}
+                          </span>
+                          <Badge
+                            variant={code.is_active ? "default" : "destructive"}
+                          >
+                            {code.is_active ? "ใช้งานได้" : "ปิดใช้งาน"}
+                          </Badge>
+                          <Badge variant="secondary">Global</Badge>
+                        </div>
+                        <div className="text-sm text-muted-foreground space-y-1">
+                          <p>ส่วนลด: {code.discount_percentage}%</p>
+                          <p>
+                            วันที่สร้าง:{" "}
+                            {new Date(code.created_at).toLocaleDateString(
+                              "th-TH"
+                            )}
+                          </p>
+                          <p className="text-green-600">
+                            ใช้ได้กับทุกแพคเกจ ไม่มีค่าคอมมิชชั่น
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            toggleGlobalDiscountCodeStatus(
+                              code.id,
+                              code.is_active
+                            )
+                          }
+                        >
+                          {code.is_active ? "ปิด" : "เปิด"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => deleteGlobalDiscountCode(code.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </div>

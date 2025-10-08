@@ -42,6 +42,84 @@ const PackageDetails = () => {
   const [useProfileData, setUseProfileData] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
 
+  // Discount code states
+  const [discountCode, setDiscountCode] = useState("");
+  const [appliedDiscount, setAppliedDiscount] = useState<{
+    valid: boolean;
+    type: string;
+    discount_percentage: number;
+    discount_code_id?: string;
+    global_code_id?: string;
+    advertiser_id?: string;
+  } | null>(null);
+  const [discountValidating, setDiscountValidating] = useState(false);
+
+  const API_BASE_URL =
+    import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
+  // Validate discount code
+  const validateDiscountCode = async () => {
+    if (!discountCode.trim()) {
+      setAppliedDiscount(null);
+      return;
+    }
+
+    setDiscountValidating(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/discount-codes/validate`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            code: discountCode.trim(),
+            package_id: packageData?.id,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok && data.valid) {
+        setAppliedDiscount(data);
+        toast({
+          title: "ใช้โค้ดส่วนลดได้",
+          description: `ลด ${data.discount_percentage}% - ${
+            data.type === "advertiser"
+              ? "โค้ดจาก Advertiser"
+              : "โค้ดสำหรับทุกคน"
+          }`,
+        });
+      } else {
+        setAppliedDiscount(null);
+        toast({
+          title: "โค้ดส่วนลดไม่ถูกต้อง",
+          description: data.error || "กรุณาตรวจสอบโค้ดอีกครั้ง",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error validating discount code:", error);
+      setAppliedDiscount(null);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถตรวจสอบโค้ดส่วนลดได้",
+        variant: "destructive",
+      });
+    } finally {
+      setDiscountValidating(false);
+    }
+  };
+
+  // Clear discount when code is removed
+  useEffect(() => {
+    if (!discountCode.trim()) {
+      setAppliedDiscount(null);
+    }
+  }, [discountCode]);
+
   // Fetch user profile if logged in
   useEffect(() => {
     const fetchProfile = async () => {
@@ -188,15 +266,25 @@ const PackageDetails = () => {
 
     setBookingLoading(true);
     try {
-      const totalAmount =
+      let totalAmount =
         (packageData.finalPrice || packageData.price) * guestCount;
-      const discountAmount = packageData.discount_percentage
-        ? (totalAmount * packageData.discount_percentage) / 100
-        : 0;
+      let discountAmount = 0;
+
+      // Add package discount
+      if (packageData.discount_percentage) {
+        discountAmount += (totalAmount * packageData.discount_percentage) / 100;
+      }
+
+      // Add discount code discount
+      if (appliedDiscount) {
+        discountAmount +=
+          (totalAmount * appliedDiscount.discount_percentage) / 100;
+      }
+
       const finalAmount = totalAmount - discountAmount;
 
       // Call backend API for booking payment
-      const data = await bookingAPI.createPayment({
+      const bookingData: any = {
         packageId: packageData.id,
         guestCount,
         totalAmount,
@@ -205,7 +293,18 @@ const PackageDetails = () => {
         contact_phone: contactPhone,
         contact_email: contactEmail,
         special_requests: specialRequests || null,
-      });
+      };
+
+      // Add discount code info if applied
+      if (appliedDiscount) {
+        if (appliedDiscount.type === "advertiser") {
+          bookingData.discount_code_id = appliedDiscount.discount_code_id;
+        } else {
+          bookingData.global_code_id = appliedDiscount.global_code_id;
+        }
+      }
+
+      const data = await bookingAPI.createPayment(bookingData);
 
       if (data?.url) {
         // Update current_bookings
@@ -490,6 +589,42 @@ const PackageDetails = () => {
                       rows={3}
                     />
                   </div>
+
+                  {/* Discount Code Input */}
+                  <div className="space-y-2">
+                    <Label htmlFor="discountCode">โค้ดส่วนลด (ถ้ามี)</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="discountCode"
+                        value={discountCode}
+                        onChange={(e) =>
+                          setDiscountCode(e.target.value.toUpperCase())
+                        }
+                        placeholder="กรอกโค้ดส่วนลด"
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={validateDiscountCode}
+                        disabled={discountValidating || !discountCode.trim()}
+                      >
+                        {discountValidating ? "ตรวจสอบ..." : "ใช้โค้ด"}
+                      </Button>
+                    </div>
+                    {appliedDiscount && (
+                      <div className="flex items-center gap-2 text-sm text-green-600">
+                        <Check className="h-4 w-4" />
+                        <span>
+                          ใช้โค้ดส่วนลด {appliedDiscount.discount_percentage}%
+                          สำเร็จ
+                          {appliedDiscount.type === "advertiser"
+                            ? " (จาก Advertiser)"
+                            : " (โค้ดทั่วไป)"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Guest Count Selection */}
@@ -547,9 +682,21 @@ const PackageDetails = () => {
                     <span>จำนวนผู้เดินทาง:</span>
                     <span>{guestCount} ท่าน</span>
                   </div>
+                  <div className="flex justify-between text-sm">
+                    <span>ราคาก่อนลด:</span>
+                    <span>
+                      ฿
+                      {(
+                        (packageData.finalPrice || packageData.price) *
+                        guestCount
+                      ).toLocaleString()}
+                    </span>
+                  </div>
                   {packageData.discount_percentage > 0 && (
                     <div className="flex justify-between text-sm text-green-600">
-                      <span>ส่วนลด ({packageData.discount_percentage}%):</span>
+                      <span>
+                        ส่วนลดจากแพ็กเกจ ({packageData.discount_percentage}%):
+                      </span>
                       <span>
                         -฿
                         {(
@@ -560,15 +707,37 @@ const PackageDetails = () => {
                       </span>
                     </div>
                   )}
+                  {appliedDiscount && (
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span>
+                        ส่วนลดจากโค้ด ({appliedDiscount.discount_percentage}%):
+                      </span>
+                      <span>
+                        -฿
+                        {(
+                          (packageData.finalPrice || packageData.price) *
+                          guestCount *
+                          (appliedDiscount.discount_percentage / 100)
+                        ).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
                   <Separator />
                   <div className="flex justify-between font-semibold">
                     <span>ราคารวม:</span>
                     <span>
                       ฿
-                      {(
-                        (packageData.finalPrice || packageData.price) *
-                        guestCount
-                      ).toLocaleString()}
+                      {(() => {
+                        let finalPrice =
+                          (packageData.finalPrice || packageData.price) *
+                          guestCount;
+                        if (appliedDiscount) {
+                          finalPrice =
+                            finalPrice *
+                            (1 - appliedDiscount.discount_percentage / 100);
+                        }
+                        return finalPrice.toLocaleString();
+                      })()}
                     </span>
                   </div>
                 </div>

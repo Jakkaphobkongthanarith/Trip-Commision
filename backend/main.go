@@ -65,12 +65,34 @@ func main() {
 		log.Fatal("Unable to connect to database with GORM:", err)
 	}
 
-	// Auto migrate tables
-	err = db.AutoMigrate(&models.UserRole{}, &models.TravelPackage{}, &models.DiscountCode{}, &models.Commission{})
-	if err != nil {
-		log.Printf("Warning during migration: %v", err)
+	// Note: Database tables are manually created via SQL
+	// Commenting out AutoMigrate due to auth schema permission restrictions
+	// err = db.AutoMigrate(&models.UserRole{}, &models.TravelPackage{}, &models.PackageAdvertiser{}, &models.DiscountCode{}, &models.GlobalDiscountCode{}, &models.Commission{}, &models.Notification{})
+	log.Println("Using manually created database tables")
+
+	// ตรวจสอบว่าตารางถูกสร้างแล้ว
+	fmt.Println("Checking tables existence...")
+	
+	// ตรวจสอบ global_discount_codes table
+	if db.Migrator().HasTable(&models.GlobalDiscountCode{}) {
+		fmt.Println("✓ global_discount_codes table exists")
+	} else {
+		fmt.Println("✗ global_discount_codes table missing")
 	}
-	fmt.Println("Database migration completed")
+	
+	// ตรวจสอบ discount_codes table
+	if db.Migrator().HasTable(&models.DiscountCode{}) {
+		fmt.Println("✓ discount_codes table exists")
+	} else {
+		fmt.Println("✗ discount_codes table missing")
+	}
+	
+	// ตรวจสอบ notifications table
+	if db.Migrator().HasTable(&models.Notification{}) {
+		fmt.Println("✓ notifications table exists")
+	} else {
+		fmt.Println("✗ notifications table missing")
+	}
 
 	// Setup routes ผ่าน controllers package
 	controllers.SetupRoutes(r, db)

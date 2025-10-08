@@ -18,6 +18,7 @@ import MemberManagement from "./pages/MemberManagement";
 import AdminDashboard from "./pages/AdminDashboard";
 import PackageManagement from "./pages/PackageManagement";
 import BookingTest from "./pages/BookingTest";
+import DiscountCodes from "./pages/DiscountCodes";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -88,6 +89,7 @@ const App = () => (
               }
             />
             <Route path="/booking-test" element={<BookingTest />} />
+            <Route path="/discount-codes" element={<DiscountCodes />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

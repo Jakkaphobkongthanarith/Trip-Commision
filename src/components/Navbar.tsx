@@ -8,12 +8,13 @@ import {
   Package,
   User,
   ChevronDown,
+  Percent,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/useUserRole";
-import NotificationBell from "./NotificationBell";
+import NotificationDropdown from "./NotificationDropdown";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,9 +70,18 @@ const Navbar = () => {
             แพคเกจทั้งหมด
           </Button>
 
+          <Button
+            variant="ghost"
+            onClick={() => navigate("/discount-codes")}
+            className="text-foreground hover:text-primary"
+          >
+            <Percent className="h-4 w-4 mr-2" />
+            โค้ดส่วนลด
+          </Button>
+
           {user ? (
             <div className="flex items-center space-x-4">
-              <NotificationBell />
+              <NotificationDropdown />
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
