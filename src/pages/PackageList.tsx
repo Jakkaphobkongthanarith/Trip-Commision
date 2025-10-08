@@ -40,10 +40,8 @@ const PackageList = () => {
       try {
         const data = await packageAPI.getAll();
 
-        // Filter เฉพาะ is_active ใน frontend (หรือจะเพิ่ม filter ใน backend ก็ได้)
-        const activePackages = data.filter((pkg) => pkg.is_active !== false);
         // Normalize tags and apply discount for all packages
-        const normalizedData = activePackages.map((pkg) => {
+        const normalizedData = data.map((pkg) => {
           const hasDiscount =
             pkg.discount_percentage && pkg.discount_percentage > 0;
           const originalPrice = hasDiscount

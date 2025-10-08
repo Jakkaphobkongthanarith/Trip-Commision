@@ -37,7 +37,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import {
   Edit,
@@ -63,7 +62,6 @@ interface Package {
   duration: number;
   description: string;
   image_url: string;
-  is_active: boolean;
   advertisers: User[]; // รองรับ advertiser หลายคน
   tags: string[] | string | null;
   available_from: string | null;
@@ -173,7 +171,6 @@ export default function PackageManagement() {
     duration: "",
     description: "",
     image_url: "",
-    is_active: true,
     advertiser_ids: [] as string[], // รองรับ advertiser หลายคน
     tags: [] as string[],
     available_from: "",
@@ -338,7 +335,6 @@ export default function PackageManagement() {
         duration: parseInt(formData.duration),
         description: formData.description,
         image_url: formData.image_url,
-        is_active: formData.is_active,
         tags: Array.isArray(formData.tags)
           ? `{${formData.tags.join(",")}}`
           : formData.tags,
@@ -443,7 +439,6 @@ export default function PackageManagement() {
       duration: pkg.duration.toString(),
       description: pkg.description || "",
       image_url: pkg.image_url || "",
-      is_active: pkg.is_active,
       advertiser_ids: pkg.advertisers?.map((a) => a.id) || [],
       tags: normalizeTags(pkg.tags),
       available_from: pkg.available_from || "",
@@ -493,7 +488,6 @@ export default function PackageManagement() {
       duration: "",
       description: "",
       image_url: "",
-      is_active: true,
       advertiser_ids: [],
       tags: [],
       available_from: "",
@@ -1215,17 +1209,6 @@ export default function PackageManagement() {
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="is_active"
-                      checked={formData.is_active}
-                      onCheckedChange={(checked) =>
-                        setFormData({ ...formData, is_active: checked })
-                      }
-                    />
-                    <Label htmlFor="is_active">เปิดใช้งาน</Label>
-                  </div>
-
                   <div className="flex justify-end space-x-2">
                     <Button
                       type="button"
@@ -1345,15 +1328,7 @@ export default function PackageManagement() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-between">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs ${
-                        pkg.is_active
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {pkg.is_active ? "เปิดใช้งาน" : "ปิดใช้งาน"}
-                    </span>
+                    <div></div>
                     {pkg.image_url && (
                       <img
                         src={pkg.image_url}
