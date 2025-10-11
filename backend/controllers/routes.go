@@ -168,6 +168,9 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	// ส่ง notification ให้ผู้ใช้ทั้งหมด (broadcast)
 	r.POST("/api/notifications/broadcast", notificationController.BroadcastNotification)
 	
+	// สร้าง test notifications
+	r.POST("/api/notifications/test", notificationController.CreateTestNotifications)
+	
 	// ดึง notifications ของผู้ใช้
 	r.GET("/api/notifications/user/:user_id", notificationController.GetUserNotifications)
 	

@@ -196,6 +196,20 @@ func ConfirmPaymentHandler(c *gin.Context, db *gorm.DB) {
 		return
 	}
 
+	// ดึงข้อมูล booking ก่อนอัปเดต
+	var booking models.Booking
+	if err := db.First(&booking, bookingID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Booking not found"})
+		return
+	}
+
+	// ดึงข้อมูลแพคเกจ
+	var pkg models.TravelPackage
+	if err := db.First(&pkg, booking.PackageID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Package not found"})
+		return
+	}
+
 	// อัปเดต payment_status และ status ของ booking และล้าง expires_at
 	result := db.Model(&models.Booking{}).
 		Where("id = ?", bookingID).
@@ -216,6 +230,21 @@ func ConfirmPaymentHandler(c *gin.Context, db *gorm.DB) {
 	if result.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Booking not found"})
 		return
+	}
+
+	// ส่ง notification ให้ลูกค้า
+	go SendPaymentSuccessNotification(booking, db)
+
+	// ส่ง notification ให้ advertiser (ถ้ามี)
+	go SendNewBookingNotificationToAdvertiser(booking, pkg, db)
+
+	// ถ้ามีการใช้ discount code ให้สร้าง commission
+	if booking.DiscountCodeID != nil {
+		var discountCode models.DiscountCode
+		if err := db.First(&discountCode, *booking.DiscountCodeID).Error; err == nil {
+			go CreateCommission(booking.ID, discountCode.AdvertiserID, *booking.DiscountCodeID, 
+							   booking.FinalAmount, discountCode.CommissionRate, db)
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{

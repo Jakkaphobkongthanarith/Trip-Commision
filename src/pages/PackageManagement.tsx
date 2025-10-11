@@ -110,12 +110,16 @@ interface GlobalDiscountCode {
 
 interface CreateAdvertiserDiscountForm {
   advertiser_id: string;
+  package_id: string; // เพิ่มใหม่
   discount_percentage: number;
+  commission_rate: number; // เพิ่มใหม่
+  max_uses?: number; // เพิ่มใหม่
   expires_at?: string; // วันหมดอายุ (optional)
 }
 
 interface CreateGlobalDiscountForm {
   discount_percentage: number;
+  max_uses?: number; // เพิ่มใหม่
   expires_at?: string; // วันหมดอายุ (optional)
 }
 
@@ -153,12 +157,16 @@ export default function PackageManagement() {
   const [advertiserDiscountForm, setAdvertiserDiscountForm] =
     useState<CreateAdvertiserDiscountForm>({
       advertiser_id: "",
+      package_id: "",
       discount_percentage: 10,
+      commission_rate: 5.0,
+      max_uses: undefined,
       expires_at: "",
     });
   const [globalDiscountForm, setGlobalDiscountForm] =
     useState<CreateGlobalDiscountForm>({
       discount_percentage: 10,
+      max_uses: undefined,
       expires_at: "",
     });
   const [isDiscountSubmitting, setIsDiscountSubmitting] = useState(false);
@@ -607,11 +615,13 @@ export default function PackageManagement() {
   const handleCreateAdvertiserDiscountCode = async () => {
     if (
       !advertiserDiscountForm.advertiser_id ||
-      advertiserDiscountForm.discount_percentage <= 0
+      !advertiserDiscountForm.package_id ||
+      advertiserDiscountForm.discount_percentage <= 0 ||
+      advertiserDiscountForm.commission_rate < 0
     ) {
       toast({
         title: "เกิดข้อผิดพลาด",
-        description: "กรุณากรอกข้อมูลให้ครบถ้วน",
+        description: "กรุณากรอกข้อมูลให้ครบถ้วนและถูกต้อง",
         variant: "destructive",
       });
       return;
@@ -656,7 +666,10 @@ export default function PackageManagement() {
       setIsAdvertiserDiscountDialogOpen(false);
       setAdvertiserDiscountForm({
         advertiser_id: "",
+        package_id: "",
         discount_percentage: 10,
+        commission_rate: 5.0,
+        max_uses: undefined,
         expires_at: "",
       });
       fetchAdvertiserDiscountCodes();
@@ -715,6 +728,7 @@ export default function PackageManagement() {
       setIsGlobalDiscountDialogOpen(false);
       setGlobalDiscountForm({
         discount_percentage: 10,
+        max_uses: undefined,
         expires_at: "",
       });
       fetchGlobalDiscountCodes();
@@ -1361,7 +1375,10 @@ export default function PackageManagement() {
                   onClick={() => {
                     setAdvertiserDiscountForm({
                       advertiser_id: "",
+                      package_id: "",
                       discount_percentage: 10,
+                      commission_rate: 5.0,
+                      max_uses: undefined,
                       expires_at: "",
                     });
                     setIsAdvertiserDiscountDialogOpen(true);
@@ -1371,11 +1388,11 @@ export default function PackageManagement() {
                   สร้างโค้ดส่วนลด Advertiser
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
+              <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
                   <DialogTitle>สร้างโค้ดส่วนลดสำหรับ Advertiser</DialogTitle>
                   <p className="text-sm text-muted-foreground">
-                    โค้ดนี้จะใช้ได้กับทุกแพคเกจที่ Advertiser คนนี้โฆษณา
+                    โค้ดนี้จะใช้ได้กับแพคเกจที่เลือกเท่านั้น
                   </p>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -1389,6 +1406,7 @@ export default function PackageManagement() {
                         setAdvertiserDiscountForm({
                           ...advertiserDiscountForm,
                           advertiser_id: value,
+                          package_id: "", // รีเซ็ตแพคเกจเมื่อเปลี่ยน advertiser
                         })
                       }
                     >
@@ -1401,6 +1419,40 @@ export default function PackageManagement() {
                             {advertiser.display_name}
                           </SelectItem>
                         ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="package" className="text-right">
+                      แพคเกจ
+                    </Label>
+                    <Select
+                      value={advertiserDiscountForm.package_id}
+                      onValueChange={(value) =>
+                        setAdvertiserDiscountForm({
+                          ...advertiserDiscountForm,
+                          package_id: value,
+                        })
+                      }
+                      disabled={!advertiserDiscountForm.advertiser_id}
+                    >
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="เลือกแพคเกจ" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {packages
+                          .filter((pkg) =>
+                            pkg.advertisers.some(
+                              (adv) =>
+                                adv.id === advertiserDiscountForm.advertiser_id
+                            )
+                          )
+                          .map((pkg) => (
+                            <SelectItem key={pkg.id} value={pkg.id}>
+                              {pkg.title} - {pkg.location}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -1423,6 +1475,50 @@ export default function PackageManagement() {
                       className="col-span-3"
                     />
                   </div>
+
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="commission" className="text-right">
+                      Commission (%)
+                    </Label>
+                    <Input
+                      id="commission"
+                      type="number"
+                      value={advertiserDiscountForm.commission_rate}
+                      onChange={(e) =>
+                        setAdvertiserDiscountForm({
+                          ...advertiserDiscountForm,
+                          commission_rate: Number(e.target.value),
+                        })
+                      }
+                      min="0"
+                      max="50"
+                      step="0.5"
+                      className="col-span-3"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="max-uses" className="text-right">
+                      จำนวนใช้สูงสุด
+                    </Label>
+                    <Input
+                      id="max-uses"
+                      type="number"
+                      value={advertiserDiscountForm.max_uses || ""}
+                      onChange={(e) =>
+                        setAdvertiserDiscountForm({
+                          ...advertiserDiscountForm,
+                          max_uses: e.target.value
+                            ? Number(e.target.value)
+                            : undefined,
+                        })
+                      }
+                      min="1"
+                      placeholder="ไม่จำกัด"
+                      className="col-span-3"
+                    />
+                  </div>
+
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="advertiser-expires" className="text-right">
                       วันหมดอายุ
@@ -1547,6 +1643,7 @@ export default function PackageManagement() {
                   onClick={() => {
                     setGlobalDiscountForm({
                       discount_percentage: 10,
+                      max_uses: undefined,
                       expires_at: "",
                     });
                     setIsGlobalDiscountDialogOpen(true);
@@ -1583,6 +1680,29 @@ export default function PackageManagement() {
                       className="col-span-3"
                     />
                   </div>
+
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="global-max-uses" className="text-right">
+                      จำนวนใช้สูงสุด
+                    </Label>
+                    <Input
+                      id="global-max-uses"
+                      type="number"
+                      value={globalDiscountForm.max_uses || ""}
+                      onChange={(e) =>
+                        setGlobalDiscountForm({
+                          ...globalDiscountForm,
+                          max_uses: e.target.value
+                            ? Number(e.target.value)
+                            : undefined,
+                        })
+                      }
+                      min="1"
+                      placeholder="ไม่จำกัด"
+                      className="col-span-3"
+                    />
+                  </div>
+
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="global-expires" className="text-right">
                       วันหมดอายุ

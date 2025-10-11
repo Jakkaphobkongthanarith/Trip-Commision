@@ -8,12 +8,14 @@ import (
 	"github.com/google/uuid"
 )
 
-// DiscountCode - รหัสส่วนลดสำหรับ Advertiser (ใช้กับ existing schema)
+// DiscountCode - รหัสส่วนลดสำหรับ Advertiser (อัปเดตให้ผูกกับแพคเกจเฉพาะ)
 type DiscountCode struct {
 	ID                 uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	Code               string     `json:"code" gorm:"type:text;unique;not null"` // รหัสส่วนลด (auto-generated)
 	AdvertiserID       uuid.UUID  `json:"advertiser_id" gorm:"type:uuid;not null"` // เจ้าของโค้ด
+	PackageID          uuid.UUID  `json:"package_id" gorm:"type:uuid;not null"` // แพคเกจที่ผูกกับโค้ด
 	DiscountPercentage float64    `json:"discount_percentage" gorm:"type:numeric(5,2);not null"` // % ส่วนลดที่ให้ลูกค้า
+	CommissionRate     float64    `json:"commission_rate" gorm:"type:numeric(5,2);default:5.00"` // % commission สำหรับโค้ดนี้
 	MaxUses            *int       `json:"max_uses" gorm:"type:integer"` // จำนวนการใช้สูงสุด
 	CurrentUses        int        `json:"current_uses" gorm:"type:integer;default:0"` // จำนวนที่ใช้ไปแล้ว
 	IsActive           *bool      `json:"is_active" gorm:"type:boolean;default:true"` // เปิด/ปิดใช้งาน
@@ -22,7 +24,8 @@ type DiscountCode struct {
 	UpdatedAt          time.Time  `json:"updated_at" gorm:"type:timestamp with time zone;not null;default:now()"`
 	
 	// Relations
-	Advertiser User `json:"advertiser,omitempty" gorm:"foreignKey:AdvertiserID"`
+	Advertiser User          `json:"advertiser,omitempty" gorm:"foreignKey:AdvertiserID"`
+	Package    TravelPackage `json:"package,omitempty" gorm:"foreignKey:PackageID"`
 }
 
 // TableName กำหนดชื่อ table
@@ -46,11 +49,12 @@ func (GlobalDiscountCode) TableName() string {
 	return "global_discount_codes"
 }
 
-// Commission - ปรับให้ตรงกับ existing schema
+// Commission - ปรับให้ตรงกับ existing schema และเพิ่ม discount_code_id
 type Commission struct {
 	ID                   uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	BookingID            uuid.UUID  `json:"booking_id" gorm:"type:uuid;not null"`
 	AdvertiserID         uuid.UUID  `json:"advertiser_id" gorm:"type:uuid;not null"`
+	DiscountCodeID       *uuid.UUID `json:"discount_code_id" gorm:"type:uuid"` // อ้างอิงโค้ดส่วนลดที่ใช้
 	CommissionAmount     float64    `json:"commission_amount" gorm:"type:numeric(10,2);not null"` // จำนวนเงินค่าคอมมิชชั่น
 	CommissionPercentage float64    `json:"commission_percentage" gorm:"type:numeric(5,2);not null;default:5.00"` // % ค่าคอมมิชชั่น
 	Status               string     `json:"status" gorm:"type:text;not null;default:pending"` // pending, paid, cancelled
@@ -59,8 +63,9 @@ type Commission struct {
 	UpdatedAt            time.Time  `json:"updated_at" gorm:"type:timestamp with time zone;not null;default:now()"`
 	
 	// Relations
-	Advertiser User    `json:"advertiser,omitempty" gorm:"foreignKey:AdvertiserID"`
-	Booking    Booking `json:"booking,omitempty" gorm:"foreignKey:BookingID"`
+	Advertiser   User         `json:"advertiser,omitempty" gorm:"foreignKey:AdvertiserID"`
+	Booking      Booking      `json:"booking,omitempty" gorm:"foreignKey:BookingID"`
+	DiscountCode DiscountCode `json:"discount_code,omitempty" gorm:"foreignKey:DiscountCodeID"`
 }
 
 // TableName กำหนดชื่อ table
@@ -110,6 +115,11 @@ func (dc *DiscountCode) IsValidForUse() bool {
 		return false
 	}
 	return true
+}
+
+// IsValidForPackage - ตรวจสอบว่าโค้ดใช้ได้กับแพคเกจนี้หรือไม่
+func (dc *DiscountCode) IsValidForPackage(packageID uuid.UUID) bool {
+	return dc.PackageID == packageID && dc.IsValidForUse()
 }
 
 func (gdc *GlobalDiscountCode) IsValidForUse() bool {

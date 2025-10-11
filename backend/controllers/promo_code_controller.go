@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"fmt"
+	"time"
 	"trip-trader-backend/models"
 
 	"github.com/gin-gonic/gin"
@@ -105,11 +106,15 @@ func (dc *DiscountCodeController) ToggleGlobalDiscountCodeStatus(c *gin.Context)
 	c.JSON(200, gin.H{"message": "Status updated successfully"})
 }
 
-// CreateDiscountCodeForAdvertiser - Manager สร้างโค้ดส่วนลดให้ Advertiser คนเดียว
+// CreateDiscountCodeForAdvertiser - Manager สร้างโค้ดส่วนลดให้ Advertiser สำหรับแพคเกจเฉพาะ
 func (dc *DiscountCodeController) CreateDiscountCodeForAdvertiser(c *gin.Context) {
 	var req struct {
-		AdvertiserID       string  `json:"advertiser_id" binding:"required"`
-		DiscountPercentage float64 `json:"discount_percentage" binding:"required,min=1,max=50"`
+		AdvertiserID       string   `json:"advertiser_id" binding:"required"`
+		PackageID          string   `json:"package_id" binding:"required"`
+		DiscountPercentage float64  `json:"discount_percentage" binding:"required,min=1,max=50"`
+		CommissionRate     float64  `json:"commission_rate"`
+		MaxUses            *int     `json:"max_uses"`
+		ExpiresAt          *string  `json:"expires_at"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -117,13 +122,27 @@ func (dc *DiscountCodeController) CreateDiscountCodeForAdvertiser(c *gin.Context
 		return
 	}
 
-	// ดึงข้อมูล advertiser
+	// Parse UUIDs
 	advertiserID, err := uuid.Parse(req.AdvertiserID)
 	if err != nil {
 		c.JSON(400, gin.H{"error": "Invalid advertiser ID"})
 		return
 	}
 
+	packageID, err := uuid.Parse(req.PackageID)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "Invalid package ID"})
+		return
+	}
+
+	// ตรวจสอบว่า advertiser รับผิดชอบแพคเกจนี้หรือไม่
+	var pkg models.TravelPackage
+	if err := dc.DB.Where("id = ? AND advertiser_id = ?", packageID, advertiserID).First(&pkg).Error; err != nil {
+		c.JSON(403, gin.H{"error": "Advertiser is not responsible for this package"})
+		return
+	}
+
+	// ดึงข้อมูล advertiser
 	var advertiser models.User
 	if err := dc.DB.Preload("Profile").First(&advertiser, advertiserID).Error; err != nil {
 		c.JSON(404, gin.H{"error": "Advertiser not found"})
@@ -146,13 +165,37 @@ func (dc *DiscountCodeController) CreateDiscountCodeForAdvertiser(c *gin.Context
 		}
 		code = models.GenerateDiscountCode(advertiserName, req.DiscountPercentage)
 	}
+
+	// Parse expires_at
+	var expiresAt *time.Time
+	if req.ExpiresAt != nil && *req.ExpiresAt != "" {
+		parsedTime, err := time.Parse("2006-01-02T15:04:05Z", *req.ExpiresAt)
+		if err != nil {
+			parsedTime, err = time.Parse("2006-01-02", *req.ExpiresAt)
+			if err != nil {
+				c.JSON(400, gin.H{"error": "Invalid expires_at format"})
+				return
+			}
+		}
+		expiresAt = &parsedTime
+	}
+
+	// Set default commission rate
+	commissionRate := req.CommissionRate
+	if commissionRate == 0 {
+		commissionRate = 5.00 // 5% default
+	}
 	
 	discountCode := models.DiscountCode{
 		ID:                 uuid.New(),
 		Code:               code,
 		AdvertiserID:       advertiserID,
+		PackageID:          packageID,
 		DiscountPercentage: req.DiscountPercentage,
+		CommissionRate:     commissionRate,
+		MaxUses:            req.MaxUses,
 		IsActive:           &[]bool{true}[0], // แก้เป็น pointer
+		ExpiresAt:          expiresAt,
 	}
 
 	if err := dc.DB.Create(&discountCode).Error; err != nil {
@@ -164,6 +207,12 @@ func (dc *DiscountCodeController) CreateDiscountCodeForAdvertiser(c *gin.Context
 		return
 	}
 
+	// โหลดข้อมูล relationships
+	dc.DB.Preload("Advertiser").Preload("Package").First(&discountCode, discountCode.ID)
+
+	// ส่ง notification ให้ advertiser
+	go SendNotificationToAdvertiser(discountCode.AdvertiserID, discountCode, dc.DB)
+
 	c.JSON(201, gin.H{
 		"message": "Discount code created successfully",
 		"code":    discountCode,
@@ -174,11 +223,26 @@ func (dc *DiscountCodeController) CreateDiscountCodeForAdvertiser(c *gin.Context
 func (dc *DiscountCodeController) CreateGlobalDiscountCode(c *gin.Context) {
 	var req struct {
 		DiscountPercentage float64 `json:"discount_percentage" binding:"required,min=1,max=50"`
+		ExpiresAt          *string `json:"expires_at"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
+	}
+
+	// Parse expires_at
+	var expiresAt *time.Time
+	if req.ExpiresAt != nil && *req.ExpiresAt != "" {
+		parsedTime, err := time.Parse("2006-01-02T15:04:05Z", *req.ExpiresAt)
+		if err != nil {
+			parsedTime, err = time.Parse("2006-01-02", *req.ExpiresAt)
+			if err != nil {
+				c.JSON(400, gin.H{"error": "Invalid expires_at format"})
+				return
+			}
+		}
+		expiresAt = &parsedTime
 	}
 
 	// สร้างโค้ดอัตโนมัติ
@@ -198,6 +262,7 @@ func (dc *DiscountCodeController) CreateGlobalDiscountCode(c *gin.Context) {
 		Code:               code,
 		DiscountPercentage: req.DiscountPercentage,
 		IsActive:           true,
+		ExpiresAt:          expiresAt,
 	}
 
 	if err := dc.DB.Create(&globalCode).Error; err != nil {
