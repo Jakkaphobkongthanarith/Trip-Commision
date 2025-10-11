@@ -48,18 +48,20 @@ const Navbar = () => {
 
   return (
     <nav className="bg-background/95 backdrop-blur-sm border-b border-border sticky top-0 z-50">
-      <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+      <div className="container mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
+        {/* Logo */}
         <div
           className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity"
           onClick={() => navigate("/")}
         >
-          <Plane className="h-8 w-8 text-primary" />
-          <h1 className="text-2xl font-bold bg-sunset-gradient bg-clip-text text-transparent">
+          <Plane className="h-6 md:h-8 w-6 md:w-8 text-primary" />
+          <h1 className="text-lg md:text-2xl font-bold bg-sunset-gradient bg-clip-text text-transparent">
             TravelCommission
           </h1>
         </div>
 
-        <div className="flex items-center space-x-4">
+        {/* Desktop Navigation */}
+        <div className="hidden md:flex items-center space-x-4">
           <Button
             variant="ghost"
             onClick={() => navigate("/packages")}
@@ -182,6 +184,108 @@ const Navbar = () => {
                 สมัครสมาชิก
               </Button>
             </>
+          )}
+        </div>
+
+        {/* Mobile Navigation */}
+        <div className="md:hidden flex items-center space-x-2">
+          {user && <NotificationBell />}
+          
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <User className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-56 bg-card border-border z-50"
+              >
+                <DropdownMenuLabel>
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium">{user.email}</p>
+                    {userRole && (
+                      <p className="text-xs text-muted-foreground">
+                        {userRole === "customer"
+                          ? "นักท่องเที่ยว"
+                          : userRole === "advertiser"
+                          ? "คนกลาง"
+                          : "ผู้จัดการ"}
+                      </p>
+                    )}
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+
+                <DropdownMenuItem
+                  onClick={() => navigate("/profile")}
+                  className="cursor-pointer"
+                >
+                  <User className="h-4 w-4 mr-2" />
+                  โปรไฟล์
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onClick={() => navigate("/packages")}
+                  className="cursor-pointer"
+                >
+                  <Package className="h-4 w-4 mr-2" />
+                  แพคเกจทั้งหมด
+                </DropdownMenuItem>
+
+                {userRole === "advertiser" && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => navigate("/advertiser")}
+                      className="cursor-pointer"
+                    >
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      แดชบอร์ด
+                    </DropdownMenuItem>
+                  </>
+                )}
+
+                {userRole === "manager" && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => navigate("/members")}
+                      className="cursor-pointer"
+                    >
+                      <Users className="h-4 w-4 mr-2" />
+                      จัดการสมาชิก
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => navigate("/package-management")}
+                      className="cursor-pointer"
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      จัดการแพคเกจ
+                    </DropdownMenuItem>
+                  </>
+                )}
+
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleSignOut}
+                  className="cursor-pointer text-destructive focus:text-destructive"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  ออกจากระบบ
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => navigate("/auth")}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              เข้าสู่ระบบ
+            </Button>
           )}
         </div>
       </div>

@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import Navbar from "@/components/Navbar";
 import SearchBar from "@/components/SearchBar";
 import TravelPackageCard from "@/components/TravelPackageCard";
 import { packageAPI } from "@/lib/api";
@@ -93,9 +92,7 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-sky-gradient">
-      <Navbar />
-
+    <>
       {/* Hero Section */}
       <section className="relative pt-24 pb-16 px-6">
         <div className="container mx-auto text-center">
@@ -206,7 +203,7 @@ const Index = () => {
           </p>
         </div>
       </section>
-    </div>
+    </>
   );
 };
 

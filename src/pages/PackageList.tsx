@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import TravelPackageCard from "@/components/TravelPackageCard";
 import SearchBar from "@/components/SearchBar";
-import Navbar from "@/components/Navbar";
 import { packageAPI } from "@/lib/api";
 import { X, PanelLeftOpen } from "lucide-react";
 import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
@@ -235,9 +234,7 @@ const PackageList = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background w-full flex flex-col">
-      <Navbar />
-      
+    <div className="w-full flex flex-col">
       <SidebarProvider>
         <div className="flex-1 flex w-full">
           <TagSidebar packages={packages} />
