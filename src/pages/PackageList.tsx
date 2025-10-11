@@ -26,9 +26,7 @@ const MainContent = ({
 
   return (
     <div className="flex-1 flex flex-col w-full">
-      <Navbar />
-
-      <main className="pt-20 flex-1">
+      <main className="flex-1">
         {/* Sidebar Toggle Button when collapsed */}
         {isCollapsed && (
           <div className="fixed top-24 left-4 z-40">
@@ -147,7 +145,7 @@ const PackageList = () => {
   const navigate = useNavigate();
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [visibleCount, setVisibleCount] = useState(9); // แสดง 9 รายการ (3 แถว x 3 คอลัมน์)
+  const [visibleCount, setVisibleCount] = useState(9);
   const selectedTag = searchParams.get("tag");
   const searchQuery = searchParams.get("search");
   const locationFilter = searchParams.get("location");
@@ -173,10 +171,7 @@ const PackageList = () => {
     const fetchPackages = async () => {
       try {
         const data = await packageAPI.getAll();
-
-        // Filter เฉพาะ is_active ใน frontend (หรือจะเพิ่ม filter ใน backend ก็ได้)
         const activePackages = data.filter((pkg: any) => pkg.is_active !== false);
-        // Normalize tags and apply discount for all packages
         const normalizedData = activePackages.map((pkg: any) => {
           const hasDiscount =
             pkg.discount_percentage && pkg.discount_percentage > 0;
@@ -219,16 +214,13 @@ const PackageList = () => {
     return true;
   });
 
-  // จำนวนรายการที่จะแสดง
   const displayedPackages = filteredPackages.slice(0, visibleCount);
   const hasMorePackages = filteredPackages.length > visibleCount;
 
-  // ฟังก์ชันโหลดเพิ่ม
   const loadMore = () => {
-    setVisibleCount((prev) => prev + 9); // เพิ่มทีละ 9 รายการ (3 แถว)
+    setVisibleCount((prev) => prev + 9);
   };
 
-  // รีเซ็ตการแสดงผลเมื่อเปลี่ยน filter
   useEffect(() => {
     setVisibleCount(9);
   }, [selectedTag, searchQuery, locationFilter, minPrice, maxPrice]);
@@ -239,26 +231,32 @@ const PackageList = () => {
 
   const clearFilter = () => {
     navigate("/packages");
-    setVisibleCount(9); // รีเซ็ตการแสดงผลกลับไปเป็น 9 รายการ
+    setVisibleCount(9);
   };
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen bg-background w-full flex">
-        <TagSidebar packages={packages} />
-        <MainContent
-          selectedTag={selectedTag}
-          filteredPackages={filteredPackages}
-          loading={loading}
-          displayedPackages={displayedPackages}
-          handleTagClick={handleTagClick}
-          clearFilter={clearFilter}
-          hasMorePackages={hasMorePackages}
-          loadMore={loadMore}
-          visibleCount={visibleCount}
-        />
+    <div className="min-h-screen bg-background w-full flex flex-col">
+      <div className="sticky top-0 z-50">
+        <Navbar />
       </div>
-    </SidebarProvider>
+      
+      <SidebarProvider>
+        <div className="flex-1 flex w-full">
+          <TagSidebar packages={packages} />
+          <MainContent
+            selectedTag={selectedTag}
+            filteredPackages={filteredPackages}
+            loading={loading}
+            displayedPackages={displayedPackages}
+            handleTagClick={handleTagClick}
+            clearFilter={clearFilter}
+            hasMorePackages={hasMorePackages}
+            loadMore={loadMore}
+            visibleCount={visibleCount}
+          />
+        </div>
+      </SidebarProvider>
+    </div>
   );
 };
 
