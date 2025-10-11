@@ -29,7 +29,7 @@ const MainContent = ({
       <main className="flex-1">
         {/* Sidebar Toggle Button when collapsed */}
         {isCollapsed && (
-          <div className="fixed top-24 left-4 z-40">
+          <div className="fixed top-[4.5rem] left-4 z-40">
             <SidebarTrigger className="bg-background border shadow-md hover:bg-muted">
               <PanelLeftOpen className="h-4 w-4" />
             </SidebarTrigger>

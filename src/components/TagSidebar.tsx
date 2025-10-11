@@ -72,7 +72,13 @@ export function TagSidebar({ packages }: TagSidebarProps) {
   };
 
   if (collapsed) {
-    return <Sidebar className="w-0" collapsible="icon" />;
+    return (
+      <Sidebar className="w-14 border-r" collapsible="icon">
+        <SidebarHeader className="border-b px-2 py-3 bg-background flex items-center justify-center">
+          <SidebarTrigger className="hover:bg-muted" />
+        </SidebarHeader>
+      </Sidebar>
+    );
   }
 
   return (
@@ -83,7 +89,7 @@ export function TagSidebar({ packages }: TagSidebarProps) {
             <TagIcon className="h-5 w-5 text-primary" />
             <h2 className="font-semibold text-lg">หมวดหมู่</h2>
           </div>
-          <SidebarTrigger className="hover:bg-muted" />
+          <SidebarTrigger className="hover:bg-muted ml-auto" />
         </div>
       </SidebarHeader>
 
