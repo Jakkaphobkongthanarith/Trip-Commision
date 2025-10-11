@@ -8,11 +8,13 @@ import {
   Package,
   User,
   ChevronDown,
+  Languages,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useLanguage } from "@/contexts/LanguageContext";
 import NotificationBell from "./NotificationBell";
 import {
   DropdownMenu,
@@ -28,6 +30,7 @@ const Navbar = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { userRole } = useUserRole();
+  const { language, setLanguage, t } = useLanguage();
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -64,11 +67,21 @@ const Navbar = () => {
         <div className="hidden md:flex items-center space-x-4">
           <Button
             variant="ghost"
+            onClick={() => setLanguage(language === "th" ? "en" : "th")}
+            className="text-foreground hover:text-primary"
+            title={language === "th" ? "Switch to English" : "สลับเป็นภาษาไทย"}
+          >
+            <Languages className="h-4 w-4 mr-2" />
+            {language === "th" ? "EN" : "ไทย"}
+          </Button>
+
+          <Button
+            variant="ghost"
             onClick={() => navigate("/packages")}
             className="text-foreground hover:text-primary"
           >
             <Package className="h-4 w-4 mr-2" />
-            แพคเกจทั้งหมด
+            {t("nav.packages")}
           </Button>
 
           {user ? (
@@ -189,6 +202,15 @@ const Navbar = () => {
 
         {/* Mobile Navigation */}
         <div className="md:hidden flex items-center space-x-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setLanguage(language === "th" ? "en" : "th")}
+            title={language === "th" ? "Switch to English" : "สลับเป็นภาษาไทย"}
+          >
+            <Languages className="h-5 w-5" />
+          </Button>
+          
           {user && <NotificationBell />}
           
           {user ? (
