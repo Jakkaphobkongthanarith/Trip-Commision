@@ -1,4 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import thTranslations from "@/locales/th";
+import enTranslations from "@/locales/en";
 
 type Language = "th" | "en";
 
@@ -7,6 +9,11 @@ interface LanguageContextType {
   setLanguage: (lang: Language) => void;
   t: (key: string) => string;
 }
+
+const translations = {
+  th: thTranslations,
+  en: enTranslations,
+};
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
@@ -28,27 +35,13 @@ export const LanguageProvider = ({ children }: LanguageProviderProps) => {
     return (saved as Language) || "th";
   });
 
-  const [translations, setTranslations] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    const loadTranslations = async () => {
-      try {
-        const module = await import(`../locales/${language}.ts`);
-        setTranslations(module.default);
-      } catch (error) {
-        console.error("Error loading translations:", error);
-      }
-    };
-    loadTranslations();
-  }, [language]);
-
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
     localStorage.setItem("language", lang);
   };
 
   const t = (key: string): string => {
-    return translations[key] || key;
+    return translations[language][key] || key;
   };
 
   return (
