@@ -28,8 +28,6 @@ export function TagSidebar({ packages }: TagSidebarProps) {
   const [searchParams] = useSearchParams();
   const selectedTag = searchParams.get("tag");
   const [searchQuery, setSearchQuery] = useState("");
-  
-  const collapsed = state === "collapsed";
 
   // คำนวณ tag counts
   const tagCounts = useMemo(() => {
@@ -71,18 +69,9 @@ export function TagSidebar({ packages }: TagSidebarProps) {
     setSearchQuery("");
   };
 
-  if (collapsed) {
-    return (
-      <Sidebar className="w-14 border-r" collapsible="icon">
-        <SidebarHeader className="border-b px-2 py-3 bg-background flex items-center justify-center">
-          <SidebarTrigger className="hover:bg-muted" />
-        </SidebarHeader>
-      </Sidebar>
-    );
-  }
-
+  // Always render sidebar; offcanvas handles hide/show
   return (
-    <Sidebar className="w-72" collapsible="icon">
+    <Sidebar className="w-72" collapsible="offcanvas">
       <SidebarHeader className="border-b px-4 py-3 bg-background">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -123,7 +112,7 @@ export function TagSidebar({ packages }: TagSidebarProps) {
           </SidebarGroupLabel>
 
           <SidebarGroupContent>
-            <ScrollArea className="h-[calc(100vh-280px)]">
+            <ScrollArea className="max-h-[calc(100svh-220px)]">
               <SidebarMenu>
                 {filteredTags.length > 0 ? (
                   filteredTags.map(({ tag, count }) => {

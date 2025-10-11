@@ -26,14 +26,12 @@ const MainContent = ({
   return (
     <div className="flex-1 flex flex-col w-full">
       <main className="flex-1">
-        {/* Sidebar Toggle Button when collapsed */}
-        {isCollapsed && (
-          <div className="fixed top-[4.5rem] left-4 z-40">
-            <SidebarTrigger className="bg-background border shadow-md hover:bg-muted">
-              <PanelLeftOpen className="h-4 w-4" />
-            </SidebarTrigger>
-          </div>
-        )}
+        {/* Mobile Sidebar Toggle Button - always visible on mobile */}
+        <div className="fixed top-[4.25rem] left-4 z-40 md:hidden">
+          <SidebarTrigger className="bg-background border shadow-md hover:bg-muted">
+            <PanelLeftOpen className="h-4 w-4" />
+          </SidebarTrigger>
+        </div>
 
         {/* Hero Section */}
         <section className="relative bg-gradient-to-br from-primary/10 via-background to-secondary/10 py-16">
