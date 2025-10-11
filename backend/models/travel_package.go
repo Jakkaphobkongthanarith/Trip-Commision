@@ -22,4 +22,5 @@ type TravelPackage struct {
 	TagsArray        []string  `json:"tags" gorm:"-"` // ส่งออกใน JSON แต่ไม่เก็บใน DB
 	DiscountPercentage float64 `json:"discount_percentage" gorm:"column:discount_percentage;default:0"`
 	MobileNumber     *string   `json:"mobile_number" gorm:"column:mobile_number;type:text"`
+	PdfURL           *string   `json:"pdf_url" gorm:"column:pdf_url;type:text"`
 }

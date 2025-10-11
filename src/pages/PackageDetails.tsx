@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { PDFViewer } from "@/components/PDFViewer";
 
 const PackageDetails = () => {
   const { id } = useParams();
@@ -396,6 +397,14 @@ const PackageDetails = () => {
                   ))}
                 </div>
               </div>
+
+              {/* PDF Viewer Section */}
+              {packageData.pdf_url && (
+                <>
+                  <Separator />
+                  <PDFViewer pdfUrl={packageData.pdf_url} title={packageData.title} />
+                </>
+              )}
             </div>
           </div>
 
