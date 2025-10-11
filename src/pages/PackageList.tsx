@@ -5,9 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import TravelPackageCard from "@/components/TravelPackageCard";
 import SearchBar from "@/components/SearchBar";
 import { packageAPI } from "@/lib/api";
-import { X, PanelLeftOpen } from "lucide-react";
-import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
-import { TagSidebar } from "@/components/TagSidebar";
+import { X } from "lucide-react";
+import { TagFilter } from "@/components/TagFilter";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const MainContent = ({ 
   selectedTag, 
@@ -236,22 +236,23 @@ const PackageList = () => {
 
   return (
     <div className="w-full flex flex-col">
-      <SidebarProvider>
-        <div className="flex-1 flex w-full">
-          <TagSidebar packages={packages} />
-          <MainContent
-            selectedTag={selectedTag}
-            filteredPackages={filteredPackages}
-            loading={loading}
-            displayedPackages={displayedPackages}
-            handleTagClick={handleTagClick}
-            clearFilter={clearFilter}
-            hasMorePackages={hasMorePackages}
-            loadMore={loadMore}
-            visibleCount={visibleCount}
-          />
+      <div className="flex-1 flex w-full">
+        <div className="hidden md:block md:w-80 flex-shrink-0">
+          <TagFilter packages={packages} />
         </div>
-      </SidebarProvider>
+        <MainContent
+          selectedTag={selectedTag}
+          filteredPackages={filteredPackages}
+          loading={loading}
+          displayedPackages={displayedPackages}
+          handleTagClick={handleTagClick}
+          clearFilter={clearFilter}
+          hasMorePackages={hasMorePackages}
+          loadMore={loadMore}
+          visibleCount={visibleCount}
+        />
+      </div>
+      <TagFilter packages={packages} />
     </div>
   );
 };
