@@ -10,6 +10,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
+  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
@@ -70,51 +71,49 @@ export function TagSidebar({ packages }: TagSidebarProps) {
     setSearchQuery("");
   };
 
+  if (collapsed) {
+    return <Sidebar className="w-0" collapsible="icon" />;
+  }
+
   return (
-    <Sidebar
-      className={collapsed ? "w-16" : "w-72"}
-      collapsible="icon"
-    >
+    <Sidebar className="w-72" collapsible="icon">
       <SidebarHeader className="border-b px-4 py-3">
-        {!collapsed && (
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <TagIcon className="h-5 w-5 text-primary" />
             <h2 className="font-semibold text-lg">หมวดหมู่</h2>
           </div>
-        )}
+          <SidebarTrigger className="hover:bg-muted" />
+        </div>
       </SidebarHeader>
 
       <SidebarContent>
         <SidebarGroup>
-          {!collapsed && (
-            <div className="px-3 py-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="ค้นหา tag..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
+          <div className="px-3 py-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="ค้นหา tag..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
             </div>
-          )}
+          </div>
 
           <SidebarGroupLabel>
-            {!collapsed && (
-              <div className="flex items-center justify-between w-full">
-                <span>แท็กทั้งหมด ({filteredTags.length})</span>
-                {selectedTag && (
-                  <button
-                    onClick={handleClearAll}
-                    className="text-xs text-primary hover:underline"
-                  >
-                    ล้างตัวกรอง
-                  </button>
-                )}
-              </div>
-            )}
+            <div className="flex items-center justify-between w-full">
+              <span>แท็กทั้งหมด ({filteredTags.length})</span>
+              {selectedTag && (
+                <button
+                  onClick={handleClearAll}
+                  className="text-xs text-primary hover:underline"
+                >
+                  ล้างตัวกรอง
+                </button>
+              )}
+            </div>
           </SidebarGroupLabel>
 
           <SidebarGroupContent>
@@ -134,31 +133,23 @@ export function TagSidebar({ packages }: TagSidebarProps) {
                               : "hover:bg-muted/50"
                           }
                         >
-                          {collapsed ? (
-                            <div className="flex items-center justify-center w-full">
-                              <TagIcon className="h-4 w-4" />
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-between w-full">
-                              <span className="truncate">{tag}</span>
-                              <Badge 
-                                variant={isActive ? "default" : "secondary"}
-                                className="ml-auto text-xs"
-                              >
-                                {count}
-                              </Badge>
-                            </div>
-                          )}
+                          <div className="flex items-center justify-between w-full">
+                            <span className="truncate">{tag}</span>
+                            <Badge 
+                              variant={isActive ? "default" : "secondary"}
+                              className="ml-auto text-xs"
+                            >
+                              {count}
+                            </Badge>
+                          </div>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     );
                   })
                 ) : (
-                  !collapsed && (
-                    <div className="px-3 py-4 text-sm text-muted-foreground text-center">
-                      ไม่พบ tag ที่ค้นหา
-                    </div>
-                  )
+                  <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+                    ไม่พบ tag ที่ค้นหา
+                  </div>
                 )}
               </SidebarMenu>
             </ScrollArea>
