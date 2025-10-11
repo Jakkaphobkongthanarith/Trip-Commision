@@ -46,10 +46,10 @@ func convertAllPackagesTags(packages []models.TravelPackage) []models.TravelPack
 // ดึง travel packages ทั้งหมดพร้อมข้อมูล advertiser
 func GetAllPackagesHandler(c *gin.Context, db *gorm.DB) {
 	var packages []models.TravelPackage
-	println("Fetching all packages with advertiser")
+	println("Fetching all packages with advertisers")
 	
-	// ใช้ GORM Find พร้อม Preload ข้อมูล Advertiser (single relationship)
-	result := db.Preload("Advertiser").Find(&packages)
+	// ใช้ GORM Find พร้อม Preload ข้อมูล Advertisers (many-to-many relationship)
+	result := db.Preload("Advertisers").Preload("Advertiser").Find(&packages)
 	if result.Error != nil {
 		c.JSON(500, gin.H{"error": result.Error.Error()})
 		return
@@ -89,18 +89,204 @@ func GetPackageByIDHandler(c *gin.Context, db *gorm.DB) {
 
 // สร้าง travel package ใหม่
 func CreatePackageHandler(c *gin.Context, db *gorm.DB) {
-	var pkg models.TravelPackage
-	if err := c.ShouldBindJSON(&pkg); err != nil {
-		c.JSON(400, gin.H{"error": "invalid request"})
+	// ใช้ map[string]interface{} เพื่อรับข้อมูลที่ยืดหยุ่นกว่า
+	var requestData map[string]interface{}
+	if err := c.ShouldBindJSON(&requestData); err != nil {
+		c.JSON(400, gin.H{"error": "invalid request", "details": err.Error()})
 		return
 	}
+	
+	// สร้าง TravelPackage struct
+	pkg := models.TravelPackage{}
+	
+	// Bind ข้อมูลแต่ละฟิลด์อย่างระมัดระวัง
+	if title, ok := requestData["title"].(string); ok {
+		pkg.Title = title
+	}
+	if description, ok := requestData["description"].(string); ok {
+		pkg.Description = description
+	}
+	if location, ok := requestData["location"].(string); ok {
+		pkg.Location = location
+	}
+	if imageURL, ok := requestData["image_url"].(string); ok {
+		pkg.ImageURL = imageURL
+	}
+	if price, ok := requestData["price"].(float64); ok {
+		pkg.Price = price
+	}
+	if duration, ok := requestData["duration"].(float64); ok {
+		pkg.Duration = int(duration)
+	}
+	if maxGuests, ok := requestData["max_guests"].(float64); ok {
+		pkg.MaxGuests = int(maxGuests)
+	}
+	if discountPercentage, ok := requestData["discount_percentage"].(float64); ok {
+		pkg.DiscountPercentage = discountPercentage
+	}
+	
+	// จัดการ dates
+	if availableFrom, ok := requestData["available_from"].(string); ok && availableFrom != "" {
+		pkg.AvailableFrom = &availableFrom
+	}
+	if availableTo, ok := requestData["available_to"].(string); ok && availableTo != "" {
+		pkg.AvailableTo = &availableTo
+	}
+	
+	// จัดการ tags (สำคัญ!)
+	if tags, ok := requestData["tags"].(string); ok {
+		pkg.Tags = tags  // เก็บ string format ใน DB
+	}
+	
+	// สร้าง UUID สำหรับ package ใหม่
+	pkg.ID = uuid.New()
+	
 	// สร้าง record ใหม่ (GORM Create)
 	result := db.Create(&pkg)
 	if result.Error != nil {
 		c.JSON(500, gin.H{"error": result.Error.Error()})
 		return
 	}
+	
+	// แปลง tags เป็น array ก่อนส่งกลับ
+	convertTagsToArray(&pkg)
+	
 	c.JSON(200, pkg)
+}
+
+// อัพเดต travel package
+func UpdatePackageHandler(c *gin.Context, db *gorm.DB) {
+	packageID := c.Param("id")
+	
+	// Convert packageID string to UUID
+	packageUUID, err := uuid.Parse(packageID)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "Invalid package ID format"})
+		return
+	}
+	
+	// ใช้ map[string]interface{} เพื่อรับข้อมูลที่ยืดหยุ่นกว่า
+	var requestData map[string]interface{}
+	if err := c.ShouldBindJSON(&requestData); err != nil {
+		c.JSON(400, gin.H{"error": "invalid request", "details": err.Error()})
+		return
+	}
+	
+	// หา package ที่ต้องการอัพเดต
+	var existingPkg models.TravelPackage
+	if err := db.Where("id = ?", packageUUID).First(&existingPkg).Error; err != nil {
+		c.JSON(404, gin.H{"error": "Package not found"})
+		return
+	}
+	
+	// อัพเดตฟิลด์ที่ส่งมา
+	updateData := make(map[string]interface{})
+	
+	if title, ok := requestData["title"].(string); ok {
+		updateData["title"] = title
+	}
+	if description, ok := requestData["description"].(string); ok {
+		updateData["description"] = description
+	}
+	if location, ok := requestData["location"].(string); ok {
+		updateData["location"] = location
+	}
+	if imageURL, ok := requestData["image_url"].(string); ok {
+		updateData["image_url"] = imageURL
+	}
+	if price, ok := requestData["price"].(float64); ok {
+		updateData["price"] = price
+	}
+	if duration, ok := requestData["duration"].(float64); ok {
+		updateData["duration"] = int(duration)
+	}
+	if maxGuests, ok := requestData["max_guests"].(float64); ok {
+		updateData["max_guests"] = int(maxGuests)
+	}
+	if discountPercentage, ok := requestData["discount_percentage"].(float64); ok {
+		updateData["discount_percentage"] = discountPercentage
+	}
+	
+	// จัดการ dates
+	if availableFrom, ok := requestData["available_from"].(string); ok {
+		if availableFrom != "" {
+			updateData["available_from"] = availableFrom
+		} else {
+			updateData["available_from"] = nil
+		}
+	}
+	if availableTo, ok := requestData["available_to"].(string); ok {
+		if availableTo != "" {
+			updateData["available_to"] = availableTo
+		} else {
+			updateData["available_to"] = nil
+		}
+	}
+	
+	// จัดการ tags
+	if tags, ok := requestData["tags"].(string); ok {
+		updateData["tags"] = tags
+	}
+
+	// จัดการ advertiser_ids (multiple advertisers support)
+	if advertiserIdsInterface, ok := requestData["advertiser_ids"]; ok {
+		// Convert interface{} to []string
+		if advertiserIdsSlice, ok := advertiserIdsInterface.([]interface{}); ok {
+			var advertiserIds []string
+			for _, id := range advertiserIdsSlice {
+				if idStr, ok := id.(string); ok {
+					advertiserIds = append(advertiserIds, idStr)
+				}
+			}
+			
+			// อัปเดต package-advertiser relationships
+			if len(advertiserIds) > 0 {
+				// ลบ relationships เก่าทั้งหมด
+				if err := db.Where("travel_package_id = ?", packageUUID).Delete(&models.PackageAdvertiser{}).Error; err != nil {
+					c.JSON(500, gin.H{"error": "Failed to clear old relationships"})
+					return
+				}
+				
+				// เพิ่ม relationships ใหม่
+				for _, advertiserIDStr := range advertiserIds {
+					advertiserUUID, err := uuid.Parse(advertiserIDStr)
+					if err != nil {
+						c.JSON(400, gin.H{"error": "Invalid advertiser ID format"})
+						return
+					}
+					
+					relationship := models.PackageAdvertiser{
+						TravelPackageID: packageUUID,
+						AdvertiserID:    advertiserUUID,
+					}
+					
+					if err := db.Create(&relationship).Error; err != nil {
+						c.JSON(500, gin.H{"error": "Failed to create advertiser relationship"})
+						return
+					}
+				}
+				
+				// อัปเดต primary advertiser_id (ใช้ advertiser คนแรกเป็น primary)
+				if advertiserUUID, err := uuid.Parse(advertiserIds[0]); err == nil {
+					updateData["advertiser_id"] = advertiserUUID
+				}
+			}
+		}
+	}
+	
+	// อัพเดต package
+	result := db.Model(&existingPkg).Updates(updateData)
+	if result.Error != nil {
+		c.JSON(500, gin.H{"error": result.Error.Error()})
+		return
+	}
+	
+	// ดึงข้อมูล package ที่อัพเดตแล้วส่งกลับพร้อม advertisers
+	var updatedPkg models.TravelPackage
+	db.Where("id = ?", packageUUID).Preload("Advertiser").Preload("Advertisers").First(&updatedPkg)
+	convertTagsToArray(&updatedPkg)
+	
+	c.JSON(200, updatedPkg)
 }
 
 // อัพเดต current_bookings เมื่อมีการจองสำเร็จ
@@ -179,31 +365,59 @@ func UpdatePackageAdvertisersHandler(c *gin.Context, db *gorm.DB) {
 	
 	// หา package ก่อน
 	var pkg models.TravelPackage
-	if err := db.Where("id = ?", packageID).First(&pkg).Error; err != nil {
+	packageUUID, err := uuid.Parse(packageID)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "Invalid package ID format"})
+		return
+	}
+	
+	if err := db.Where("id = ?", packageUUID).First(&pkg).Error; err != nil {
 		c.JSON(404, gin.H{"error": "Package not found"})
 		return
 	}
 	
-	// อัปเดต advertiser_id ใน travel_packages table
-	var advertiserID *uuid.UUID
-	if len(updateData.AdvertiserIds) > 0 {
-		advertiserUUID, err := uuid.Parse(updateData.AdvertiserIds[0])
+	// ลบ relationships เก่าทั้งหมด
+	if err := db.Where("travel_package_id = ?", packageUUID).Delete(&models.PackageAdvertiser{}).Error; err != nil {
+		c.JSON(500, gin.H{"error": "Failed to clear old relationships"})
+		return
+	}
+	
+	// เพิ่ม relationships ใหม่
+	for _, advertiserIDStr := range updateData.AdvertiserIds {
+		advertiserUUID, err := uuid.Parse(advertiserIDStr)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "Invalid advertiser ID format"})
 			return
 		}
-		advertiserID = &advertiserUUID
+		
+		relationship := models.PackageAdvertiser{
+			TravelPackageID: packageUUID,
+			AdvertiserID:    advertiserUUID,
+		}
+		
+		if err := db.Create(&relationship).Error; err != nil {
+			c.JSON(500, gin.H{"error": "Failed to create advertiser relationship"})
+			return
+		}
 	}
 	
-	if err := db.Model(&pkg).Update("advertiser_id", advertiserID).Error; err != nil {
-		c.JSON(500, gin.H{"error": "Failed to update advertiser"})
+	// อัปเดต primary advertiser_id (ใช้ advertiser คนแรกเป็น primary)
+	var primaryAdvertiserID *uuid.UUID
+	if len(updateData.AdvertiserIds) > 0 {
+		if advertiserUUID, err := uuid.Parse(updateData.AdvertiserIds[0]); err == nil {
+			primaryAdvertiserID = &advertiserUUID
+		}
+	}
+	
+	if err := db.Model(&pkg).Update("advertiser_id", primaryAdvertiserID).Error; err != nil {
+		c.JSON(500, gin.H{"error": "Failed to update primary advertiser"})
 		return
 	}
 	
-	c.JSON(200, gin.H{"message": "Package advertiser updated successfully"})
+	c.JSON(200, gin.H{"message": "Package advertisers updated successfully"})
 }
 
-// ดึงรายชื่อ advertiser ของ package (แปลงเป็น single advertiser)
+// ดึงรายชื่อ advertiser ของ package (รองรับ multiple advertisers)
 func GetPackageAdvertisersHandler(c *gin.Context, db *gorm.DB) {
 	packageID := c.Param("id")
 	
@@ -214,19 +428,15 @@ func GetPackageAdvertisersHandler(c *gin.Context, db *gorm.DB) {
 		return
 	}
 	
-	// ใช้ GORM association เพื่อดึง advertiser เดี่ยว
+	// ใช้ GORM association เพื่อดึง advertisers ทั้งหมด
 	var pkg models.TravelPackage
-	if err := db.Where("id = ?", packageUUID).Preload("Advertiser").First(&pkg).Error; err != nil {
+	if err := db.Where("id = ?", packageUUID).Preload("Advertisers").First(&pkg).Error; err != nil {
 		c.JSON(404, gin.H{"error": "Package not found"})
 		return
 	}
 	
-	// ส่งกลับเป็น array สำหรับ backward compatibility กับ frontend
-	if pkg.Advertiser != nil {
-		c.JSON(200, []models.User{*pkg.Advertiser})
-	} else {
-		c.JSON(200, []models.User{})
-	}
+	// ส่งกลับ advertisers array
+	c.JSON(200, pkg.Advertisers)
 }
 
 // ลบ travel package (พร้อมกับ relationships)
@@ -261,6 +471,47 @@ func DeletePackageHandler(c *gin.Context, db *gorm.DB) {
 	c.JSON(200, gin.H{"message": "Package deleted successfully"})
 }
 
+
+// ดึง tags ทั้งหมดที่ใช้ใน travel packages
+func GetAllTagsHandler(c *gin.Context, db *gorm.DB) {
+	var packages []models.TravelPackage
+	
+	// ดึง travel packages ที่มี tags (ไม่เป็นค่าว่าง)
+	result := db.Select("tags").Where("tags IS NOT NULL AND tags != ''").Find(&packages)
+	if result.Error != nil {
+		c.JSON(500, gin.H{"error": result.Error.Error()})
+		return
+	}
+	
+	// รวบรวม tags ทั้งหมดใน Set เพื่อไม่ให้ซ้ำ
+	tagSet := make(map[string]bool)
+	for _, pkg := range packages {
+		if pkg.Tags != "" {
+			// ลบ { และ } ออกจาก string
+			cleanedTags := strings.ReplaceAll(pkg.Tags, "{", "")
+			cleanedTags = strings.ReplaceAll(cleanedTags, "}", "")
+			
+			// แปลง string เป็น array โดยแยกด้วย comma
+			tags := strings.Split(cleanedTags, ",")
+			
+			// เพิ่มแต่ละ tag ลงใน set
+			for _, tag := range tags {
+				trimmed := strings.TrimSpace(tag)
+				if trimmed != "" {
+					tagSet[trimmed] = true
+				}
+			}
+		}
+	}
+	
+	// แปลง set เป็น array
+	var allTags []string
+	for tag := range tagSet {
+		allTags = append(allTags, tag)
+	}
+	
+	c.JSON(200, allTags)
+}
 
 // Service สำหรับดึง travel packages ทั้งหมด
 func GetAllTravelPackages(db *gorm.DB) ([]models.TravelPackage, error) {

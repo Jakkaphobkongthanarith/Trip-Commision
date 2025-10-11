@@ -23,12 +23,24 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	r.GET("/api/travel-packages", func(c *gin.Context) {
 		GetAllPackagesHandler(c, db)
 	})
+	r.GET("/api/packages", func(c *gin.Context) {
+		GetAllPackagesHandler(c, db)
+	})
+	r.GET("/api/packages/tags", func(c *gin.Context) {
+		GetAllTagsHandler(c, db)
+	})
 	r.POST("/api/travel-packages", func(c *gin.Context) {
+		CreatePackageHandler(c, db)
+	})
+	r.POST("/api/packages", func(c *gin.Context) {
 		CreatePackageHandler(c, db)
 	})
 	r.PUT("/api/travel-packages/:id", func(c *gin.Context) {
 		// TODO: สร้าง UpdatePackageHandler
 		GetAllPackagesHandler(c, db)
+	})
+	r.PUT("/api/packages/:id", func(c *gin.Context) {
+		UpdatePackageHandler(c, db)
 	})
 	r.GET("/package/:id", func(c *gin.Context) {
 		GetPackageByIDHandler(c, db)

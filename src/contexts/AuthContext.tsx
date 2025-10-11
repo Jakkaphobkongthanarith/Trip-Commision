@@ -5,14 +5,20 @@ import {
   useState,
   ReactNode,
 } from "react";
-import { User, Session } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
-import { authAPI } from "@/lib/api";
+import { authAPI, API_BASE_URL } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
+
+// Define custom User type (no longer using Supabase types)
+interface User {
+  id: string;
+  email: string;
+  name?: string;
+  role?: string;
+}
 
 interface AuthContextType {
   user: User | null;
-  session: Session | null;
+  token: string | null;
   userRole: string | null;
   loading: boolean;
   signUp: (
@@ -20,9 +26,13 @@ interface AuthContextType {
     password: string,
     displayName?: string,
     role?: string
-  ) => Promise<{ error: any }>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  ) => Promise<{ error: any; data?: any }>;
+  signIn: (
+    email: string,
+    password: string
+  ) => Promise<{ error: any; data?: any }>;
   signOut: () => Promise<{ error: any }>;
+  refreshAuth: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -41,313 +51,253 @@ interface AuthProviderProps {
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Load userRole from session storage on initialization
-    const storedRole = sessionStorage.getItem("userRole");
-    if (storedRole) {
-      setUserRole(storedRole);
-    }
+    // Auto-recovery from localStorage on mount
+    handleAutoRecovery();
   }, []);
 
-  // Token expiry checker
-  useEffect(() => {
-    if (!session?.expires_at) return;
-
-    const checkTokenExpiry = () => {
-      const expiryTime = new Date(session.expires_at! * 1000);
-      const currentTime = new Date();
-      const timeUntilExpiry = expiryTime.getTime() - currentTime.getTime();
-
-      console.log("Token expires at:", expiryTime.toLocaleString());
-      console.log("Current time:", currentTime.toLocaleString());
-      console.log(
-        "Time until expiry (minutes):",
-        Math.round(timeUntilExpiry / 60000)
-      );
-
-      // ถ้า token หมดอายุแล้ว
-      if (timeUntilExpiry <= 0) {
-        console.log("Token expired, forcing logout...");
-        handleExpiredSession();
-        return;
-      }
-
-      // ถ้าเหลือเวลาน้อยกว่า 5 นาที ให้ refresh token
-      if (timeUntilExpiry < 5 * 60 * 1000) {
-        // 5 minutes
-        console.log("Token expiring soon, attempting refresh...");
-        supabase.auth.refreshSession().then(({ data, error }) => {
-          if (error) {
-            console.error("Token refresh failed:", error);
-            handleExpiredSession();
-          } else {
-            console.log("Token refreshed successfully");
-          }
-        });
-      }
-    };
-
-    // เช็คทันทีแล้วเช็คทุกนาที
-    checkTokenExpiry();
-    const interval = setInterval(checkTokenExpiry, 60000); // ทุก 1 นาที
-
-    return () => clearInterval(interval);
-  }, [session?.expires_at]);
-
-  const handleExpiredSession = async () => {
-    console.log("Handling expired session...");
-
-    // Clear state
-    setUser(null);
-    setSession(null);
-
-    // Clear browser storage manually
+  // JWT Auto-recovery
+  const handleAutoRecovery = async () => {
     try {
-      localStorage.removeItem("supabase.auth.token");
-      sessionStorage.clear();
-    } catch (e) {
-      console.warn("Storage clear error:", e);
-    }
+      const storedToken = localStorage.getItem("authToken");
+      const storedRole = localStorage.getItem("userRole");
+      const storedUserId = localStorage.getItem("userId");
+      const storedEmail = localStorage.getItem("userEmail");
 
-    // Redirect to login (ถ้าไม่อยู่หน้า auth อยู่แล้ว)
-    if (window.location.pathname !== "/auth") {
-      console.log("Redirecting to login page...");
-      window.location.href = "/auth";
+      if (storedToken && storedRole) {
+        console.log("🔄 Found stored token and role, restoring session...");
+
+        // Create user object from stored data
+        const user = {
+          id: storedUserId || "unknown_user", // Use stored user ID
+          email: storedEmail || "restored@session.local", // Use stored email
+          role: storedRole,
+        };
+
+        setUser(user);
+        setToken(storedToken);
+        setUserRole(storedRole);
+        sessionStorage.setItem("userRole", storedRole);
+        sessionStorage.setItem("userId", user.id);
+        sessionStorage.setItem("userEmail", user.email);
+
+        console.log("✅ Session restored from localStorage:", {
+          user,
+          role: storedRole,
+        });
+      } else {
+        console.log("ℹ️ No stored token or role found");
+      }
+    } catch (error) {
+      console.warn("❌ Auto-recovery failed:", error);
+      // Clear invalid tokens
+      clearAuthData();
+    } finally {
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    // Set up auth state listener
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state change:", event, session?.user?.id);
+  // Clear all auth data
+  const clearAuthData = () => {
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("userRole");
+    localStorage.removeItem("userId");
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("refreshToken");
+    sessionStorage.removeItem("userRole");
+    sessionStorage.removeItem("userId");
+    sessionStorage.removeItem("userEmail");
+    setUser(null);
+    setToken(null);
+    setUserRole(null);
+  };
 
-      if (event === "SIGNED_OUT" || event === "TOKEN_REFRESHED") {
-        setSession(session);
-        setUser(session?.user ?? null);
-      } else if (event === "SIGNED_IN") {
-        setSession(session);
-        setUser(session?.user ?? null);
-      } else if (event === "USER_UPDATED") {
-        setSession(session);
-        setUser(session?.user ?? null);
-      }
-
-      setLoading(false);
-    });
-
-    // Get initial session with error handling
-    const getInitialSession = async () => {
-      try {
-        const {
-          data: { session },
-          error,
-        } = await supabase.auth.getSession();
-
-        if (error) {
-          console.warn("Initial session error:", error);
-          // Try to refresh if error
-          const {
-            data: { session: refreshedSession },
-          } = await supabase.auth.refreshSession();
-          setSession(refreshedSession);
-          setUser(refreshedSession?.user ?? null);
-        } else {
-          setSession(session);
-          setUser(session?.user ?? null);
-        }
-      } catch (err) {
-        console.error("Failed to get initial session:", err);
-        setSession(null);
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    getInitialSession();
-
-    return () => subscription.unsubscribe();
-  }, []);
-
+  // Sign up function
   const signUp = async (
     email: string,
     password: string,
     displayName?: string,
-    role?: string
+    role: string = "traveler"
   ) => {
     try {
-      // Sign up with Supabase directly
-      const { data: supabaseData, error: supabaseError } =
-        await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              display_name: displayName || "",
-            },
-          },
-        });
+      setLoading(true);
+      console.log("📝 Attempting signup for:", email, "as", role);
 
-      if (supabaseError) {
-        console.error("Supabase sign up error:", supabaseError);
-        return { error: supabaseError };
-      }
-
-      // Also call backend API with role
-      try {
-        await authAPI.signup({
-          email,
-          password,
-          display_name: displayName || "",
-          role: role || "customer",
-        });
-
-        // Store role in session storage
-        if (role) {
-          console.log("Storing user role:", role);
-          sessionStorage.setItem("userRole", role);
-          setUserRole(role);
-        }
-      } catch (backendError) {
-        console.warn("Backend signup error (continuing anyway):", backendError);
-      }
-
-      return { error: null, data: supabaseData };
-    } catch (error) {
-      console.error("Sign up error:", error);
-      return { error };
-    }
-  };
-
-  const signIn = async (email: string, password: string) => {
-    try {
-      // Clear browser storage manually before login
-      try {
-        localStorage.removeItem("supabase.auth.token");
-        sessionStorage.clear();
-      } catch (e) {
-        console.warn("Storage clear error:", e);
-      }
-
-      // Then sign in with Supabase directly
-      const { data: supabaseData, error: supabaseError } =
-        await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-      if (supabaseError) {
-        console.error("Supabase sign in error:", supabaseError);
-        return { error: supabaseError };
-      }
-
-      // Call backend API to get role
-      try {
-        const backendResponse = await authAPI.login({ email, password });
-        console.log("Backend login response:", backendResponse);
-
-        // Extract role from backend response and store in session
-        if (backendResponse && backendResponse.role) {
-          console.log("Storing user role from backend:", backendResponse.role);
-          sessionStorage.setItem("userRole", backendResponse.role);
-          setUserRole(backendResponse.role);
-          console.log("User role stored:", backendResponse.role);
-        }
-      } catch (backendError) {
-        console.warn("Backend login error (continuing anyway):", backendError);
-      }
-
-      return { error: null, data: supabaseData };
-    } catch (error) {
-      console.error("Sign in error:", error);
-      return { error };
-    }
-  };
-
-  // ฟังก์ชัน signOut ใน AuthContext.tsx
-  async function signOut(): Promise<{ error: any }> {
-    console.log("Starting logout process...");
-    console.log("Current session:", session);
-
-    // ตรวจสอบ session validity อย่างรอบคอบ
-    let hasValidSession = false;
-
-    if (session?.access_token) {
-      if (session.expires_at) {
-        const expiryDate = new Date(session.expires_at * 1000);
-        const now = new Date();
-        hasValidSession = expiryDate > now;
-        console.log(
-          "Session expires at:",
-          expiryDate,
-          "Current time:",
-          now,
-          "Valid:",
-          hasValidSession
-        );
-      } else {
-        // ถ้าไม่มี expires_at ให้ถือว่า session ไม่ valid
-        hasValidSession = false;
-        console.log("No expires_at found, assuming session is invalid");
-      }
-    } else {
-      console.log("No access token found");
-    }
-
-    // เรียก backend logout API เสมอ (สำคัญสำหรับ UI feedback)
-    try {
-      const response = await fetch("http://localhost:8000/api/logout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          access_token: session?.access_token || "expired_token",
-        }),
+      const response = await authAPI.signup({
+        email,
+        password,
+        displayName,
+        role,
       });
 
-      if (!response.ok) {
-        throw new Error(`Backend logout failed: ${response.status}`);
+      console.log("🔍 Signup response:", response);
+
+      // Check for access_token (Supabase format) or token (custom format)
+      const token = response?.access_token || response?.token;
+      const userRole = response?.role || role;
+
+      if (response && token) {
+        console.log("✅ Signup successful:", response);
+
+        // Create user object from response
+        const user = {
+          id: response.user?.id || `user_${Date.now()}`,
+          email: email,
+          name:
+            displayName || response.user?.name || response.user?.display_name,
+          role: userRole,
+        };
+
+        // Store auth data
+        localStorage.setItem("authToken", token);
+        localStorage.setItem("userRole", userRole);
+        localStorage.setItem("userId", user.id);
+        localStorage.setItem("userEmail", email);
+        sessionStorage.setItem("userRole", userRole);
+        sessionStorage.setItem("userId", user.id);
+        sessionStorage.setItem("userEmail", email);
+
+        // Store refresh token if available
+        if (response.refresh_token) {
+          localStorage.setItem("refreshToken", response.refresh_token);
+        }
+
+        setUser(user);
+        setToken(token);
+        setUserRole(userRole);
+
+        return { error: null, data: response };
+      } else {
+        console.error("❌ Invalid signup response:", response);
+        throw new Error(
+          "Invalid registration response - missing access_token or token"
+        );
       }
-
-      console.log("Backend logout successful");
-
-      // เมื่อ backend logout สำเร็จ ค่อย clear local state
-      setUser(null);
-      setSession(null);
-      setUserRole(null);
-
-      // Clear browser storage manually (no API calls)
-      try {
-        localStorage.removeItem("supabase.auth.token");
-        sessionStorage.clear();
-      } catch (storageError) {
-        console.warn("Storage clear error:", storageError);
-      }
-
-      console.log("Logout completed successfully");
-      return { error: null };
-    } catch (backendError) {
-      console.error("Backend logout failed:", backendError);
-
-      // ถ้า backend logout fail ให้ return error
-      // UI จะไม่แสดงข้อความสำเร็จ
-      return { error: backendError };
+    } catch (error) {
+      console.error("❌ Signup error:", error);
+      return { error };
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
-  const value = {
+  // Sign in function
+  const signIn = async (email: string, password: string) => {
+    try {
+      setLoading(true);
+      console.log("🔐 Attempting login for:", email);
+
+      const response = await authAPI.login({
+        email,
+        password,
+      });
+
+      console.log("🔍 Backend response structure:", response);
+
+      // Check for access_token (Supabase format) or token (custom format)
+      const token = response?.access_token || response?.token;
+      const userRole = response?.role;
+
+      if (response && token) {
+        console.log("✅ Login successful:", response);
+
+        // Create user object from response - use proper user ID from backend
+        const user = {
+          id:
+            response.user?.id ||
+            response.id ||
+            response.user_id ||
+            email.split("@")[0], // Try multiple ID sources
+          email: email,
+          name:
+            response.user?.name || response.user?.display_name || response.name,
+          role: userRole,
+        };
+
+        console.log("🔍 Created user object:", user);
+
+        // Store auth data including user ID and email
+        localStorage.setItem("authToken", token);
+        localStorage.setItem("userRole", userRole);
+        localStorage.setItem("userId", user.id); // Store user ID separately
+        localStorage.setItem("userEmail", email); // Store email separately
+        sessionStorage.setItem("userRole", userRole);
+        sessionStorage.setItem("userId", user.id);
+        sessionStorage.setItem("userEmail", email);
+
+        // Store refresh token if available
+        if (response.refresh_token) {
+          localStorage.setItem("refreshToken", response.refresh_token);
+        }
+
+        setUser(user);
+        setToken(token);
+        setUserRole(userRole);
+
+        return { error: null, data: response };
+      } else {
+        console.error("❌ Invalid response structure:", response);
+        throw new Error(
+          "Invalid login response - missing access_token or token"
+        );
+      }
+    } catch (error) {
+      console.error("❌ Login error:", error);
+      return { error };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Sign out function
+  const signOut = async () => {
+    try {
+      console.log("🚪 Logging out...");
+
+      // Optional: Call backend logout endpoint with proper format
+      const currentToken = token || localStorage.getItem("authToken");
+      if (currentToken) {
+        try {
+          // Send token in proper format for logout
+          await authAPI.logout({ token: currentToken });
+        } catch (error) {
+          console.warn("Backend logout failed:", error);
+          // Continue with local logout even if backend fails
+        }
+      }
+
+      // Clear auth data
+      clearAuthData();
+
+      console.log("✅ Logout successful");
+      navigate("/");
+
+      return { error: null };
+    } catch (error) {
+      console.error("❌ Logout error:", error);
+      return { error };
+    }
+  };
+
+  // Refresh auth data
+  const refreshAuth = async () => {
+    await handleAutoRecovery();
+  };
+
+  const value: AuthContextType = {
     user,
-    session,
+    token,
     userRole,
     loading,
     signUp,
     signIn,
     signOut,
+    refreshAuth,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import { packageAPI, bookingAPI } from "@/lib/api";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -189,6 +188,14 @@ export default function PackageManagement() {
   const [newTag, setNewTag] = useState("");
   const [tagComboOpen, setTagComboOpen] = useState(false);
 
+  // Image upload states
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Advertiser selection modal states
+  const [isAdvertiserModalOpen, setIsAdvertiserModalOpen] = useState(false);
+
   useEffect(() => {
     if (userRole === "manager") {
       fetchPackages();
@@ -243,10 +250,16 @@ export default function PackageManagement() {
       const packagesWithAdvertisers = (data || []).map((pkg: any) => ({
         ...pkg,
         tags: normalizeTags(pkg.tags),
-        // แปลง advertiser object เดี่ยวเป็น advertisers array สำหรับ backward compatibility
-        advertisers: pkg.advertiser ? [pkg.advertiser] : [],
+        // รองรับทั้ง advertisers array และ advertiser single object
+        advertisers:
+          pkg.advertisers && pkg.advertisers.length > 0
+            ? pkg.advertisers
+            : pkg.advertiser
+            ? [pkg.advertiser]
+            : [],
       }));
 
+      console.log("📦 Packages with advertisers:", packagesWithAdvertisers);
       setPackages(packagesWithAdvertisers);
     } catch (error) {
       console.error("Error fetching packages:", error);
@@ -279,23 +292,25 @@ export default function PackageManagement() {
 
   const fetchExistingTags = async () => {
     try {
-      const { data, error } = await supabase
-        .from("travel_packages")
-        .select("tags")
-        .not("tags", "is", null);
-
-      if (error) throw error;
-
-      const allTags = new Set<string>();
-      data?.forEach((pkg) => {
-        if (pkg.tags && Array.isArray(pkg.tags)) {
-          pkg.tags.forEach((tag) => allTags.add(tag));
-        }
+      const response = await fetch(`${API_BASE_URL}/api/packages/tags`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
       });
 
-      setExistingTags(Array.from(allTags).sort());
+      if (!response.ok) throw new Error("Failed to fetch tags");
+
+      const data = await response.json();
+
+      // Backend ส่ง array ของ tags โดยตรงแล้ว
+      if (Array.isArray(data)) {
+        setExistingTags(data.sort());
+      } else {
+        setExistingTags([]);
+      }
     } catch (error) {
       console.error("Error fetching existing tags:", error);
+      setExistingTags([]);
     }
   };
 
@@ -350,20 +365,30 @@ export default function PackageManagement() {
         available_to: formData.available_to || null,
         max_guests: parseInt(formData.max_guests),
         discount_percentage: parseFloat(formData.discount_percentage),
+        // เพิ่ม advertiser_ids สำหรับ multiple advertisers support
+        advertiser_ids: formData.advertiser_ids || [],
       };
 
       if (editingPackage) {
-        const { error } = await supabase
-          .from("travel_packages")
-          .update(packageData)
-          .eq("id", editingPackage.id);
+        const response = await fetch(
+          `${API_BASE_URL}/api/packages/${editingPackage.id}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+            body: JSON.stringify(packageData),
+          }
+        );
 
-        if (error) throw error;
+        if (!response.ok) throw new Error("Failed to update package");
 
         // อัปเดต package-advertiser relationships
         await updatePackageAdvertisers(
           editingPackage.id,
-          formData.advertiser_ids
+          formData.advertiser_ids,
+          editingPackage.advertisers?.map((a) => a.id) || [] // ส่ง advertiser เก่าด้วย
         );
 
         toast({
@@ -371,19 +396,25 @@ export default function PackageManagement() {
           description: "อัปเดตแพคเกจเรียบร้อยแล้ว",
         });
       } else {
-        const { data: newPackage, error } = await supabase
-          .from("travel_packages")
-          .insert([packageData])
-          .select()
-          .single();
+        const response = await fetch(`${API_BASE_URL}/api/packages`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify(packageData),
+        });
 
-        if (error) throw error;
+        if (!response.ok) throw new Error("Failed to create package");
+
+        const newPackage = await response.json();
 
         // เพิ่ม package-advertiser relationships
         if (newPackage && formData.advertiser_ids.length > 0) {
           await updatePackageAdvertisers(
             newPackage.id,
-            formData.advertiser_ids
+            formData.advertiser_ids,
+            [] // สำหรับ create package ไม่มี advertiser เก่า
           );
         }
 
@@ -408,9 +439,51 @@ export default function PackageManagement() {
     }
   };
 
-  const updatePackageAdvertisers = async (
+  // Function to notify advertisers when assigned to a package
+  const notifyAssignedAdvertisers = async (
     packageId: string,
     advertiserIds: string[]
+  ) => {
+    try {
+      console.log("🔔 Notifying assigned advertisers:", advertiserIds);
+
+      // Get package details first
+      const packageDetails = packages.find((pkg) => pkg.id === packageId);
+      const packageName = packageDetails?.title || `Package ID: ${packageId}`;
+
+      // Send notification to each assigned advertiser
+      for (const advertiserId of advertiserIds) {
+        try {
+          await sendNotificationToAdvertiser(
+            advertiserId,
+            `🎯 คุณได้รับมอบหมายให้โฆษณาแพ็กเกจ "${packageName}" แล้ว! เริ่มสร้างโค้ดส่วนลดและโปรโมทได้เลย`,
+            "package_assignment",
+            packageId // ส่ง packageId เพิ่มเติม
+          );
+          console.log(
+            `✅ Assignment notification sent to advertiser: ${advertiserId}`
+          );
+        } catch (error) {
+          console.error(
+            `❌ Failed to notify advertiser ${advertiserId}:`,
+            error
+          );
+        }
+      }
+
+      // Trigger notification panel refresh
+      window.dispatchEvent(new CustomEvent("notificationCreated"));
+
+      console.log("✅ All assignment notifications sent");
+    } catch (error) {
+      console.error("❌ Error in notifyAssignedAdvertisers:", error);
+    }
+  };
+
+  const updatePackageAdvertisers = async (
+    packageId: string,
+    newAdvertiserIds: string[],
+    oldAdvertiserIds: string[] = [] // Parameter ใหม่สำหรับ advertiser เก่า
   ) => {
     try {
       // ใช้ Backend API แทน Supabase เพื่ออัปเดต package-advertiser relationships
@@ -421,12 +494,28 @@ export default function PackageManagement() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ advertiser_ids: advertiserIds }),
+          body: JSON.stringify({ advertiser_ids: newAdvertiserIds }),
         }
       );
 
       if (!response.ok) {
         throw new Error("Failed to update package advertisers");
+      }
+
+      console.log("✅ Package advertisers updated successfully");
+
+      // หา advertiser ใหม่ที่ถูกเพิ่มเข้ามา (ไม่ใช่คนเก่า)
+      const newlyAssignedAdvertisers = newAdvertiserIds.filter(
+        (id) => !oldAdvertiserIds.includes(id)
+      );
+
+      console.log("🔍 Newly assigned advertisers:", newlyAssignedAdvertisers);
+
+      // ส่ง notification เฉพาะ advertiser ใหม่เท่านั้น
+      if (newlyAssignedAdvertisers.length > 0) {
+        await notifyAssignedAdvertisers(packageId, newlyAssignedAdvertisers);
+      } else {
+        console.log("ℹ️ No new advertisers to notify");
       }
     } catch (error) {
       console.error("Error updating package advertisers:", error);
@@ -436,6 +525,112 @@ export default function PackageManagement() {
         variant: "destructive",
       });
     }
+  };
+
+  // Image upload functions
+  const handleImageUpload = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "กรุณาเลือกไฟล์รูปภาพเท่านั้น",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      // 5MB limit
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไฟล์รูปภาพต้องมีขนาดไม่เกิน 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append("file", file);
+
+      // Upload to your backend or use a service like Cloudinary
+      // For now, we'll use a placeholder service or create Object URL
+      const objectUrl = URL.createObjectURL(file);
+      setImagePreview(objectUrl);
+      setFormData((prev) => ({ ...prev, image_url: objectUrl }));
+
+      toast({
+        title: "สำเร็จ",
+        description: "อัปโหลดรูปภาพเรียบร้อยแล้ว",
+      });
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถอัปโหลดรูปภาพได้",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleImageUpload(files[0]);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      handleImageUpload(files[0]);
+    }
+  };
+
+  const removeImage = () => {
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+    }
+    setImagePreview(null);
+    setFormData((prev) => ({ ...prev, image_url: "" }));
+  };
+
+  // Advertiser modal functions
+  const toggleAdvertiser = (advertiserId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      advertiser_ids: prev.advertiser_ids.includes(advertiserId)
+        ? prev.advertiser_ids.filter((id) => id !== advertiserId)
+        : [...prev.advertiser_ids, advertiserId],
+    }));
+  };
+
+  const getSelectedAdvertiserNames = () => {
+    const selectedAdvertisers = advertisers.filter((adv) =>
+      formData.advertiser_ids.includes(adv.id)
+    );
+    if (selectedAdvertisers.length === 0) return "ไม่ได้เลือกผู้โฆษณา";
+    if (selectedAdvertisers.length === 1)
+      return selectedAdvertisers[0].display_name;
+    return `${selectedAdvertisers[0].display_name} และอีก ${
+      selectedAdvertisers.length - 1
+    } คน`;
   };
 
   const handleEdit = (pkg: Package) => {
@@ -562,52 +757,111 @@ export default function PackageManagement() {
   // Notification functions
   const sendNotificationToAdvertiser = async (
     advertiserId: string,
-    message: string
+    message: string,
+    type: string = "discount_code", // Default type
+    packageId?: string // เพิ่ม packageId เป็น optional parameter
   ) => {
     try {
+      console.log(
+        "🔔 Sending notification to advertiser:",
+        advertiserId,
+        message
+      );
+
+      const notificationData = {
+        user_id: advertiserId,
+        title:
+          type === "package_assignment"
+            ? "มอบหมายแพ็กเกจใหม่!"
+            : "โค้ดส่วนลดใหม่!",
+        message: message,
+        type: type,
+        category: type === "package_assignment" ? "booking" : "promotion",
+        priority: "medium",
+        // เพิ่ม action_url และ data สำหรับ navigation
+        ...(packageId && {
+          action_url: `/package/${packageId}`,
+          data: { package_id: packageId },
+        }),
+      };
+
+      const response = await fetch(`${API_BASE_URL}/api/notifications`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(notificationData),
+      });
+
+      console.log(
+        "🔔 Advertiser notification response status:",
+        response.status
+      );
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error(
+          "❌ Failed to send notification to advertiser:",
+          errorData
+        );
+        throw new Error(`Notification failed: ${response.status}`);
+      } else {
+        const responseData = await response.json();
+        console.log(
+          "✅ Notification sent to advertiser successfully:",
+          responseData
+        );
+      }
+    } catch (error) {
+      console.error("❌ Error sending notification:", error);
+      throw error;
+    }
+  };
+
+  const sendNotificationToAllUsers = async (message: string) => {
+    try {
+      console.log("🔔 Sending notification to current user:", message);
+
+      // Get current user ID from storage
+      const userId =
+        localStorage.getItem("userId") || sessionStorage.getItem("userId");
+
+      if (!userId) {
+        console.warn("❌ No user ID found, cannot send notification");
+        return;
+      }
+
+      console.log("🔔 Sending to user ID:", userId);
+
+      // Send notification to current user only (since broadcast doesn't exist)
       const response = await fetch(`${API_BASE_URL}/api/notifications`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          user_id: advertiserId,
+          user_id: userId, // Use actual user ID
           title: "โค้ดส่วนลดใหม่!",
           message: message,
-          type: "discount_code",
+          type: "global_discount",
+          category: "promotion",
+          priority: "medium",
         }),
       });
 
-      if (!response.ok) {
-        console.error("Failed to send notification to advertiser");
-      }
-    } catch (error) {
-      console.error("Error sending notification:", error);
-    }
-  };
-
-  const sendNotificationToAllUsers = async (message: string) => {
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/notifications/broadcast`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            title: "โค้ดส่วนลดใหม่!",
-            message: message,
-            type: "global_discount",
-          }),
-        }
-      );
+      console.log("🔔 Notification response status:", response.status);
 
       if (!response.ok) {
-        console.error("Failed to send broadcast notification");
+        const errorData = await response.text();
+        console.error("❌ Failed to send notification:", errorData);
+        throw new Error(`Notification failed: ${response.status}`);
+      } else {
+        const responseData = await response.json();
+        console.log("✅ Notification sent successfully:", responseData);
       }
     } catch (error) {
-      console.error("Error sending broadcast notification:", error);
+      console.error("❌ Error sending notification:", error);
+      throw error;
     }
   };
 
@@ -629,6 +883,24 @@ export default function PackageManagement() {
 
     setIsDiscountSubmitting(true);
     try {
+      // Prepare data with proper date format
+      const requestData = {
+        advertiser_id: advertiserDiscountForm.advertiser_id,
+        package_id: advertiserDiscountForm.package_id,
+        discount_percentage: advertiserDiscountForm.discount_percentage,
+        commission_rate: advertiserDiscountForm.commission_rate,
+        max_uses: advertiserDiscountForm.max_uses,
+        // Only include expires_at if it's not empty, and format it properly
+        ...(advertiserDiscountForm.expires_at &&
+          advertiserDiscountForm.expires_at.trim() !== "" && {
+            expires_at: new Date(
+              advertiserDiscountForm.expires_at
+            ).toISOString(),
+          }),
+      };
+
+      console.log("🔍 Sending advertiser discount data:", requestData);
+
       const response = await fetch(
         `${API_BASE_URL}/api/discount-codes/advertiser`,
         {
@@ -636,26 +908,59 @@ export default function PackageManagement() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(advertiserDiscountForm),
+          body: JSON.stringify(requestData),
         }
       );
 
-      if (!response.ok)
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error("❌ Advertiser discount API error:", errorData);
         throw new Error("Failed to create advertiser discount code");
+      }
 
       const responseData = await response.json();
+      console.log("✅ Advertiser discount created:", responseData);
 
       // ส่ง notification ให้ advertiser
       const selectedAdvertiser = advertisers.find(
         (adv) => adv.id === advertiserDiscountForm.advertiser_id
       );
       if (selectedAdvertiser) {
-        await sendNotificationToAdvertiser(
-          selectedAdvertiser.id,
-          `คุณได้รับโค้ดส่วนลด ${
-            advertiserDiscountForm.discount_percentage
-          }% ใหม่! โค้ด: ${responseData.code || "ตรวจสอบในระบบ"}`
-        );
+        try {
+          // Extract discount code properly - it's nested in responseData.code.code
+          const advertiserDiscountCode =
+            responseData.code?.code ||
+            responseData.code?.id ||
+            responseData.discount_code ||
+            "ตรวจสอบในระบบ";
+          console.log(
+            "🔍 Extracted advertiser discount code:",
+            advertiserDiscountCode
+          );
+
+          await sendNotificationToAdvertiser(
+            selectedAdvertiser.id,
+            `คุณได้รับโค้ดส่วนลด ${advertiserDiscountForm.discount_percentage}% ใหม่! โค้ด: ${advertiserDiscountCode}`
+          );
+          console.log("✅ Advertiser notification sent successfully");
+
+          // Trigger notification panel refresh
+          window.dispatchEvent(new CustomEvent("notificationCreated"));
+        } catch (notificationError) {
+          console.error(
+            "❌ Advertiser notification failed:",
+            notificationError
+          );
+          // Don't fail the whole process if notification fails
+          toast({
+            title: "แจ้งเตือน",
+            description:
+              "สร้าง Discount Code สำเร็จ แต่การแจ้งเตือน Advertiser ล้มเหลว",
+            variant: "default",
+          });
+        }
+      } else {
+        console.warn("❌ Selected advertiser not found for notification");
       }
 
       toast({
@@ -697,6 +1002,19 @@ export default function PackageManagement() {
 
     setIsDiscountSubmitting(true);
     try {
+      // Prepare data with proper date format
+      const requestData = {
+        discount_percentage: globalDiscountForm.discount_percentage,
+        max_uses: globalDiscountForm.max_uses,
+        // Only include expires_at if it's not empty, and format it properly
+        ...(globalDiscountForm.expires_at &&
+          globalDiscountForm.expires_at.trim() !== "" && {
+            expires_at: new Date(globalDiscountForm.expires_at).toISOString(),
+          }),
+      };
+
+      console.log("🔍 Sending global discount data:", requestData);
+
       const response = await fetch(
         `${API_BASE_URL}/api/global-discount-codes`,
         {
@@ -704,21 +1022,63 @@ export default function PackageManagement() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(globalDiscountForm),
+          body: JSON.stringify(requestData),
         }
       );
 
-      if (!response.ok)
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error("❌ Global discount API error:", errorData);
         throw new Error("Failed to create global discount code");
+      }
 
       const responseData = await response.json();
+      console.log("✅ Global discount created:", responseData);
+
+      // Extract discount code correctly - handle different response structures
+      let discountCode = "ตรวจสอบในระบบ";
+
+      if (responseData.code) {
+        // If responseData.code is a string
+        if (typeof responseData.code === "string") {
+          discountCode = responseData.code;
+        }
+        // If responseData.code is an object with code property
+        else if (responseData.code.code) {
+          discountCode = responseData.code.code;
+        }
+        // If responseData.code is an object with id property
+        else if (responseData.code.id) {
+          discountCode = responseData.code.id;
+        }
+      }
+      // Try other possible response structures
+      else if (responseData.discount_code) {
+        discountCode = responseData.discount_code;
+      } else if (responseData.id) {
+        discountCode = responseData.id;
+      }
+
+      console.log("🔍 Extracted discount code:", discountCode);
 
       // ส่ง notification ให้ผู้ใช้ทั้งหมด
-      await sendNotificationToAllUsers(
-        `🎉 โค้ดส่วนลดใหม่! ลด ${
-          globalDiscountForm.discount_percentage
-        }% สำหรับทุกแพ็กเกจ โค้ด: ${responseData.code || "ตรวจสอบในระบบ"}`
-      );
+      try {
+        const notificationMessage = `🎉 โค้ดส่วนลดใหม่! ลด ${globalDiscountForm.discount_percentage}% สำหรับทุกแพ็กเกจ โค้ด: ${discountCode}`;
+
+        await sendNotificationToAllUsers(notificationMessage);
+        console.log("✅ Notification sent successfully");
+
+        // Trigger notification panel refresh by dispatching custom event
+        window.dispatchEvent(new CustomEvent("notificationCreated"));
+      } catch (notificationError) {
+        console.error("❌ Notification failed:", notificationError);
+        // Don't fail the whole process if notification fails
+        toast({
+          title: "แจ้งเตือน",
+          description: "สร้าง Discount Code สำเร็จ แต่การส่งแจ้งเตือนล้มเหลว",
+          variant: "default",
+        });
+      }
 
       toast({
         title: "สำเร็จ",
@@ -1062,61 +1422,154 @@ export default function PackageManagement() {
                     </div>
                   </div>
 
-                  {/* Multiple Advertisers Selection */}
+                  {/* Advertiser Selection with Modal */}
                   <div>
-                    <Label htmlFor="advertisers">
-                      ผู้โฆษณา (เลือกได้หลายคน)
-                    </Label>
-                    <div className="space-y-2">
-                      {advertisers.map((advertiser) => (
-                        <div
-                          key={advertiser.id}
-                          className="flex items-center space-x-2"
-                        >
-                          <input
-                            type="checkbox"
-                            id={`advertiser-${advertiser.id}`}
-                            checked={formData.advertiser_ids.includes(
-                              advertiser.id
-                            )}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setFormData({
-                                  ...formData,
-                                  advertiser_ids: [
-                                    ...formData.advertiser_ids,
-                                    advertiser.id,
-                                  ],
-                                });
-                              } else {
-                                setFormData({
-                                  ...formData,
-                                  advertiser_ids:
-                                    formData.advertiser_ids.filter(
-                                      (id) => id !== advertiser.id
-                                    ),
-                                });
-                              }
-                            }}
-                          />
-                          <Label htmlFor={`advertiser-${advertiser.id}`}>
-                            {advertiser.display_name}
-                          </Label>
+                    <Label htmlFor="advertisers">ผู้โฆษณา</Label>
+                    <div className="space-y-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsAdvertiserModalOpen(true)}
+                        className="w-full justify-start text-left h-auto py-3"
+                      >
+                        <Users className="w-4 h-4 mr-2" />
+                        <div className="flex flex-col items-start">
+                          <span className="font-medium">เลือกผู้โฆษณา</span>
+                          <span className="text-sm text-muted-foreground">
+                            {getSelectedAdvertiserNames()}
+                          </span>
                         </div>
-                      ))}
+                      </Button>
+
+                      {/* Selected advertisers preview */}
+                      {formData.advertiser_ids.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {advertisers
+                            .filter((adv) =>
+                              formData.advertiser_ids.includes(adv.id)
+                            )
+                            .map((advertiser) => (
+                              <Badge
+                                key={advertiser.id}
+                                variant="secondary"
+                                className="flex items-center gap-1"
+                              >
+                                {advertiser.display_name}
+                                <X
+                                  className="w-3 h-3 cursor-pointer hover:text-destructive"
+                                  onClick={() =>
+                                    toggleAdvertiser(advertiser.id)
+                                  }
+                                />
+                              </Badge>
+                            ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  <div>
-                    <Label htmlFor="image_url">URL รูปภาพ</Label>
-                    <Input
-                      id="image_url"
-                      type="url"
-                      value={formData.image_url}
-                      onChange={(e) =>
-                        setFormData({ ...formData, image_url: e.target.value })
-                      }
-                    />
+                  {/* Image Upload Section */}
+                  <div className="space-y-4">
+                    <Label htmlFor="image">รูปภาพแพคเกจ *</Label>
+
+                    {/* Drag and Drop Zone */}
+                    <div
+                      className={`relative border-2 border-dashed rounded-lg p-6 transition-colors ${
+                        isDragOver
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-gray-300 hover:border-gray-400"
+                      }`}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                    >
+                      {imagePreview ? (
+                        <div className="text-center space-y-4">
+                          <div className="relative inline-block">
+                            <img
+                              src={imagePreview}
+                              alt="Preview"
+                              className="max-w-full max-h-48 rounded-lg object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={removeImage}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
+                            >
+                              ×
+                            </button>
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            คลิกเพื่อเปลี่ยนรูปภาพ หรือลากและวางรูปใหม่
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="text-center space-y-4">
+                          <div className="mx-auto w-12 h-12 text-gray-400">
+                            <svg
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                              />
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="text-gray-600">
+                              ลากและวางรูปภาพที่นี่
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              หรือคลิกเพื่อเลือกไฟล์ (สูงสุด 5MB)
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileSelect}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                    </div>
+
+                    {isUploading && (
+                      <div className="flex items-center space-x-2 text-blue-600">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                        <span className="text-sm">กำลังอัปโหลด...</span>
+                      </div>
+                    )}
+
+                    {/* Alternative URL Input */}
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="image_url"
+                        className="text-sm text-gray-600"
+                      >
+                        หรือใส่ URL รูปภาพ
+                      </Label>
+                      <Input
+                        type="url"
+                        id="image_url"
+                        value={formData.image_url}
+                        onChange={(e) => {
+                          setFormData({
+                            ...formData,
+                            image_url: e.target.value,
+                          });
+                          if (imagePreview) {
+                            URL.revokeObjectURL(imagePreview);
+                            setImagePreview(null);
+                          }
+                        }}
+                        placeholder="https://example.com/image.jpg"
+                      />
+                    </div>
                   </div>
 
                   <div>
@@ -1869,6 +2322,77 @@ export default function PackageManagement() {
                 ))}
               </div>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Advertiser Selection Modal */}
+      <Dialog
+        open={isAdvertiserModalOpen}
+        onOpenChange={setIsAdvertiserModalOpen}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>เลือกผู้โฆษณา</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              เลือกผู้โฆษณาที่จะรับผิดชอบแพ็กเกจนี้
+            </p>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {advertisers.length === 0 ? (
+              <p className="text-center text-muted-foreground py-4">
+                ไม่มีผู้โฆษณาในระบบ
+              </p>
+            ) : (
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                {advertisers.map((advertiser) => (
+                  <div
+                    key={advertiser.id}
+                    className={cn(
+                      "flex items-center space-x-3 p-3 rounded-lg border cursor-pointer transition-colors",
+                      formData.advertiser_ids.includes(advertiser.id)
+                        ? "bg-blue-50 border-blue-300"
+                        : "hover:bg-gray-50"
+                    )}
+                    onClick={() => toggleAdvertiser(advertiser.id)}
+                  >
+                    <div
+                      className={cn(
+                        "w-4 h-4 rounded border-2 flex items-center justify-center",
+                        formData.advertiser_ids.includes(advertiser.id)
+                          ? "bg-blue-600 border-blue-600"
+                          : "border-gray-300"
+                      )}
+                    >
+                      {formData.advertiser_ids.includes(advertiser.id) && (
+                        <Check className="w-3 h-3 text-white" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">{advertiser.display_name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {advertiser.email}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsAdvertiserModalOpen(false)}
+            >
+              ยกเลิก
+            </Button>
+            <Button
+              type="button"
+              onClick={() => setIsAdvertiserModalOpen(false)}
+            >
+              เสร็จสิ้น ({formData.advertiser_ids.length} คน)
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

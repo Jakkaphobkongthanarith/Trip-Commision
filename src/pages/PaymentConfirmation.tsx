@@ -47,19 +47,46 @@ const PaymentConfirmation = () => {
 
     setLoading(true);
     try {
-      await bookingAPI.confirmPayment(bookingId);
-      setPaymentConfirmed(true);
+      console.log("🔄 Attempting payment confirmation for booking:", bookingId);
 
-      toast({
-        title: "ชำระเงินสำเร็จ!",
-        description: "การจองของคุณได้รับการยืนยันแล้ว",
-        variant: "default",
-      });
+      // Try multiple endpoint formats
+      let confirmed = false;
+      let lastError = null;
+
+      const endpoints = [
+        () => bookingAPI.confirmPayment(bookingId),
+        () => bookingAPI.confirmPaymentAlt1(bookingId),
+        () => bookingAPI.confirmPaymentAlt2(bookingId),
+      ];
+
+      for (let i = 0; i < endpoints.length; i++) {
+        try {
+          console.log(`🔄 Trying endpoint ${i + 1}/3`);
+          await endpoints[i]();
+          console.log(`✅ Payment confirmed with endpoint ${i + 1}`);
+          confirmed = true;
+          break;
+        } catch (error) {
+          console.warn(`❌ Endpoint ${i + 1} failed:`, error);
+          lastError = error;
+        }
+      }
+
+      if (confirmed) {
+        setPaymentConfirmed(true);
+        toast({
+          title: "ชำระเงินสำเร็จ!",
+          description: "การจองของคุณได้รับการยืนยันแล้ว",
+          variant: "default",
+        });
+      } else {
+        throw lastError || new Error("All endpoints failed");
+      }
     } catch (error) {
       console.error("Payment confirmation error:", error);
       toast({
         title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถยืนยันการชำระเงินได้",
+        description: "ไม่สามารถยืนยันการชำระเงินได้ - กรุณาติดต่อเจ้าหน้าที่",
         variant: "destructive",
       });
     } finally {

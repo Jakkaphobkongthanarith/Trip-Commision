@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Bell,
   X,
@@ -61,6 +62,7 @@ const priorityConfig = {
 
 export function NotificationPanel() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -68,26 +70,49 @@ export function NotificationPanel() {
 
   // Fetch notifications
   const fetchNotifications = async () => {
-    if (!user?.id) return;
+    // Try multiple user ID sources
+    const userId =
+      user?.id ||
+      localStorage.getItem("userId") ||
+      sessionStorage.getItem("userId");
+
+    console.log("🔔 NotificationPanel - Fetching for user:", userId);
+    console.log("🔔 User object:", user);
+
+    if (!userId) {
+      console.warn("❌ No user ID found in NotificationPanel");
+      return;
+    }
 
     try {
       setLoading(true);
 
       const response = await fetch(
-        `http://localhost:8000/api/notifications/user/${user.id}`
+        `http://localhost:8000/api/notifications/user/${userId}`
       );
+
+      console.log("🔔 Notification API response status:", response.status);
+
       if (response.ok) {
         const data = await response.json();
-        setNotifications(data.notifications || []);
+        console.log("🔔 Notifications fetched:", data);
+
+        setNotifications(data.notifications || data || []); // Try both formats
 
         // Count unread notifications
-        const unread = (data.notifications || []).filter(
+        const notificationList = data.notifications || data || [];
+        const unread = notificationList.filter(
           (n: Notification) => !n.is_read
         ).length;
         setUnreadCount(unread);
+
+        console.log("🔔 Unread count:", unread);
+      } else {
+        const errorData = await response.text();
+        console.error("❌ Notification fetch failed:", errorData);
       }
     } catch (error) {
-      console.error("Error fetching notifications:", error);
+      console.error("❌ Error fetching notifications:", error);
     } finally {
       setLoading(false);
     }
@@ -171,7 +196,8 @@ export function NotificationPanel() {
 
     // Navigate to action URL if provided
     if (notification.action_url) {
-      window.location.href = notification.action_url;
+      navigate(notification.action_url);
+      setIsOpen(false); // ปิด notification panel
     }
   };
 
@@ -195,17 +221,43 @@ export function NotificationPanel() {
     return date.toLocaleDateString("th-TH");
   };
 
-  // Fetch notifications on mount
+  // Fetch notifications on mount and when user changes
   useEffect(() => {
-    if (user?.id) {
+    const userId =
+      user?.id ||
+      localStorage.getItem("userId") ||
+      sessionStorage.getItem("userId");
+
+    if (userId) {
+      console.log("🔔 NotificationPanel useEffect triggered for user:", userId);
       fetchNotifications();
-
-      // Set up periodic refresh
-      const interval = setInterval(fetchNotifications, 30000); // Every 30 seconds
-
-      return () => clearInterval(interval);
     }
-  }, [user?.id]);
+  }, [user?.id]); // Only watch user.id, not the entire user object
+
+  // Only fetch when panel opens (not on periodic interval)
+  useEffect(() => {
+    if (isOpen) {
+      console.log("🔔 Panel opened, fetching fresh notifications");
+      fetchNotifications();
+    }
+  }, [isOpen]);
+
+  // Listen for notification creation events
+  useEffect(() => {
+    const handleNotificationCreated = () => {
+      console.log(
+        "🔔 Notification created event received, fetching fresh data"
+      );
+      fetchNotifications();
+    };
+
+    window.addEventListener("notificationCreated", handleNotificationCreated);
+    return () =>
+      window.removeEventListener(
+        "notificationCreated",
+        handleNotificationCreated
+      );
+  }, []);
 
   // Don't render if user is not logged in
   if (!user) {

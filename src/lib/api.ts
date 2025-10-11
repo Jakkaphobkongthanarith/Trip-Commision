@@ -1,45 +1,23 @@
-import { supabase } from "@/integrations/supabase/client";
-
 // API Base URL Configuration
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
-// Helper function สำหรับเรียก API
+// Helper function สำหรับเรียก API (JWT Version)
 export const apiRequest = async (
   endpoint: string,
   options: RequestInit = {}
 ) => {
   const url = `${API_BASE_URL}${endpoint}`;
 
-  let session = null;
-  try {
-    // Get current session to include auth token
-    const {
-      data: { session: currentSession },
-      error,
-    } = await supabase.auth.getSession();
-
-    if (error) {
-      console.warn("Session error:", error);
-      // Try to refresh session if error
-      const {
-        data: { session: refreshedSession },
-      } = await supabase.auth.refreshSession();
-      session = refreshedSession;
-    } else {
-      session = currentSession;
-    }
-  } catch (sessionError) {
-    console.warn("Failed to get session:", sessionError);
-    // Continue without auth token
-  }
+  // Get JWT token from localStorage
+  const token = localStorage.getItem("authToken");
 
   const defaultOptions: RequestInit = {
     headers: {
       "Content-Type": "application/json",
-      // Include authorization header if user is logged in and has valid token
-      ...(session?.access_token && {
-        Authorization: `Bearer ${session.access_token}`,
+      // Include authorization header if token exists
+      ...(token && {
+        Authorization: `Bearer ${token}`,
       }),
       ...options.headers,
     },
@@ -50,15 +28,14 @@ export const apiRequest = async (
   const response = await fetch(url, defaultOptions);
   console.log("API response:", response.status, response.statusText);
 
-  // Handle 403 session errors specifically
-  if (response.status === 403) {
-    const errorData = await response.text();
-    if (errorData.includes("session_not_found")) {
-      // Don't call supabase.auth.signOut() here to avoid 403 errors
-      // Let AuthContext handle session expiry with auto-redirect
-      console.warn("Session expired detected, letting AuthContext handle it");
-      throw new Error("Session expired. Please login again.");
-    }
+  // Handle 401 unauthorized (token expired)
+  if (response.status === 401) {
+    console.warn("Token expired, clearing auth data");
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("userRole");
+    sessionStorage.removeItem("userRole");
+    // Redirect to login will be handled by AuthContext
+    throw new Error("Session expired. Please login again.");
   }
 
   if (!response.ok) {
@@ -105,6 +82,19 @@ export const authAPI = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  // New JWT methods
+  verifyToken: (token: string) =>
+    apiRequest("/api/verify-token", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }),
+  refreshToken: (refreshToken: string) =>
+    apiRequest("/api/refresh-token", {
+      method: "POST",
+      body: JSON.stringify({ refreshToken }),
+    }),
 };
 
 export const bookingAPI = {
@@ -125,9 +115,20 @@ export const bookingAPI = {
   getByPackage: (packageId: string) =>
     apiRequest(`/api/bookings/package/${packageId}`),
 
-  // ยืนยันการชำระเงิน (mockup)
+  // ยืนยันการชำระเงิน - try multiple endpoints
   confirmPayment: (bookingId: string) =>
-    apiRequest(`/api/booking/${bookingId}/confirm-payment`, {
+    apiRequest(`/api/bookings/${bookingId}/confirm`, {
+      method: "PUT",
+    }),
+
+  // Alternative endpoint formats
+  confirmPaymentAlt1: (bookingId: string) =>
+    apiRequest(`/api/booking/${bookingId}/confirm`, {
+      method: "PUT",
+    }),
+
+  confirmPaymentAlt2: (bookingId: string) =>
+    apiRequest(`/api/bookings/${bookingId}/confirm-payment`, {
       method: "PUT",
     }),
 };
