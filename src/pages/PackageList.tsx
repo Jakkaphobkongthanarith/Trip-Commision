@@ -236,9 +236,7 @@ const PackageList = () => {
 
   return (
     <div className="min-h-screen bg-background w-full flex flex-col">
-      <div className="sticky top-0 z-50">
-        <Navbar />
-      </div>
+      <Navbar />
       
       <SidebarProvider>
         <div className="flex-1 flex w-full">
