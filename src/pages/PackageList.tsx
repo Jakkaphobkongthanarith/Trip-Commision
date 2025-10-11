@@ -27,12 +27,12 @@ const MainContent = ({
     <div className="flex-1 flex flex-col w-full">
       <main className="flex-1">
         {/* Mobile Sidebar Toggle Button - always visible on mobile */}
-        <div className="fixed top-20 left-4 z-50 md:hidden">
+        <div className="fixed bottom-4 right-4 z-50 md:hidden">
           <SidebarTrigger
             aria-label="Open filters"
-            className="!h-12 !w-12 rounded-full bg-background/95 border border-border shadow-lg hover:bg-muted ring-2 ring-primary/20 flex items-center justify-center"
+            className="!h-14 !w-14 rounded-full bg-background/95 border-2 border-primary shadow-xl hover:bg-muted ring-2 ring-primary/30 flex items-center justify-center"
           >
-            <PanelLeftOpen className="h-6 w-6" />
+            <PanelLeftOpen className="h-7 w-7" />
           </SidebarTrigger>
         </div>
 
