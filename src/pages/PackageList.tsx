@@ -7,6 +7,8 @@ import SearchBar from "@/components/SearchBar";
 import Navbar from "@/components/Navbar";
 import { packageAPI } from "@/lib/api";
 import { X } from "lucide-react";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { TagSidebar } from "@/components/TagSidebar";
 
 const PackageList = () => {
   const [searchParams] = useSearchParams();
@@ -109,111 +111,122 @@ const PackageList = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
+    <SidebarProvider>
+      <div className="min-h-screen bg-background w-full flex">
+        <TagSidebar packages={packages} />
+        
+        <div className="flex-1 flex flex-col w-full">
+          <Navbar />
 
-      <main className="pt-20">
-        {/* Hero Section */}
-        <section className="relative bg-gradient-to-br from-primary/10 via-background to-secondary/10 py-16">
-          <div className="container mx-auto px-6 text-center">
-            <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-sunset-gradient bg-clip-text text-transparent">
-              แพคเกจท่องเที่ยว
-            </h1>
-            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              ค้นพบประสบการณ์การเดินทางที่น่าประทับใจ พร้อมข้อเสนอพิเศษสำหรับคุณ
-            </p>
-            <SearchBar />
-          </div>
-        </section>
-
-        {/* Package List Section */}
-        <section className="py-16">
-          <div className="container mx-auto px-6">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2 className="text-3xl font-bold mb-2">
-                  {selectedTag
-                    ? `แพคเกจประเภท: ${selectedTag}`
-                    : "แพคเกจทั้งหมด"}
-                </h2>
-                <p className="text-muted-foreground">
-                  พบ {filteredPackages.length} แพคเกจ
-                </p>
-              </div>
-
-              {selectedTag && (
-                <Button
-                  variant="outline"
-                  onClick={clearFilter}
-                  className="flex items-center gap-2"
-                >
-                  <X className="h-4 w-4" />
-                  ดูทั้งหมด
-                </Button>
-              )}
+          <main className="pt-20 flex-1">
+            {/* Sidebar Toggle Button - Fixed position */}
+            <div className="fixed top-24 left-4 z-40">
+              <SidebarTrigger className="bg-background border shadow-md hover:bg-muted" />
             </div>
 
-            {selectedTag && (
-              <div className="mb-6">
-                <Badge variant="default" className="text-base px-4 py-2">
-                  {selectedTag}
-                </Badge>
+            {/* Hero Section */}
+            <section className="relative bg-gradient-to-br from-primary/10 via-background to-secondary/10 py-16">
+              <div className="container mx-auto px-6 text-center">
+                <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-sunset-gradient bg-clip-text text-transparent">
+                  แพคเกจท่องเที่ยว
+                </h1>
+                <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+                  ค้นพบประสบการณ์การเดินทางที่น่าประทับใจ พร้อมข้อเสนอพิเศษสำหรับคุณ
+                </p>
+                <SearchBar />
               </div>
-            )}
+            </section>
 
-            {filteredPackages.length > 0 ? (
-              loading ? (
-                <div className="text-center py-8">กำลังโหลด...</div>
-              ) : (
-                <>
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {displayedPackages.map((packageItem) => (
-                      <TravelPackageCard
-                        key={packageItem.id}
-                        package={packageItem}
-                        onTagClick={handleTagClick}
-                      />
-                    ))}
+            {/* Package List Section */}
+            <section className="py-16">
+              <div className="container mx-auto px-6">
+                <div className="flex items-center justify-between mb-8">
+                  <div>
+                    <h2 className="text-3xl font-bold mb-2">
+                      {selectedTag
+                        ? `แพคเกจประเภท: ${selectedTag}`
+                        : "แพคเกจทั้งหมด"}
+                    </h2>
+                    <p className="text-muted-foreground">
+                      พบ {filteredPackages.length} แพคเกจ
+                    </p>
                   </div>
 
-                  {/* ปุ่ม Load More */}
-                  {hasMorePackages && (
-                    <div className="text-center mt-12">
-                      <Button
-                        onClick={loadMore}
-                        variant="outline"
-                        size="lg"
-                        className="px-8 py-3 text-lg"
-                      >
-                        โหลดเพิ่มเติม ({filteredPackages.length - visibleCount}{" "}
-                        รายการ)
-                      </Button>
-                    </div>
+                  {selectedTag && (
+                    <Button
+                      variant="outline"
+                      onClick={clearFilter}
+                      className="flex items-center gap-2"
+                    >
+                      <X className="h-4 w-4" />
+                      ดูทั้งหมด
+                    </Button>
                   )}
+                </div>
 
-                  {/* แสดงจำนวนรายการปัจจุบัน */}
-                  {filteredPackages.length > 0 && (
-                    <div className="text-center mt-6">
-                      <p className="text-muted-foreground">
-                        แสดง {Math.min(visibleCount, filteredPackages.length)}{" "}
-                        จาก {filteredPackages.length} รายการ
-                      </p>
-                    </div>
-                  )}
-                </>
-              )
-            ) : (
-              <div className="text-center py-16">
-                <p className="text-xl text-muted-foreground mb-4">
-                  ไม่พบแพคเกจที่ตรงกับการค้นหา
-                </p>
-                <Button onClick={clearFilter}>ดูแพคเกจทั้งหมด</Button>
+                {selectedTag && (
+                  <div className="mb-6">
+                    <Badge variant="default" className="text-base px-4 py-2">
+                      {selectedTag}
+                    </Badge>
+                  </div>
+                )}
+
+                {filteredPackages.length > 0 ? (
+                  loading ? (
+                    <div className="text-center py-8">กำลังโหลด...</div>
+                  ) : (
+                    <>
+                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {displayedPackages.map((packageItem) => (
+                          <TravelPackageCard
+                            key={packageItem.id}
+                            package={packageItem}
+                            onTagClick={handleTagClick}
+                          />
+                        ))}
+                      </div>
+
+                      {/* ปุ่ม Load More */}
+                      {hasMorePackages && (
+                        <div className="text-center mt-12">
+                          <Button
+                            onClick={loadMore}
+                            variant="outline"
+                            size="lg"
+                            className="px-8 py-3 text-lg"
+                          >
+                            โหลดเพิ่มเติม ({filteredPackages.length - visibleCount}{" "}
+                            รายการ)
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* แสดงจำนวนรายการปัจจุบัน */}
+                      {filteredPackages.length > 0 && (
+                        <div className="text-center mt-6">
+                          <p className="text-muted-foreground">
+                            แสดง {Math.min(visibleCount, filteredPackages.length)}{" "}
+                            จาก {filteredPackages.length} รายการ
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )
+                ) : (
+                  <div className="text-center py-16">
+                    <p className="text-xl text-muted-foreground mb-4">
+                      ไม่พบแพคเกจที่ตรงกับการค้นหา
+                    </p>
+                    <Button onClick={clearFilter}>ดูแพคเกจทั้งหมด</Button>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </section>
-      </main>
-    </div>
+            </section>
+          </main>
+        </div>
+      </div>
+    </SidebarProvider>
   );
 };
 
