@@ -36,14 +36,14 @@ const Navbar = () => {
     const { error } = await signOut();
     if (error) {
       toast({
-        title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถออกจากระบบได้",
+        title: t("toast.signOutError"),
+        description: t("toast.signOutErrorDesc"),
         variant: "destructive",
       });
     } else {
       toast({
-        title: "ออกจากระบบสำเร็จ",
-        description: "ขอบคุณที่ใช้บริการ",
+        title: t("toast.signOutSuccess"),
+        description: t("toast.signOutSuccessDesc"),
       });
       navigate("/");
     }
@@ -108,12 +108,12 @@ const Navbar = () => {
                       <p className="text-sm font-medium">{user.email}</p>
                       {userRole && (
                         <p className="text-xs text-muted-foreground">
-                          ลอคอินในฐานะ{" "}
+                          {t("nav.role.loggedInAs")}{" "}
                           {userRole === "customer"
-                            ? "นักท่องเที่ยว"
+                            ? t("nav.role.customer")
                             : userRole === "advertiser"
-                            ? "คนกลาง"
-                            : "ผู้จัดการ"}
+                            ? t("nav.role.advertiser")
+                            : t("nav.role.manager")}
                         </p>
                       )}
                     </div>
@@ -125,7 +125,7 @@ const Navbar = () => {
                     className="cursor-pointer"
                   >
                     <User className="h-4 w-4 mr-2" />
-                    โปรไฟล์
+                    {t("nav.profile")}
                   </DropdownMenuItem>
 
                   <DropdownMenuItem
@@ -133,7 +133,7 @@ const Navbar = () => {
                     className="cursor-pointer"
                   >
                     <Package className="h-4 w-4 mr-2" />
-                    แพคเกจทั้งหมด
+                    {t("nav.packages")}
                   </DropdownMenuItem>
 
                   {userRole === "advertiser" && (
@@ -144,7 +144,7 @@ const Navbar = () => {
                         className="cursor-pointer"
                       >
                         <BarChart3 className="h-4 w-4 mr-2" />
-                        แดชบอร์ด
+                        {t("nav.dashboard")}
                       </DropdownMenuItem>
                     </>
                   )}
@@ -157,14 +157,14 @@ const Navbar = () => {
                         className="cursor-pointer"
                       >
                         <Users className="h-4 w-4 mr-2" />
-                        จัดการสมาชิก
+                        {t("nav.manageMembers")}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => navigate("/package-management")}
                         className="cursor-pointer"
                       >
                         <Settings className="h-4 w-4 mr-2" />
-                        จัดการแพคเกจ
+                        {t("nav.managePackages")}
                       </DropdownMenuItem>
                     </>
                   )}
@@ -175,7 +175,7 @@ const Navbar = () => {
                     className="cursor-pointer text-destructive focus:text-destructive"
                   >
                     <LogOut className="h-4 w-4 mr-2" />
-                    ออกจากระบบ
+                    {t("nav.signOut")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -187,14 +187,14 @@ const Navbar = () => {
                 onClick={() => navigate("/auth")}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-hero"
               >
-                เข้าสู่ระบบ
+                {t("nav.login")}
               </Button>
               <Button
                 variant="ghost"
                 onClick={() => navigate("/auth?signup=true")}
                 className="text-foreground hover:text-primary"
               >
-                สมัครสมาชิก
+                {t("nav.signup")}
               </Button>
             </>
           )}
@@ -229,11 +229,12 @@ const Navbar = () => {
                     <p className="text-sm font-medium">{user.email}</p>
                     {userRole && (
                       <p className="text-xs text-muted-foreground">
+                        {t("nav.role.loggedInAs")}{" "}
                         {userRole === "customer"
-                          ? "นักท่องเที่ยว"
+                          ? t("nav.role.customer")
                           : userRole === "advertiser"
-                          ? "คนกลาง"
-                          : "ผู้จัดการ"}
+                          ? t("nav.role.advertiser")
+                          : t("nav.role.manager")}
                       </p>
                     )}
                   </div>
@@ -245,7 +246,7 @@ const Navbar = () => {
                   className="cursor-pointer"
                 >
                   <User className="h-4 w-4 mr-2" />
-                  โปรไฟล์
+                  {t("nav.profile")}
                 </DropdownMenuItem>
 
                 <DropdownMenuItem
@@ -253,7 +254,7 @@ const Navbar = () => {
                   className="cursor-pointer"
                 >
                   <Package className="h-4 w-4 mr-2" />
-                  แพคเกจทั้งหมด
+                  {t("nav.packages")}
                 </DropdownMenuItem>
 
                 {userRole === "advertiser" && (
@@ -264,7 +265,7 @@ const Navbar = () => {
                       className="cursor-pointer"
                     >
                       <BarChart3 className="h-4 w-4 mr-2" />
-                      แดชบอร์ด
+                      {t("nav.dashboard")}
                     </DropdownMenuItem>
                   </>
                 )}
@@ -277,14 +278,14 @@ const Navbar = () => {
                       className="cursor-pointer"
                     >
                       <Users className="h-4 w-4 mr-2" />
-                      จัดการสมาชิก
+                      {t("nav.manageMembers")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => navigate("/package-management")}
                       className="cursor-pointer"
                     >
                       <Settings className="h-4 w-4 mr-2" />
-                      จัดการแพคเกจ
+                      {t("nav.managePackages")}
                     </DropdownMenuItem>
                   </>
                 )}
@@ -295,7 +296,7 @@ const Navbar = () => {
                   className="cursor-pointer text-destructive focus:text-destructive"
                 >
                   <LogOut className="h-4 w-4 mr-2" />
-                  ออกจากระบบ
+                  {t("nav.signOut")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -306,7 +307,7 @@ const Navbar = () => {
               onClick={() => navigate("/auth")}
               className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
-              เข้าสู่ระบบ
+              {t("nav.login")}
             </Button>
           )}
         </div>

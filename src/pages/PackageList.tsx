@@ -20,30 +20,19 @@ const MainContent = ({
   loadMore, 
   visibleCount 
 }: any) => {
-  const { state } = useSidebar();
-  const isCollapsed = state === "collapsed";
+  const { t } = useLanguage();
 
   return (
     <div className="flex-1 flex flex-col w-full">
       <main className="flex-1">
-        {/* Mobile Sidebar Toggle Button - always visible on mobile */}
-        <div className="fixed bottom-4 right-4 z-50 md:hidden">
-          <SidebarTrigger
-            aria-label="Open filters"
-            className="!h-14 !w-14 rounded-full bg-background/95 border-2 border-primary shadow-xl hover:bg-muted ring-2 ring-primary/30 flex items-center justify-center"
-          >
-            <PanelLeftOpen className="h-7 w-7" />
-          </SidebarTrigger>
-        </div>
-
         {/* Hero Section */}
         <section className="relative bg-gradient-to-br from-primary/10 via-background to-secondary/10 py-16">
           <div className="container mx-auto px-6 text-center">
             <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-sunset-gradient bg-clip-text text-transparent">
-              แพคเกจท่องเที่ยว
+              {t("packages.title")}
             </h1>
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              ค้นพบประสบการณ์การเดินทางที่น่าประทับใจ พร้อมข้อเสนอพิเศษสำหรับคุณ
+              {t("packages.description")}
             </p>
             <SearchBar />
           </div>
@@ -56,11 +45,11 @@ const MainContent = ({
               <div>
                 <h2 className="text-3xl font-bold mb-2">
                   {selectedTag
-                    ? `แพคเกจประเภท: ${selectedTag}`
-                    : "แพคเกจทั้งหมด"}
+                    ? `${t("packages.category")} ${selectedTag}`
+                    : t("packages.all")}
                 </h2>
                 <p className="text-muted-foreground">
-                  พบ {filteredPackages.length} แพคเกจ
+                  {t("packages.found")} {filteredPackages.length} {t("packages.items")}
                 </p>
               </div>
 
@@ -71,7 +60,7 @@ const MainContent = ({
                   className="flex items-center gap-2"
                 >
                   <X className="h-4 w-4" />
-                  ดูทั้งหมด
+                  {t("packages.viewAllButton")}
                 </Button>
               )}
             </div>
@@ -86,7 +75,7 @@ const MainContent = ({
 
             {filteredPackages.length > 0 ? (
               loading ? (
-                <div className="text-center py-8">กำลังโหลด...</div>
+                <div className="text-center py-8">{t("packages.loading")}</div>
               ) : (
                 <>
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -99,7 +88,6 @@ const MainContent = ({
                     ))}
                   </div>
 
-                  {/* ปุ่ม Load More */}
                   {hasMorePackages && (
                     <div className="text-center mt-12">
                       <Button
@@ -108,18 +96,17 @@ const MainContent = ({
                         size="lg"
                         className="px-8 py-3 text-lg"
                       >
-                        โหลดเพิ่มเติม ({filteredPackages.length - visibleCount}{" "}
-                        รายการ)
+                        {t("packages.loadMore")} ({filteredPackages.length - visibleCount}{" "}
+                        {t("packages.items2")})
                       </Button>
                     </div>
                   )}
 
-                  {/* แสดงจำนวนรายการปัจจุบัน */}
                   {filteredPackages.length > 0 && (
                     <div className="text-center mt-6">
                       <p className="text-muted-foreground">
-                        แสดง {Math.min(visibleCount, filteredPackages.length)}{" "}
-                        จาก {filteredPackages.length} รายการ
+                        {t("packages.showing")} {Math.min(visibleCount, filteredPackages.length)}{" "}
+                        {t("packages.from")} {filteredPackages.length} {t("packages.items2")}
                       </p>
                     </div>
                   )}
@@ -128,9 +115,9 @@ const MainContent = ({
             ) : (
               <div className="text-center py-16">
                 <p className="text-xl text-muted-foreground mb-4">
-                  ไม่พบแพคเกจที่ตรงกับการค้นหา
+                  {t("packages.noResults")}
                 </p>
-                <Button onClick={clearFilter}>ดูแพคเกจทั้งหมด</Button>
+                <Button onClick={clearFilter}>{t("packages.viewAllButton")}</Button>
               </div>
             )}
           </div>
@@ -143,6 +130,7 @@ const MainContent = ({
 const PackageList = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(9);
