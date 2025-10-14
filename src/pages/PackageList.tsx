@@ -2,11 +2,11 @@ import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { X } from "lucide-react";
 import TravelPackageCard from "@/components/TravelPackageCard";
 import SearchBar from "@/components/SearchBar";
-import { packageAPI } from "@/lib/api";
-import { X } from "lucide-react";
 import { TagFilter } from "@/components/TagFilter";
+import { packageAPI } from "@/lib/api";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const MainContent = ({ 
