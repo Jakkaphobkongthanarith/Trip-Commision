@@ -26,3 +26,23 @@ dist-ssr
 # Env files
 .env
 backend/.env
+
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+backend/tmp/
+backend/main
+backend/main.exe
+tmp/
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Go workspace file
+go.work
