@@ -66,7 +66,7 @@ export function TagFilter({ packages }: TagFilterProps) {
   };
 
   const FilterContent = () => (
-    <div className="space-y-4">
+    <div className="flex flex-col min-h-0 space-y-4">
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
         <Input
@@ -87,8 +87,8 @@ export function TagFilter({ packages }: TagFilterProps) {
         )}
       </div>
 
-      <ScrollArea className="flex-1 h-full">
-        <div className="space-y-2 pr-4">
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="space-y-2 pr-2">
           <Button
             variant={!selectedTag ? "secondary" : "ghost"}
             className="w-full justify-start"
@@ -130,7 +130,7 @@ export function TagFilter({ packages }: TagFilterProps) {
     <>
       {/* Desktop Filter */}
       <div className="hidden md:block">
-        <Card className="fixed top-24 w-80 h-[calc(100vh-7rem)] flex flex-col bg-background border-border/50">
+        <Card className="fixed top-24 w-80 h-[calc(100vh-7rem)] flex flex-col bg-card shadow-card border-border">
           <CardHeader className="flex-shrink-0">
             <CardTitle className="flex items-center gap-2">
               <Filter className="h-5 w-5" />
