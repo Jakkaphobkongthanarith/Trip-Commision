@@ -130,7 +130,7 @@ export function TagFilter({ packages }: TagFilterProps) {
     <>
       {/* Desktop Filter */}
       <div className="hidden md:block">
-        <Card className="sticky top-24">
+        <Card className="fixed top-24 h-[calc(100vh-7rem)] overflow-y-auto">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Filter className="h-5 w-5" />
