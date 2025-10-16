@@ -25,9 +25,10 @@ import {
 
 interface TagFilterProps {
   packages: any[];
+  onCollapseChange?: (collapsed: boolean) => void;
 }
 
-export function TagFilter({ packages }: TagFilterProps) {
+export function TagFilter({ packages, onCollapseChange }: TagFilterProps) {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -35,6 +36,12 @@ export function TagFilter({ packages }: TagFilterProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const handleCollapseToggle = () => {
+    const newCollapsed = !isCollapsed;
+    setIsCollapsed(newCollapsed);
+    onCollapseChange?.(newCollapsed);
+  };
 
   const tagCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -74,8 +81,8 @@ export function TagFilter({ packages }: TagFilterProps) {
   };
 
   const FilterContent = () => (
-    <div className="space-y-4">
-      <div className="relative">
+    <div className="flex flex-col h-full space-y-4">
+      <div className="relative flex-shrink-0">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
         <Input
           placeholder={t("tags.search")}
@@ -85,7 +92,7 @@ export function TagFilter({ packages }: TagFilterProps) {
         />
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-shrink-0">
         <span className="text-sm font-medium">{t("tags.title")}</span>
         {selectedTag && (
           <Button variant="ghost" size="sm" onClick={handleClearAll}>
@@ -95,7 +102,7 @@ export function TagFilter({ packages }: TagFilterProps) {
         )}
       </div>
 
-      <ScrollArea className="h-80">
+      <ScrollArea className="flex-1">
         <div className="space-y-2">
           <Button
             variant={!selectedTag ? "secondary" : "ghost"}
@@ -139,11 +146,15 @@ export function TagFilter({ packages }: TagFilterProps) {
       {/* Desktop Filter */}
       <div
         className={`hidden md:block transition-all duration-300 ${
-          isCollapsed ? "w-16" : "w-80"
+          isCollapsed ? "w-16" : "w-1/5"
         }`}
       >
-        <Card className="sticky top-24 h-fit">
-          <CardHeader className="pb-3">
+        <Card
+          className={`fixed top-16 left-0 h-[calc(100vh-4rem)] border-r z-40 flex flex-col bg-background transition-all duration-300 ${
+            isCollapsed ? "w-16" : "w-1/5"
+          }`}
+        >
+          <CardHeader className="pb-3 flex-shrink-0">
             <div className="flex items-center justify-between">
               {!isCollapsed && (
                 <CardTitle className="flex items-center gap-2">
@@ -154,7 +165,7 @@ export function TagFilter({ packages }: TagFilterProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setIsCollapsed(!isCollapsed)}
+                onClick={handleCollapseToggle}
                 className={`p-2 ${
                   isCollapsed ? "w-full justify-center" : "ml-auto"
                 }`}
@@ -170,19 +181,19 @@ export function TagFilter({ packages }: TagFilterProps) {
           </CardHeader>
 
           {!isCollapsed && (
-            <CardContent>
+            <CardContent className="flex-1 overflow-hidden">
               <FilterContent />
             </CardContent>
           )}
 
           {/* Collapsed state content */}
           {isCollapsed && (
-            <CardContent className="p-2">
+            <CardContent className="p-2 flex-1 flex flex-col justify-start">
               <div className="flex flex-col items-center gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setIsCollapsed(false)}
+                  onClick={handleCollapseToggle}
                   className="w-full p-2"
                   title="ขยาย sidebar"
                 >

@@ -19,11 +19,16 @@ const MainContent = ({
   hasMorePackages,
   loadMore,
   visibleCount,
+  isCollapsed,
 }: any) => {
   const { t } = useLanguage();
 
   return (
-    <div className="flex-1 flex flex-col w-full ml-4">
+    <div
+      className={`flex-1 bg-background transition-all duration-300 ${
+        isCollapsed ? "" : "ml-[20%]"
+      }`}
+    >
       <main className="flex-1">
         {/* Hero Section */}
         <section className="relative bg-gradient-to-br from-primary/10 via-background to-secondary/10 py-16">
@@ -39,7 +44,7 @@ const MainContent = ({
         </section>
 
         {/* Package List Section */}
-        <section className="py-16">
+        <section className="py-16 bg-background">
           <div className="container mx-auto px-6">
             <div className="flex items-center justify-between mb-8">
               <div>
@@ -140,6 +145,7 @@ const PackageList = () => {
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(9);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const selectedTag = searchParams.get("tag");
   const searchQuery = searchParams.get("search");
   const locationFilter = searchParams.get("location");
@@ -233,12 +239,13 @@ const PackageList = () => {
   };
 
   return (
-    <div className="w-full flex flex-col">
-      <div className="flex-1 flex w-full">
-        {/* Desktop Sidebar - จะปรับ width ตาม collapsed state */}
-        <div className="hidden md:block flex-shrink-0">
-          <TagFilter packages={packages} />
+    <div className="w-full bg-background min-h-screen">
+      <div className="flex w-full">
+        {/* Desktop Sidebar - Fixed positioning */}
+        <div className="hidden md:block">
+          <TagFilter packages={packages} onCollapseChange={setIsCollapsed} />
         </div>
+
         <MainContent
           selectedTag={selectedTag}
           filteredPackages={filteredPackages}
@@ -249,8 +256,10 @@ const PackageList = () => {
           hasMorePackages={hasMorePackages}
           loadMore={loadMore}
           visibleCount={visibleCount}
+          isCollapsed={isCollapsed}
         />
       </div>
+
       {/* Mobile filter - แสดงเฉพาะ mobile */}
       <div className="md:hidden">
         <TagFilter packages={packages} />
