@@ -22,9 +22,11 @@ import {
   Check,
   Minus,
   Plus,
+  FileText,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { PDFViewer } from "@/components/PDFViewer";
 
 const PackageDetails = () => {
   const { id } = useParams();
@@ -175,6 +177,10 @@ const PackageDetails = () => {
           ...data,
           originalPrice: originalPrice,
           finalPrice: discountedPrice, // ราคาหลังส่วนลด
+          // เพิ่ม fallback PDF URL สำหรับทดสอบ
+          pdf_url:
+            data.pdf_url ||
+            "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
         });
       } catch (error) {
         console.error("Error fetching package:", error);
@@ -494,6 +500,27 @@ const PackageDetails = () => {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* PDF Viewer Section */}
+              <Separator />
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold">เอกสารแพคเกจ</h3>
+                {packageData.pdf_url ? (
+                  <PDFViewer
+                    pdfUrl={packageData.pdf_url}
+                    title={packageData.title}
+                  />
+                ) : (
+                  <Card>
+                    <CardContent className="p-6 text-center">
+                      <div className="text-muted-foreground">
+                        <FileText className="h-12 w-12 mx-auto mb-2" />
+                        <p>ยังไม่มีเอกสาร PDF สำหรับแพคเกจนี้</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             </div>
           </div>

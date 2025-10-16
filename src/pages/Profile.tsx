@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { User, Calendar, MapPin, CreditCard, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Profile {
   display_name?: string;
@@ -42,6 +43,7 @@ const Profile = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { t, language } = useLanguage();
 
   // Early return ถ้าไม่มี user (ต้องอยู่ก่อน useState และ useEffect)
   if (!user) {
@@ -49,8 +51,8 @@ const Profile = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card>
           <CardContent className="p-8 text-center">
-            <h2 className="text-2xl font-bold mb-4">กรุณาเข้าสู่ระบบ</h2>
-            <Button onClick={() => navigate("/auth")}>เข้าสู่ระบบ</Button>
+            <h2 className="text-2xl font-bold mb-4">{t("profile.loginRequired")}</h2>
+            <Button onClick={() => navigate("/auth")}>{t("nav.login")}</Button>
           </CardContent>
         </Card>
       </div>
@@ -142,14 +144,14 @@ const Profile = () => {
       if (error) throw error;
 
       toast({
-        title: "บันทึกข้อมูลสำเร็จ",
-        description: "ข้อมูลโปรไฟล์ของคุณได้รับการอัปเดตแล้ว",
+        title: t("profile.saveSuccess"),
+        description: t("profile.saveSuccessDesc"),
       });
     } catch (error) {
       console.error("Error saving profile:", error);
       toast({
-        title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถบันทึกข้อมูลได้",
+        title: t("profile.saveError"),
+        description: t("profile.saveErrorDesc"),
         variant: "destructive",
       });
     } finally {
@@ -166,13 +168,13 @@ const Profile = () => {
   };
 
   const getStatusText = (status: string, paymentStatus: string) => {
-    if (paymentStatus === "completed") return "ชำระเงินแล้ว";
-    if (paymentStatus === "pending") return "รอชำระเงิน";
+    if (paymentStatus === "completed") return t("profile.status.paid");
+    if (paymentStatus === "pending") return t("profile.status.pending");
     if (paymentStatus === "failed" && status === "cancelled")
-      return "หมดเวลาชำระ"; // แสดง "หมดเวลาชำระ" เมื่อ failed + cancelled
-    if (paymentStatus === "failed") return "ชำระเงินไม่สำเร็จ";
-    if (paymentStatus === "expired") return "หมดเวลาชำระ";
-    if (status === "cancelled") return "ยกเลิกแล้ว";
+      return t("profile.status.expired");
+    if (paymentStatus === "failed") return t("profile.status.failed");
+    if (paymentStatus === "expired") return t("profile.status.expired");
+    if (status === "cancelled") return t("profile.status.cancelled");
     return status;
   };
 
@@ -189,15 +191,15 @@ const Profile = () => {
     const expires = new Date(expiresAt);
     const diff = expires.getTime() - now.getTime();
 
-    if (diff <= 0) return "หมดเวลาแล้ว";
+    if (diff <= 0) return t("profile.timeExpired");
 
     const minutes = Math.floor(diff / (1000 * 60));
     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
     if (minutes > 0) {
-      return `เหลือ ${minutes} นาที ${seconds} วินาที`;
+      return `${t("profile.timeRemaining")} ${minutes} ${language === "th" ? "นาที" : "min"} ${seconds} ${language === "th" ? "วินาที" : "sec"}`;
     } else {
-      return `เหลือ ${seconds} วินาที`;
+      return `${t("profile.timeRemaining")} ${seconds} ${language === "th" ? "วินาที" : "sec"}`;
     }
   };
 
@@ -227,9 +229,9 @@ const Profile = () => {
             className="mb-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            กลับหน้าหลัก
+            {t("profile.backToHome")}
           </Button>
-          <h1 className="text-3xl font-bold text-foreground">โปรไฟล์ของฉัน</h1>
+          <h1 className="text-3xl font-bold text-foreground">{t("profile.title")}</h1>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8">
@@ -238,12 +240,12 @@ const Profile = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
-                ข้อมูลส่วนตัว
+                {t("profile.personalInfo")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="email">อีเมล</Label>
+                <Label htmlFor="email">{t("profile.email")}</Label>
                 <Input
                   id="email"
                   value={user.email || ""}
@@ -251,43 +253,43 @@ const Profile = () => {
                   className="bg-muted"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  ไม่สามารถแก้ไขอีเมลได้
+                  {t("profile.emailNote")}
                 </p>
               </div>
 
               <div>
-                <Label htmlFor="displayName">ชื่อ-นามสกุล</Label>
+                <Label htmlFor="displayName">{t("profile.displayName")}</Label>
                 <Input
                   id="displayName"
                   value={profile.display_name || ""}
                   onChange={(e) =>
                     setProfile({ ...profile, display_name: e.target.value })
                   }
-                  placeholder="กรอกชื่อ-นามสกุล"
+                  placeholder={t("profile.displayNamePlaceholder")}
                 />
               </div>
 
               <div>
-                <Label htmlFor="phone">เบอร์โทรศัพท์</Label>
+                <Label htmlFor="phone">{t("profile.phone")}</Label>
                 <Input
                   id="phone"
                   value={profile.phone || ""}
                   onChange={(e) =>
                     setProfile({ ...profile, phone: e.target.value })
                   }
-                  placeholder="กรอกเบอร์โทรศัพท์"
+                  placeholder={t("profile.phonePlaceholder")}
                 />
               </div>
 
               <div>
-                <Label htmlFor="address">ที่อยู่</Label>
+                <Label htmlFor="address">{t("profile.address")}</Label>
                 <Input
                   id="address"
                   value={profile.address || ""}
                   onChange={(e) =>
                     setProfile({ ...profile, address: e.target.value })
                   }
-                  placeholder="กรอกที่อยู่"
+                  placeholder={t("profile.addressPlaceholder")}
                 />
               </div>
 
@@ -296,7 +298,7 @@ const Profile = () => {
                 disabled={saving}
                 className="w-full"
               >
-                {saving ? "กำลังบันทึก..." : "บันทึกข้อมูล"}
+                {saving ? t("profile.saving") : t("profile.saveButton")}
               </Button>
             </CardContent>
           </Card>
@@ -306,24 +308,24 @@ const Profile = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
-                ประวัติการจอง
+                {t("profile.bookingHistory")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               {loading ? (
                 <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                  <p className="mt-2 text-muted-foreground">กำลังโหลด...</p>
+                  <p className="mt-2 text-muted-foreground">{t("profile.loading")}</p>
                 </div>
               ) : bookings.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-muted-foreground">ยังไม่มีประวัติการจอง</p>
+                  <p className="text-muted-foreground">{t("profile.noBookings")}</p>
                   <Button
                     variant="outline"
                     onClick={() => navigate("/packages")}
                     className="mt-4"
                   >
-                    เริ่มจองแพคเกจ
+                    {t("profile.startBooking")}
                   </Button>
                 </div>
               ) : (
@@ -358,33 +360,33 @@ const Profile = () => {
 
                         <div className="grid grid-cols-2 gap-4 text-sm">
                           <div>
-                            <p className="text-muted-foreground">วันที่จอง</p>
+                            <p className="text-muted-foreground">{t("profile.bookingDate")}</p>
                             <p className="font-medium">
                               {new Date(
                                 booking.booking_date
-                              ).toLocaleDateString("th-TH")}
+                              ).toLocaleDateString(language === "th" ? "th-TH" : "en-US")}
                             </p>
                           </div>
                           <div>
                             <p className="text-muted-foreground">
-                              จำนวนผู้เดินทาง
+                              {t("profile.guests")}
                             </p>
                             <p className="font-medium">
-                              {booking.guest_count} ท่าน
+                              {booking.guest_count} {t("profile.guestsUnit")}
                             </p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground">ราคารวม</p>
+                            <p className="text-muted-foreground">{t("profile.totalPrice")}</p>
                             <p className="font-medium">
-                              ฿{booking.total_amount.toLocaleString()}
+                              {t("common.baht")}{booking.total_amount.toLocaleString()}
                             </p>
                           </div>
                           <div>
                             <p className="text-muted-foreground">
-                              จำนวนเงินที่ชำระ
+                              {t("profile.paymentAmount")}
                             </p>
                             <p className="font-medium flex items-center gap-1">
-                              <CreditCard className="h-3 w-3" />฿
+                              <CreditCard className="h-3 w-3" />{t("common.baht")}
                               {booking.final_amount.toLocaleString()}
                             </p>
                           </div>
@@ -398,7 +400,7 @@ const Profile = () => {
                                 <Calendar className="h-4 w-4" />
                                 <span className="text-sm font-medium">
                                   {isBookingExpired(booking)
-                                    ? "หมดเวลาชำระแล้ว"
+                                    ? t("profile.timeExpired")
                                     : getTimeRemaining(booking.expires_at)}
                                 </span>
                               </div>
@@ -415,7 +417,7 @@ const Profile = () => {
                                 size="sm"
                               >
                                 <CreditCard className="h-4 w-4 mr-2" />
-                                ยืนยันการจอง (ชำระเงิน)
+                                {t("profile.confirmBooking")}
                               </Button>
                             </div>
                           )}

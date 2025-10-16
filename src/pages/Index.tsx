@@ -1,18 +1,19 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import Navbar from "@/components/Navbar";
 import SearchBar from "@/components/SearchBar";
 import TravelPackageCard from "@/components/TravelPackageCard";
 import { packageAPI } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [visibleCount, setVisibleCount] = useState(9); // แสดง 9 รายการ (3 แถว x 3 คอลัมน์)
+  const [visibleCount, setVisibleCount] = useState(9);
 
   // Helper function to normalize tags
   const normalizeTags = (tags: any): string[] => {
@@ -93,27 +94,25 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-sky-gradient">
-      <Navbar />
-
+    <>
       {/* Hero Section */}
       <section className="relative pt-24 pb-16 px-6">
         <div className="container mx-auto text-center">
           <div className="max-w-4xl mx-auto mb-12">
             <h1 className="text-5xl md:text-6xl font-bold mb-6">
               <span className="bg-sunset-gradient bg-clip-text text-transparent">
-                ค้นพบ
+                {t("hero.discover")}
               </span>
-              <span className="text-foreground"> การเดินทางที่</span>
+              <span className="text-foreground"> {t("hero.journey")}</span>
               <br />
               <span className="bg-sunset-gradient bg-clip-text text-transparent">
-                ไม่เหมือนใคร
+                {t("hero.unique")}
               </span>
             </h1>
             <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
-              แพลตฟอร์มท่องเที่ยวที่รวมแพคเกจสุดพิเศษจากทั่วประเทศไทย
+              {t("hero.description")}
               <br />
-              พร้อมระบบส่วนลดและค่าคอมมิชชั่นสำหลับนักโฆษณา
+              {t("hero.description2")}
             </p>
             <div>
               <h1>Meow API Response:</h1>
@@ -131,11 +130,11 @@ const Index = () => {
         <div className="container mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              แพคเกจท่องเที่ยวยอดนิยม
+              {t("packages.title")}
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              เลือกจากแพคเกจท่องเที่ยวคุณภาพสูงที่คัดสรรมาเป็นพิเศษ
-              พร้อมส่วนลดและโปรโมชั่นสุดพิเศษ
+              {t("packages.description")}
+              {t("packages.description2")}
             </p>
             {/* ปุ่มดูแพคเกจทั้งหมด */}
             {!loading && hasMorePackages && (
@@ -146,14 +145,14 @@ const Index = () => {
                   size="lg"
                   className="px-8 py-3 text-lg"
                 >
-                  ดูแพคเกจทั้งหมด
+                  {t("packages.viewAll")}
                 </Button>
               </div>
             )}
             {selectedTag && (
               <div className="flex items-center justify-center gap-2 mt-4">
                 <span className="text-muted-foreground">
-                  กำลังแสดงแพคเกจที่มีแท็ก:
+                  {t("packages.showingTag")}
                 </span>
                 <Button
                   variant="secondary"
@@ -170,7 +169,7 @@ const Index = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {loading ? (
-              <div className="col-span-full text-center">กำลังโหลด...</div>
+              <div className="col-span-full text-center">{t("packages.loading")}</div>
             ) : (
               displayedPackages.map((pkg) => (
                 <TravelPackageCard
@@ -185,10 +184,10 @@ const Index = () => {
           {selectedTag && filteredPackages.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground text-lg">
-                ไม่มีแพคเกจท่องเที่ยวที่มีแท็ก "{selectedTag}"
+                {t("packages.noResults")}
               </p>
               <Button variant="outline" onClick={clearFilter} className="mt-4">
-                ดูแพคเกจทั้งหมด
+                {t("packages.viewAll")}
               </Button>
             </div>
           )}
@@ -199,14 +198,14 @@ const Index = () => {
       <section className="py-16 px-6 bg-card/50">
         <div className="container mx-auto text-center">
           <h3 className="text-2xl font-bold text-foreground mb-4">
-            พร้อมเริ่มต้นการเดินทางแล้วใช่มั้ย?
+            {t("cta.title")}
           </h3>
           <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-            สมัครสมาชิกวันนี้เพื่อรับส่วนลดพิเศษและข้อเสนอสุดพิเศษจากเรา
+            {t("cta.description")}
           </p>
         </div>
       </section>
-    </div>
+    </>
   );
 };
 

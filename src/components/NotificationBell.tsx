@@ -1,13 +1,16 @@
-import { useState, useEffect } from 'react';
-import { Bell } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { formatDistanceToNow } from 'date-fns';
-import { th } from 'date-fns/locale';
+import { useState, useEffect } from "react";
+import { Bell } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useAuth } from "@/contexts/AuthContext";
+import { formatDistanceToNow } from "date-fns";
+import { th } from "date-fns/locale";
 
 interface Notification {
   id: string;
@@ -24,82 +27,87 @@ const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { user } = useAuth();
 
+  const API_BASE_URL =
+    import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
   useEffect(() => {
     if (user) {
       fetchNotifications();
-      setupRealTimeSubscription();
+      // Setup polling every 30 seconds for new notifications
+      const interval = setInterval(fetchNotifications, 30000);
+      return () => clearInterval(interval);
     }
   }, [user]);
 
   const fetchNotifications = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(10);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/notifications/user/${user.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
 
-    if (!error && data) {
-      setNotifications(data);
-      setUnreadCount(data.filter(n => !n.is_read).length);
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(data.slice(0, 10)); // Limit to 10 most recent
+        setUnreadCount(data.filter((n: Notification) => !n.is_read).length);
+      }
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
     }
   };
 
-  const setupRealTimeSubscription = () => {
-    if (!user) return;
-
-    const channel = supabase
-      .channel('notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`
-        },
-        (payload) => {
-          const newNotification = payload.new as Notification;
-          setNotifications(prev => [newNotification, ...prev.slice(0, 9)]);
-          setUnreadCount(prev => prev + 1);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  };
-
   const markAsRead = async (notificationId: string) => {
-    await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('id', notificationId);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/notifications/${notificationId}/read`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
 
-    setNotifications(prev =>
-      prev.map(n =>
-        n.id === notificationId ? { ...n, is_read: true } : n
-      )
-    );
-    setUnreadCount(prev => Math.max(0, prev - 1));
+      if (response.ok) {
+        setNotifications((prev) =>
+          prev.map((n) =>
+            n.id === notificationId ? { ...n, is_read: true } : n
+          )
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+    }
   };
 
   const markAllAsRead = async () => {
     if (!user) return;
 
-    await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('user_id', user.id)
-      .eq('is_read', false);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/notifications/user/${user.id}/read-all`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
 
-    setNotifications(prev =>
-      prev.map(n => ({ ...n, is_read: true }))
-    );
-    setUnreadCount(0);
+      if (response.ok) {
+        setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+        setUnreadCount(0);
+      }
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+    }
   };
 
   if (!user) return null;
@@ -110,11 +118,11 @@ const NotificationBell = () => {
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <Badge 
-              variant="destructive" 
+            <Badge
+              variant="destructive"
               className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
             >
-              {unreadCount > 9 ? '9+' : unreadCount}
+              {unreadCount > 9 ? "9+" : unreadCount}
             </Badge>
           )}
         </Button>
@@ -146,7 +154,9 @@ const NotificationBell = () => {
                 <div
                   key={notification.id}
                   className={`p-3 rounded-lg mb-2 cursor-pointer transition-colors hover:bg-muted/50 ${
-                    !notification.is_read ? 'bg-primary/5 border-l-4 border-l-primary' : ''
+                    !notification.is_read
+                      ? "bg-primary/5 border-l-4 border-l-primary"
+                      : ""
                   }`}
                   onClick={() => {
                     if (!notification.is_read) {
@@ -156,15 +166,20 @@ const NotificationBell = () => {
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h4 className="text-sm font-medium">{notification.title}</h4>
+                      <h4 className="text-sm font-medium">
+                        {notification.title}
+                      </h4>
                       <p className="text-xs text-muted-foreground mt-1">
                         {notification.message}
                       </p>
                       <p className="text-xs text-muted-foreground mt-2">
-                        {formatDistanceToNow(new Date(notification.created_at), { 
-                          addSuffix: true, 
-                          locale: th 
-                        })}
+                        {formatDistanceToNow(
+                          new Date(notification.created_at),
+                          {
+                            addSuffix: true,
+                            locale: th,
+                          }
+                        )}
                       </p>
                     </div>
                     {!notification.is_read && (

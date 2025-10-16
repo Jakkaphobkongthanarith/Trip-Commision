@@ -25,7 +25,9 @@ export type Database = {
           discount_amount: number | null
           discount_code_id: string | null
           display_id: number
+          expires_at: string | null
           final_amount: number
+          global_code_id: string | null
           guest_count: number
           id: string
           package_id: string
@@ -46,7 +48,9 @@ export type Database = {
           discount_amount?: number | null
           discount_code_id?: string | null
           display_id?: number
+          expires_at?: string | null
           final_amount: number
+          global_code_id?: string | null
           guest_count?: number
           id?: string
           package_id: string
@@ -67,7 +71,9 @@ export type Database = {
           discount_amount?: number | null
           discount_code_id?: string | null
           display_id?: number
+          expires_at?: string | null
           final_amount?: number
+          global_code_id?: string | null
           guest_count?: number
           id?: string
           package_id?: string
@@ -87,6 +93,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bookings_global_code_id_fkey"
+            columns: ["global_code_id"]
+            isOneToOne: false
+            referencedRelation: "global_discount_codes"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bookings_package_id_fkey"
             columns: ["package_id"]
             isOneToOne: false
@@ -102,6 +115,7 @@ export type Database = {
           commission_amount: number
           commission_percentage: number
           created_at: string
+          discount_code_id: string | null
           id: string
           paid_at: string | null
           status: string
@@ -113,6 +127,7 @@ export type Database = {
           commission_amount: number
           commission_percentage?: number
           created_at?: string
+          discount_code_id?: string | null
           id?: string
           paid_at?: string | null
           status?: string
@@ -124,6 +139,7 @@ export type Database = {
           commission_amount?: number
           commission_percentage?: number
           created_at?: string
+          discount_code_id?: string | null
           id?: string
           paid_at?: string | null
           status?: string
@@ -137,12 +153,20 @@ export type Database = {
             referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "commissions_discount_code_id_fkey"
+            columns: ["discount_code_id"]
+            isOneToOne: false
+            referencedRelation: "discount_codes"
+            referencedColumns: ["id"]
+          },
         ]
       }
       discount_codes: {
         Row: {
           advertiser_id: string
           code: string
+          commission_rate: number | null
           created_at: string
           current_uses: number | null
           discount_percentage: number
@@ -150,11 +174,13 @@ export type Database = {
           id: string
           is_active: boolean | null
           max_uses: number | null
+          package_id: string | null
           updated_at: string
         }
         Insert: {
           advertiser_id: string
           code: string
+          commission_rate?: number | null
           created_at?: string
           current_uses?: number | null
           discount_percentage: number
@@ -162,11 +188,13 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           max_uses?: number | null
+          package_id?: string | null
           updated_at?: string
         }
         Update: {
           advertiser_id?: string
           code?: string
+          commission_rate?: number | null
           created_at?: string
           current_uses?: number | null
           discount_percentage?: number
@@ -174,42 +202,125 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           max_uses?: number | null
+          package_id?: string | null
           updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discount_codes_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "travel_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      global_discount_codes: {
+        Row: {
+          code: string
+          created_at: string | null
+          discount_percentage: number
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          discount_percentage: number
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          discount_percentage?: number
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string | null
         }
         Relationships: []
       }
       notifications: {
         Row: {
+          action_url: string | null
+          category: string | null
           created_at: string
+          data: Json | null
+          expires_at: string | null
           id: string
+          image_url: string | null
           is_read: boolean
           message: string
+          priority: number | null
           title: string
           type: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          action_url?: string | null
+          category?: string | null
           created_at?: string
+          data?: Json | null
+          expires_at?: string | null
           id?: string
+          image_url?: string | null
           is_read?: boolean
           message: string
+          priority?: number | null
           title: string
           type?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          action_url?: string | null
+          category?: string | null
           created_at?: string
+          data?: Json | null
+          expires_at?: string | null
           id?: string
+          image_url?: string | null
           is_read?: boolean
           message?: string
+          priority?: number | null
           title?: string
           type?: string
           updated_at?: string
           user_id?: string
         }
         Relationships: []
+      }
+      package_advertisers: {
+        Row: {
+          advertiser_id: string
+          created_at: string | null
+          travel_package_id: string
+        }
+        Insert: {
+          advertiser_id: string
+          created_at?: string | null
+          travel_package_id: string
+        }
+        Update: {
+          advertiser_id?: string
+          created_at?: string | null
+          travel_package_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "package_advertisers_travel_package_id_fkey"
+            columns: ["travel_package_id"]
+            isOneToOne: false
+            referencedRelation: "travel_packages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -293,6 +404,8 @@ export type Database = {
           is_active: boolean | null
           location: string | null
           max_guests: number | null
+          mobile_number: string | null
+          pdf_url: string | null
           price: number | null
           rating: number | null
           review_count: number | null
@@ -315,6 +428,8 @@ export type Database = {
           is_active?: boolean | null
           location?: string | null
           max_guests?: number | null
+          mobile_number?: string | null
+          pdf_url?: string | null
           price?: number | null
           rating?: number | null
           review_count?: number | null
@@ -337,6 +452,8 @@ export type Database = {
           is_active?: boolean | null
           location?: string | null
           max_guests?: number | null
+          mobile_number?: string | null
+          pdf_url?: string | null
           price?: number | null
           rating?: number | null
           review_count?: number | null
