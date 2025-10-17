@@ -26,13 +26,17 @@ import {
 interface TagFilterProps {
   packages: any[];
   onCollapseChange?: (collapsed: boolean) => void;
+  selectedTags?: string[];
 }
 
-export function TagFilter({ packages, onCollapseChange }: TagFilterProps) {
+export function TagFilter({
+  packages,
+  onCollapseChange,
+  selectedTags = [],
+}: TagFilterProps) {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const selectedTag = searchParams.get("tag");
   const [searchQuery, setSearchQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -66,10 +70,26 @@ export function TagFilter({ packages, onCollapseChange }: TagFilterProps) {
   }, [tagCounts, searchQuery]);
 
   const handleTagClick = (tag: string) => {
-    if (selectedTag === tag) {
+    if (tag === "") {
+      // Clear all filters when clicking "All"
       navigate("/packages");
     } else {
-      navigate(`/packages?tag=${encodeURIComponent(tag)}`);
+      const newSearchParams = new URLSearchParams(searchParams);
+
+      // Check if tag is already selected
+      const currentTags = newSearchParams.getAll("tag");
+      if (currentTags.includes(tag)) {
+        // Remove the tag if it's already selected
+        newSearchParams.delete("tag");
+        currentTags
+          .filter((t) => t !== tag)
+          .forEach((t) => newSearchParams.append("tag", t));
+      } else {
+        // Add the tag if it's not selected
+        newSearchParams.append("tag", tag);
+      }
+
+      navigate(`/packages?${newSearchParams.toString()}`);
     }
     setOpen(false);
   };
@@ -94,7 +114,7 @@ export function TagFilter({ packages, onCollapseChange }: TagFilterProps) {
 
       <div className="flex items-center justify-between flex-shrink-0">
         <span className="text-sm font-medium">{t("tags.title")}</span>
-        {selectedTag && (
+        {selectedTags.length > 0 && (
           <Button variant="ghost" size="sm" onClick={handleClearAll}>
             <X className="h-4 w-4 mr-1" />
             {t("tags.clear")}
@@ -105,7 +125,7 @@ export function TagFilter({ packages, onCollapseChange }: TagFilterProps) {
       <ScrollArea className="flex-1">
         <div className="space-y-2">
           <Button
-            variant={!selectedTag ? "secondary" : "ghost"}
+            variant={selectedTags.length === 0 ? "secondary" : "ghost"}
             className="w-full justify-start"
             onClick={() => handleTagClick("")}
           >
@@ -120,7 +140,7 @@ export function TagFilter({ packages, onCollapseChange }: TagFilterProps) {
             filteredTags.map(({ tag, count }) => (
               <Button
                 key={tag}
-                variant={selectedTag === tag ? "secondary" : "ghost"}
+                variant={selectedTags.includes(tag) ? "secondary" : "ghost"}
                 className="w-full justify-start"
                 onClick={() => handleTagClick(tag)}
               >
@@ -199,10 +219,10 @@ export function TagFilter({ packages, onCollapseChange }: TagFilterProps) {
                 >
                   <Filter className="h-4 w-4" />
                 </Button>
-                {selectedTag && (
+                {selectedTags.length > 0 && (
                   <div
                     className="w-2 h-2 bg-primary rounded-full"
-                    title={`กรองด้วย: ${selectedTag}`}
+                    title={`กรองด้วย: ${selectedTags.join(", ")}`}
                   />
                 )}
               </div>
@@ -218,9 +238,9 @@ export function TagFilter({ packages, onCollapseChange }: TagFilterProps) {
             <Button size="lg" className="rounded-full shadow-lg">
               <Filter className="h-5 w-5 mr-2" />
               {t("tags.title")}
-              {selectedTag && (
+              {selectedTags.length > 0 && (
                 <Badge className="ml-2" variant="secondary">
-                  1
+                  {selectedTags.length}
                 </Badge>
               )}
             </Button>

@@ -64,6 +64,20 @@ export const packageAPI = {
 export const profileAPI = {
   getAll: () => apiRequest("/api/profiles"),
   getByUserId: (userId: string) => apiRequest(`/api/profile/${userId}`),
+  update: (userId: string, profileData: any) =>
+    apiRequest(`/api/profile/${userId}`, {
+      method: "PUT",
+      body: JSON.stringify(profileData),
+    }),
+};
+
+export const userAPI = {
+  getAll: () => apiRequest("/api/users"),
+  updateRole: (userId: string, role: string) =>
+    apiRequest(`/api/user/${userId}/role`, {
+      method: "PUT",
+      body: JSON.stringify({ role }),
+    }),
 };
 
 export const authAPI = {

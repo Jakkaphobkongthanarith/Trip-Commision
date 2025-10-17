@@ -7,7 +7,6 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { profileAPI, bookingAPI } from "@/lib/api";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { User, Calendar, MapPin, CreditCard, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -51,7 +50,9 @@ const Profile = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card>
           <CardContent className="p-8 text-center">
-            <h2 className="text-2xl font-bold mb-4">{t("profile.loginRequired")}</h2>
+            <h2 className="text-2xl font-bold mb-4">
+              {t("profile.loginRequired")}
+            </h2>
             <Button onClick={() => navigate("/auth")}>{t("nav.login")}</Button>
           </CardContent>
         </Card>
@@ -83,19 +84,17 @@ const Profile = () => {
 
   const fetchProfile = async () => {
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("display_name, phone, address")
-        .eq("user_id", user?.id)
-        .single();
-
-      if (error && error.code !== "PGRST116") {
-        console.error("Error fetching profile:", error);
-      } else if (data) {
-        setProfile(data);
-      }
+      const data = await profileAPI.getByUserId(user?.id);
+      console.log("Profile data:", data);
+      setProfile({
+        display_name: data.display_name || "",
+        phone: data.phone || "",
+        address: data.address || "",
+      });
     } catch (error) {
       console.error("Error fetching profile:", error);
+      // ถ้าไม่มีข้อมูล profile ยังไม่ต้องแสดง error
+      // เพราะอาจเป็นครั้งแรกที่ user เข้าใช้งาน
     }
   };
 
@@ -134,14 +133,11 @@ const Profile = () => {
 
     setSaving(true);
     try {
-      const { error } = await supabase.from("profiles").upsert({
-        user_id: user.id,
+      await profileAPI.update(user.id, {
         display_name: profile.display_name,
         phone: profile.phone,
         address: profile.address,
       });
-
-      if (error) throw error;
 
       toast({
         title: t("profile.saveSuccess"),
@@ -197,9 +193,13 @@ const Profile = () => {
     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
     if (minutes > 0) {
-      return `${t("profile.timeRemaining")} ${minutes} ${language === "th" ? "นาที" : "min"} ${seconds} ${language === "th" ? "วินาที" : "sec"}`;
+      return `${t("profile.timeRemaining")} ${minutes} ${
+        language === "th" ? "นาที" : "min"
+      } ${seconds} ${language === "th" ? "วินาที" : "sec"}`;
     } else {
-      return `${t("profile.timeRemaining")} ${seconds} ${language === "th" ? "วินาที" : "sec"}`;
+      return `${t("profile.timeRemaining")} ${seconds} ${
+        language === "th" ? "วินาที" : "sec"
+      }`;
     }
   };
 
@@ -231,7 +231,9 @@ const Profile = () => {
             <ArrowLeft className="h-4 w-4 mr-2" />
             {t("profile.backToHome")}
           </Button>
-          <h1 className="text-3xl font-bold text-foreground">{t("profile.title")}</h1>
+          <h1 className="text-3xl font-bold text-foreground">
+            {t("profile.title")}
+          </h1>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8">
@@ -315,11 +317,15 @@ const Profile = () => {
               {loading ? (
                 <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                  <p className="mt-2 text-muted-foreground">{t("profile.loading")}</p>
+                  <p className="mt-2 text-muted-foreground">
+                    {t("profile.loading")}
+                  </p>
                 </div>
               ) : bookings.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-muted-foreground">{t("profile.noBookings")}</p>
+                  <p className="text-muted-foreground">
+                    {t("profile.noBookings")}
+                  </p>
                   <Button
                     variant="outline"
                     onClick={() => navigate("/packages")}
@@ -360,11 +366,15 @@ const Profile = () => {
 
                         <div className="grid grid-cols-2 gap-4 text-sm">
                           <div>
-                            <p className="text-muted-foreground">{t("profile.bookingDate")}</p>
+                            <p className="text-muted-foreground">
+                              {t("profile.bookingDate")}
+                            </p>
                             <p className="font-medium">
                               {new Date(
                                 booking.booking_date
-                              ).toLocaleDateString(language === "th" ? "th-TH" : "en-US")}
+                              ).toLocaleDateString(
+                                language === "th" ? "th-TH" : "en-US"
+                              )}
                             </p>
                           </div>
                           <div>
@@ -376,9 +386,12 @@ const Profile = () => {
                             </p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground">{t("profile.totalPrice")}</p>
+                            <p className="text-muted-foreground">
+                              {t("profile.totalPrice")}
+                            </p>
                             <p className="font-medium">
-                              {t("common.baht")}{booking.total_amount.toLocaleString()}
+                              {t("common.baht")}
+                              {booking.total_amount.toLocaleString()}
                             </p>
                           </div>
                           <div>
@@ -386,7 +399,8 @@ const Profile = () => {
                               {t("profile.paymentAmount")}
                             </p>
                             <p className="font-medium flex items-center gap-1">
-                              <CreditCard className="h-3 w-3" />{t("common.baht")}
+                              <CreditCard className="h-3 w-3" />
+                              {t("common.baht")}
                               {booking.final_amount.toLocaleString()}
                             </p>
                           </div>

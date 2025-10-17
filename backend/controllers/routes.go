@@ -73,6 +73,9 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	r.GET("/api/profile/:userId", func(c *gin.Context) {
 		GetProfileByUserIdHandler(c, db)
 	})
+	r.PUT("/api/profile/:userId", func(c *gin.Context) {
+		UpsertProfileHandler(c, db)
+	})
 
 	// Members/Users management
 	r.GET("/api/users", func(c *gin.Context) {

@@ -43,7 +43,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
+import { userAPI } from "@/lib/api";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Search, Users, UserCheck, UserX, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -51,11 +51,16 @@ import Navbar from "@/components/Navbar";
 
 interface Member {
   id: string;
-  user_id: string;
-  display_name: string;
-  created_at: string;
   email: string;
-  role: string;
+  created_at: string;
+  role?: {
+    role: string;
+  };
+  profile?: {
+    display_name?: string;
+    phone?: string;
+    address?: string;
+  };
 }
 
 const MemberManagement = () => {
@@ -90,35 +95,11 @@ const MemberManagement = () => {
 
   const fetchMembers = async () => {
     try {
-      // Get all profiles with their roles
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("*")
-        .order("created_at", { ascending: false });
+      // Get all users with their roles and profiles from backend API
+      const users = await userAPI.getAll();
+      console.log("Users from backend:", users);
 
-      if (profilesError) throw profilesError;
-
-      if (profiles) {
-        // Get user roles for each profile
-        const membersWithRoles = await Promise.all(
-          profiles.map(async (profile) => {
-            const { data: roleData } = await supabase
-              .from("user_roles")
-              .select("role")
-              .eq("user_id", profile.user_id)
-              .single();
-
-            // Get email from auth metadata (simplified approach)
-            return {
-              ...profile,
-              role: roleData?.role || "customer",
-              email: `user_${profile.user_id.slice(0, 8)}@example.com`, // Placeholder since we can't access auth.users
-            };
-          })
-        );
-
-        setMembers(membersWithRoles);
-      }
+      setMembers(users);
     } catch (error) {
       console.error("Error fetching members:", error);
       toast({
@@ -134,8 +115,8 @@ const MemberManagement = () => {
   const handleDeleteMember = async (userId: string, displayName: string) => {
     try {
       // Only allow deleting advertiser role
-      const memberToDelete = members.find((m) => m.user_id === userId);
-      if (memberToDelete?.role !== "advertiser") {
+      const memberToDelete = members.find((m) => m.id === userId);
+      if (memberToDelete?.role?.role !== "advertiser") {
         toast({
           title: "ข้อผิดพลาด",
           description: "สามารถลบเฉพาะบัญชี 'คนกลาง' เท่านั้น",
@@ -144,25 +125,15 @@ const MemberManagement = () => {
         return;
       }
 
-      const { error } = await supabase
-        .from("profiles")
-        .delete()
-        .eq("user_id", userId);
+      // TODO: Add delete user API endpoint in backend
+      toast({
+        title: "ข้อผิดพลาด",
+        description: "ฟีเจอร์การลบสมาชิกยังไม่พร้อมใช้งาน",
+        variant: "destructive",
+      });
 
-      if (error) {
-        console.error("Error deleting member:", error);
-        toast({
-          title: "ข้อผิดพลาด",
-          description: "ไม่สามารถลบสมาชิกได้",
-          variant: "destructive",
-        });
-      } else {
-        setMembers(members.filter((m) => m.user_id !== userId));
-        toast({
-          title: "สำเร็จ",
-          description: `ลบบัญชี ${displayName} เรียบร้อยแล้ว`,
-        });
-      }
+      // For now, just remove from state to show UI works
+      // setMembers(members.filter((m) => m.id !== userId));
     } catch (error) {
       console.error("Error deleting member:", error);
       toast({
@@ -174,12 +145,15 @@ const MemberManagement = () => {
   };
 
   const filteredMembers = members.filter((member) => {
-    const matchesSearch =
-      member.display_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.role?.toLowerCase().includes(searchTerm.toLowerCase());
+    const displayName = member.profile?.display_name || "";
+    const userRole = member.role?.role || "customer";
 
-    const matchesRole = roleFilter === "all" || member.role === roleFilter;
+    const matchesSearch =
+      displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      userRole.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesRole = roleFilter === "all" || userRole === roleFilter;
 
     return matchesSearch && matchesRole;
   });
@@ -251,7 +225,7 @@ const MemberManagement = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {members.filter((m) => m.role === "customer").length}
+                {members.filter((m) => m.role?.role === "customer").length}
               </div>
             </CardContent>
           </Card>
@@ -263,7 +237,7 @@ const MemberManagement = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {members.filter((m) => m.role === "advertiser").length}
+                {members.filter((m) => m.role?.role === "advertiser").length}
               </div>
             </CardContent>
           </Card>
@@ -317,12 +291,16 @@ const MemberManagement = () => {
                   {filteredMembers.map((member) => (
                     <TableRow key={member.id}>
                       <TableCell className="font-medium">
-                        {member.display_name || "ไม่ระบุชื่อ"}
+                        {member.profile?.display_name || "ไม่ระบุชื่อ"}
                       </TableCell>
                       <TableCell>{member.email}</TableCell>
                       <TableCell>
-                        <Badge variant={getRoleBadgeVariant(member.role)}>
-                          {getRoleLabel(member.role)}
+                        <Badge
+                          variant={getRoleBadgeVariant(
+                            member.role?.role || "customer"
+                          )}
+                        >
+                          {getRoleLabel(member.role?.role || "customer")}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -343,7 +321,7 @@ const MemberManagement = () => {
                             >
                               ดูรายละเอียด
                             </Button>
-                            {member.role === "advertiser" && (
+                            {member.role?.role === "advertiser" && (
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                   <Button variant="destructive" size="sm">
@@ -358,8 +336,9 @@ const MemberManagement = () => {
                                     </AlertDialogTitle>
                                     <AlertDialogDescription>
                                       คุณแน่ใจหรือไม่ที่จะลบบัญชี "
-                                      {member.display_name || member.email}"
-                                      การกระทำนี้ไม่สามารถย้อนกลับได้
+                                      {member.profile?.display_name ||
+                                        member.email}
+                                      " การกระทำนี้ไม่สามารถย้อนกลับได้
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
@@ -369,8 +348,8 @@ const MemberManagement = () => {
                                     <AlertDialogAction
                                       onClick={() =>
                                         handleDeleteMember(
-                                          member.user_id,
-                                          member.display_name ||
+                                          member.id,
+                                          member.profile?.display_name ||
                                             member.email ||
                                             "ผู้ใช้"
                                         )
@@ -408,7 +387,7 @@ const MemberManagement = () => {
                       ชื่อผู้ใช้
                     </label>
                     <p className="text-sm">
-                      {selectedMember.display_name || "ไม่ระบุชื่อ"}
+                      {selectedMember.profile?.display_name || "ไม่ระบุชื่อ"}
                     </p>
                   </div>
                   <div>
@@ -424,10 +403,12 @@ const MemberManagement = () => {
                       ตำแหน่ง
                     </label>
                     <Badge
-                      variant={getRoleBadgeVariant(selectedMember.role)}
+                      variant={getRoleBadgeVariant(
+                        selectedMember.role?.role || "customer"
+                      )}
                       className="mt-1"
                     >
-                      {getRoleLabel(selectedMember.role)}
+                      {getRoleLabel(selectedMember.role?.role || "customer")}
                     </Badge>
                   </div>
                   <div>
@@ -447,12 +428,30 @@ const MemberManagement = () => {
                     </p>
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      เบอร์โทรศัพท์
+                    </label>
+                    <p className="text-sm">
+                      {selectedMember.profile?.phone || "ไม่ระบุ"}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      ที่อยู่
+                    </label>
+                    <p className="text-sm">
+                      {selectedMember.profile?.address || "ไม่ระบุ"}
+                    </p>
+                  </div>
+                </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">
                     ID ผู้ใช้
                   </label>
                   <p className="text-sm font-mono bg-muted p-2 rounded">
-                    {selectedMember.user_id}
+                    {selectedMember.id}
                   </p>
                 </div>
               </div>

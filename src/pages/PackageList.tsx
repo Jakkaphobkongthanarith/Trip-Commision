@@ -10,7 +10,7 @@ import { packageAPI } from "@/lib/api";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const MainContent = ({
-  selectedTag,
+  selectedTags,
   filteredPackages,
   loading,
   displayedPackages,
@@ -20,6 +20,7 @@ const MainContent = ({
   loadMore,
   visibleCount,
   isCollapsed,
+  removeTag,
 }: any) => {
   const { t } = useLanguage();
 
@@ -49,8 +50,8 @@ const MainContent = ({
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-3xl font-bold mb-2">
-                  {selectedTag
-                    ? `${t("packages.category")} ${selectedTag}`
+                  {selectedTags.length > 0
+                    ? `${t("packages.category")} ${selectedTags.join(", ")}`
                     : t("packages.all")}
                 </h2>
                 <p className="text-muted-foreground">
@@ -59,7 +60,7 @@ const MainContent = ({
                 </p>
               </div>
 
-              {selectedTag && (
+              {selectedTags.length > 0 && (
                 <Button
                   variant="outline"
                   onClick={clearFilter}
@@ -71,11 +72,19 @@ const MainContent = ({
               )}
             </div>
 
-            {selectedTag && (
-              <div className="mb-6">
-                <Badge variant="default" className="text-base px-4 py-2">
-                  {selectedTag}
-                </Badge>
+            {selectedTags.length > 0 && (
+              <div className="mb-6 flex flex-wrap gap-2">
+                {selectedTags.map((tag: string) => (
+                  <Badge
+                    key={tag}
+                    variant="default"
+                    className="text-base px-4 py-2 cursor-pointer hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                    onClick={() => removeTag(tag)}
+                  >
+                    {tag}
+                    <X className="h-3 w-3 ml-2" />
+                  </Badge>
+                ))}
               </div>
             )}
 
@@ -146,7 +155,9 @@ const PackageList = () => {
   const [loading, setLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(9);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const selectedTag = searchParams.get("tag");
+
+  // Get multiple tags from URL parameters
+  const selectedTags = searchParams.getAll("tag").filter((tag) => tag);
   const searchQuery = searchParams.get("search");
   const locationFilter = searchParams.get("location");
   const dateFilter = searchParams.get("date");
@@ -201,7 +212,12 @@ const PackageList = () => {
   }, []);
 
   const filteredPackages = packages.filter((pkg: any) => {
-    if (selectedTag && !pkg.tags?.includes(selectedTag)) return false;
+    // Check if package has ALL selected tags (AND logic)
+    if (selectedTags.length > 0) {
+      const hasAllTags = selectedTags.every((tag) => pkg.tags?.includes(tag));
+      if (!hasAllTags) return false;
+    }
+
     if (
       searchQuery &&
       !pkg.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
@@ -227,10 +243,39 @@ const PackageList = () => {
 
   useEffect(() => {
     setVisibleCount(9);
-  }, [selectedTag, searchQuery, locationFilter, minPrice, maxPrice]);
+  }, [selectedTags, searchQuery, locationFilter, minPrice, maxPrice]);
 
   const handleTagClick = (tag: string) => {
-    navigate(`/packages?tag=${encodeURIComponent(tag)}`);
+    const newSearchParams = new URLSearchParams(searchParams);
+
+    // Check if tag is already selected
+    const currentTags = newSearchParams.getAll("tag");
+    if (currentTags.includes(tag)) {
+      // Remove the tag if it's already selected
+      newSearchParams.delete("tag");
+      currentTags
+        .filter((t) => t !== tag)
+        .forEach((t) => newSearchParams.append("tag", t));
+    } else {
+      // Add the tag if it's not selected
+      newSearchParams.append("tag", tag);
+    }
+
+    navigate(`/packages?${newSearchParams.toString()}`);
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.delete("tag");
+
+    // Add back all tags except the one to remove
+    selectedTags
+      .filter((tag) => tag !== tagToRemove)
+      .forEach((tag) => {
+        newSearchParams.append("tag", tag);
+      });
+
+    navigate(`/packages?${newSearchParams.toString()}`);
   };
 
   const clearFilter = () => {
@@ -243,11 +288,15 @@ const PackageList = () => {
       <div className="flex w-full">
         {/* Desktop Sidebar - Fixed positioning */}
         <div className="hidden md:block">
-          <TagFilter packages={packages} onCollapseChange={setIsCollapsed} />
+          <TagFilter
+            packages={packages}
+            onCollapseChange={setIsCollapsed}
+            selectedTags={selectedTags}
+          />
         </div>
 
         <MainContent
-          selectedTag={selectedTag}
+          selectedTags={selectedTags}
           filteredPackages={filteredPackages}
           loading={loading}
           displayedPackages={displayedPackages}
@@ -257,12 +306,13 @@ const PackageList = () => {
           loadMore={loadMore}
           visibleCount={visibleCount}
           isCollapsed={isCollapsed}
+          removeTag={removeTag}
         />
       </div>
 
       {/* Mobile filter - แสดงเฉพาะ mobile */}
       <div className="md:hidden">
-        <TagFilter packages={packages} />
+        <TagFilter packages={packages} selectedTags={selectedTags} />
       </div>
     </div>
   );
