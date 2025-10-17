@@ -10,7 +10,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { packageAPI, bookingAPI } from "@/lib/api";
-import { supabase } from "@/integrations/supabase/client";
 import {
   MapPin,
   Clock,
@@ -42,7 +41,6 @@ const PackageDetails = () => {
   const [contactEmail, setContactEmail] = useState("");
   const [specialRequests, setSpecialRequests] = useState("");
   const [useProfileData, setUseProfileData] = useState(false);
-  const [userProfile, setUserProfile] = useState<any>(null);
 
   // Discount code states
   const [discountCode, setDiscountCode] = useState("");
@@ -127,34 +125,18 @@ const PackageDetails = () => {
     }
   }, [discountCode]);
 
-  // Fetch user profile if logged in
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (user) {
-        try {
-          const { data, error } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("user_id", user.id)
-            .maybeSingle();
-
-          if (data && !error) {
-            setUserProfile(data);
-          }
-        } catch (error) {
-          console.error("Error fetching profile:", error);
-        }
-      }
-    };
-
-    fetchProfile();
-  }, [user]);
-
   // Auto-fill contact info when profile data checkbox is toggled
   useEffect(() => {
-    if (useProfileData && userProfile && user) {
-      setContactName(userProfile.display_name || "");
-      setContactPhone(userProfile.phone || "");
+    console.log("🔍 useProfileData changed:", useProfileData);
+    console.log("🔍 user object:", user);
+    console.log("🔍 user.name:", user?.name);
+    console.log("🔍 user.display_name:", user?.display_name);
+    console.log("🔍 user.phone:", user?.phone);
+    console.log("🔍 user.email:", user?.email);
+
+    if (useProfileData && user) {
+      setContactName(user.display_name || user.name || "");
+      setContactPhone(user.phone || "");
       setContactEmail(user.email || "");
     } else if (!useProfileData) {
       // Clear fields only when explicitly unchecked, not on initial load
@@ -164,7 +146,7 @@ const PackageDetails = () => {
         setContactEmail("");
       }
     }
-  }, [useProfileData, userProfile, user]);
+  }, [useProfileData, user]);
 
   useEffect(() => {
     const fetchPackage = async () => {
@@ -575,7 +557,7 @@ const PackageDetails = () => {
                 <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold">ข้อมูลติดต่อ</h3>
-                    {user && userProfile && (
+                    {user && (
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="useProfile"

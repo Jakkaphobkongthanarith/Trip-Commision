@@ -170,15 +170,8 @@ const AdvertiserDashboard = () => {
     if (!user) return;
 
     try {
-      const roleData = sessionStorage.getItem("userRole");
-      console.log("User role data:", roleData);
-
-      if (roleData) {
-        console.log("Setting user role:", roleData);
-        setUserRole(roleData as string);
-      } else {
-        setUserRole("");
-      }
+      console.log("User role from AuthContext:", user.role);
+      setUserRole(user.role || "");
     } catch (e) {
       console.error("Error fetching user role:", e);
     }

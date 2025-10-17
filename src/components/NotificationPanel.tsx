@@ -72,11 +72,8 @@ export function NotificationPanel() {
 
   // Fetch notifications
   const fetchNotifications = async () => {
-    // Try multiple user ID sources
-    const userId =
-      user?.id ||
-      localStorage.getItem("userId") ||
-      sessionStorage.getItem("userId");
+    // Get user ID from AuthContext
+    const userId = user?.id;
 
     console.log("🔔 NotificationPanel - Fetching for user:", userId);
     console.log("🔔 User object:", user);
@@ -225,13 +222,11 @@ export function NotificationPanel() {
 
   // Fetch notifications on mount and when user changes
   useEffect(() => {
-    const userId =
-      user?.id ||
-      localStorage.getItem("userId") ||
-      sessionStorage.getItem("userId");
-
-    if (userId) {
-      console.log("🔔 NotificationPanel useEffect triggered for user:", userId);
+    if (user?.id) {
+      console.log(
+        "🔔 NotificationPanel useEffect triggered for user:",
+        user.id
+      );
       fetchNotifications();
     }
   }, [user?.id]); // Only watch user.id, not the entire user object

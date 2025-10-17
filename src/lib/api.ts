@@ -2,6 +2,27 @@
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
+// ✅ Utility functions สำหรับใช้นอก React components
+export const getAuthToken = (): string | null => {
+  return (
+    localStorage.getItem("authToken") || sessionStorage.getItem("authToken")
+  );
+};
+
+export const getUserId = (): string | null => {
+  return localStorage.getItem("userId") || sessionStorage.getItem("userId");
+};
+
+export const getUserEmail = (): string | null => {
+  return (
+    localStorage.getItem("userEmail") || sessionStorage.getItem("userEmail")
+  );
+};
+
+export const getUserRole = (): string | null => {
+  return localStorage.getItem("userRole") || sessionStorage.getItem("userRole");
+};
+
 // Helper function สำหรับเรียก API (JWT Version)
 export const apiRequest = async (
   endpoint: string,
@@ -9,8 +30,9 @@ export const apiRequest = async (
 ) => {
   const url = `${API_BASE_URL}${endpoint}`;
 
-  // Get JWT token from localStorage
-  const token = localStorage.getItem("authToken");
+  // Get JWT token from storage (localStorage first, then sessionStorage)
+  const token =
+    localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
 
   const defaultOptions: RequestInit = {
     headers: {

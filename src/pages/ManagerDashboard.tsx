@@ -36,16 +36,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Plus,
-  Users,
-  DollarSign,
-  Code,
-  BarChart3,
-} from "lucide-react";
+import { Plus, Users, DollarSign, Code, BarChart3 } from "lucide-react";
 
 // API Base URL Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 interface DiscountCode {
   id: string;
@@ -86,7 +81,7 @@ const ManagerDashboard = () => {
 
   // API Request Helper
   const apiRequest = async (url: string, options: RequestInit = {}) => {
-    const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+    const fullUrl = url.startsWith("http") ? url : `${API_BASE_URL}${url}`;
     const response = await fetch(fullUrl, {
       ...options,
       headers: {
@@ -103,19 +98,23 @@ const ManagerDashboard = () => {
   // Fetch All Discount Codes
   const fetchDiscountCodes = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/manager/discount-codes`);
-      
+      const response = await fetch(
+        `${API_BASE_URL}/api/manager/discount-codes`
+      );
+
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
-        console.warn("Backend not available or endpoint not found. Using empty data.");
+        console.warn(
+          "Backend not available or endpoint not found. Using empty data."
+        );
         setDiscountCodes([]);
         return;
       }
-      
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
       setDiscountCodes(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -128,18 +127,18 @@ const ManagerDashboard = () => {
   const fetchPackages = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/manager/packages`);
-      
+
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
         console.warn("Packages endpoint not available");
         setPackages([]);
         return;
       }
-      
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
       setPackages(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -158,7 +157,8 @@ const ManagerDashboard = () => {
     setIsSubmitting(true);
     try {
       const payload = {
-        package_id: createForm.package_id === "all" ? null : createForm.package_id,
+        package_id:
+          createForm.package_id === "all" ? null : createForm.package_id,
         discount_percentage: createForm.discount_percentage,
       };
 
@@ -185,18 +185,21 @@ const ManagerDashboard = () => {
   // Toggle Active Status
   const toggleCodeStatus = async (codeId: string, currentStatus: boolean) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/discount-codes/${codeId}/toggle`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ is_active: !currentStatus }),
-      });
-      
+      const response = await fetch(
+        `${API_BASE_URL}/api/discount-codes/${codeId}/toggle`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ is_active: !currentStatus }),
+        }
+      );
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
-      
+
       fetchDiscountCodes();
     } catch (error) {
       console.error("Error toggling code status:", error);
@@ -206,7 +209,7 @@ const ManagerDashboard = () => {
 
   useEffect(() => {
     if (user) {
-      setUserRole(sessionStorage.getItem("userRole"));
+      setUserRole(user.role || "");
     }
     setLoading(false);
   }, [user]);
@@ -324,9 +327,15 @@ const ManagerDashboard = () => {
                     ส่วนลดเฉลี่ย
                   </p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {totalCodes > 0 
-                      ? (discountCodes.reduce((sum, code) => sum + code.discount_percentage, 0) / totalCodes).toFixed(1)
-                      : 0}%
+                    {totalCodes > 0
+                      ? (
+                          discountCodes.reduce(
+                            (sum, code) => sum + code.discount_percentage,
+                            0
+                          ) / totalCodes
+                        ).toFixed(1)
+                      : 0}
+                    %
                   </p>
                 </div>
               </div>
@@ -376,7 +385,8 @@ const ManagerDashboard = () => {
                 <DialogHeader>
                   <DialogTitle>สร้าง Discount Code ใหม่</DialogTitle>
                   <DialogDescription>
-                    เลือกแพคเกจและส่วนลด ระบบจะสร้างโค้ดให้ Advertiser ทั้งหมดอัตโนมัติ
+                    เลือกแพคเกจและส่วนลด ระบบจะสร้างโค้ดให้ Advertiser
+                    ทั้งหมดอัตโนมัติ
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -394,7 +404,9 @@ const ManagerDashboard = () => {
                         <SelectValue placeholder="เลือกแพคเกจ" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">แพคเกจทั้งหมด (ไม่มีคอมมิชชั่น)</SelectItem>
+                        <SelectItem value="all">
+                          แพคเกจทั้งหมด (ไม่มีคอมมิชชั่น)
+                        </SelectItem>
                         {packages.map((pkg) => (
                           <SelectItem key={pkg.id} value={pkg.id}>
                             {pkg.title} - {pkg.location}
@@ -472,7 +484,13 @@ const ManagerDashboard = () => {
                       </TableCell>
                       <TableCell>{code.advertiser_name || "N/A"}</TableCell>
                       <TableCell>
-                        <Badge variant={code.package_name === "ทุกแพคเกจ" ? "secondary" : "default"}>
+                        <Badge
+                          variant={
+                            code.package_name === "ทุกแพคเกจ"
+                              ? "secondary"
+                              : "default"
+                          }
+                        >
                           {code.package_name}
                         </Badge>
                       </TableCell>

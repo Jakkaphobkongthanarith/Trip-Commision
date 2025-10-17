@@ -774,14 +774,12 @@ export default function PackageManagement() {
     try {
       console.log("🔔 Sending notification to current user:", message);
 
-      // Get current user ID from storage
-      const userId =
-        localStorage.getItem("userId") || sessionStorage.getItem("userId");
-
-      if (!userId) {
+      // Get current user ID from AuthContext
+      if (!user?.id) {
         console.warn("❌ No user ID found, cannot send notification");
         return;
       }
+      const userId = user.id;
 
       console.log("🔔 Sending to user ID:", userId);
 

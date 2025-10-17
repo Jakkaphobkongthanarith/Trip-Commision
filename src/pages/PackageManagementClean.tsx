@@ -481,9 +481,7 @@ export default function PackageManagement() {
 
   const sendNotificationToAllUsers = async (message: string) => {
     try {
-      const userId =
-        localStorage.getItem("userId") || sessionStorage.getItem("userId");
-      if (!userId) return;
+      if (!user?.id) return;
 
       const response = await fetch(`${API_BASE_URL}/api/notifications`, {
         method: "POST",
@@ -491,7 +489,7 @@ export default function PackageManagement() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          user_id: userId,
+          user_id: user,
           title: "โค้ดส่วนลดใหม่!",
           message: message,
           type: "global_discount",

@@ -65,7 +65,7 @@ interface Member {
 
 const MemberManagement = () => {
   const { user } = useAuth();
-  const userRole = sessionStorage.getItem("userRole") || "";
+  const userRole = user?.role || "";
   const { toast } = useToast();
 
   // Early returns ต้องอยู่ก่อน hooks ทั้งหมด

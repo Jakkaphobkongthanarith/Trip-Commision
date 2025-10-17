@@ -2,39 +2,14 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
 export const useUserRole = () => {
-  const { user, userRole: authUserRole } = useAuth();
-  const [userRole, setUserRole] = useState<string>("");
-  const [loading, setLoading] = useState(true);
+  const { user, isAuthenticated } = useAuth();
 
-  useEffect(() => {
-    if (!user) {
-      setUserRole("");
-      setLoading(false);
-      return;
-    }
+  // ✅ ใช้ข้อมูลจาก AuthContext โดยตรง - ไม่ต้องมี state เพิ่มเติม
+  const userRole = user?.role || "";
+  const loading = false; // ไม่ต้อง loading เพราะข้อมูลมาจาก AuthContext แล้ว
 
-    // Use userRole from AuthContext (stored in session storage)
-    if (authUserRole) {
-      setUserRole(authUserRole);
-      setLoading(false);
-      return;
-    }
-
-    // Fallback: try to get from session storage directly
-    try {
-      const storedRole = sessionStorage.getItem("userRole");
-      if (storedRole) {
-        setUserRole(storedRole);
-      } else {
-        setUserRole("");
-      }
-    } catch (err) {
-      console.error("Error getting user role from session storage:", err);
-      setUserRole("");
-    } finally {
-      setLoading(false);
-    }
-  }, [user, authUserRole]);
-
-  return { userRole, loading };
+  return {
+    userRole,
+    loading: !isAuthenticated, // loading = true เมื่อยังไม่ได้ authentication
+  };
 };
