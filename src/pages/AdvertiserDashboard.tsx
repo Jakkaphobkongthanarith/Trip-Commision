@@ -129,7 +129,6 @@ const AdvertiserDashboard = () => {
   const navigate = useNavigate();
   const [userRole, setUserRole] = useState<string>("");
   const [commissions, setCommissions] = useState<Commission[]>([]);
-  const [reviews, setReviews] = useState<Review[]>([]);
   const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>([]);
   const [discountCodes, setDiscountCodes] = useState<DiscountCode[]>([]);
   const [discountCommissions, setDiscountCommissions] = useState<
@@ -153,7 +152,6 @@ const AdvertiserDashboard = () => {
       await Promise.allSettled([
         fetchUserRole(),
         fetchCommissions(),
-        fetchReviews(),
         fetchUpcomingTrips(),
         fetchDiscountCodes(),
         fetchDiscountCommissions(),
@@ -229,55 +227,7 @@ const AdvertiserDashboard = () => {
     }
   };
 
-  const fetchReviews = async () => {
-    try {
-      const data = await apiRequest("/api/reviews");
 
-      // ตรวจสอบว่า data เป็น array หรือไม่
-      const reviewsArray = Array.isArray(data) ? data : data?.reviews || [];
-
-      if (!Array.isArray(reviewsArray) || reviewsArray.length === 0) {
-        console.log("No reviews data or invalid format:", data);
-        setReviews([]);
-        return;
-      }
-
-      // Fetch related data separately
-      const reviewsWithDetails = await Promise.all(
-        reviewsArray.map(async (review: any) => {
-          try {
-            const [packageData, profileData] = await Promise.all([
-              apiRequest(`/package/${review.package_id}`),
-              apiRequest(`/api/profile/${review.customer_id}`),
-            ]);
-
-            return {
-              ...review,
-              travel_packages: { title: packageData?.title || "ไม่ระบุ" },
-              profiles: {
-                display_name: profileData?.display_name || "ไม่ระบุ",
-              },
-            };
-          } catch (error) {
-            console.error(
-              `Error fetching details for review ${review.id}:`,
-              error
-            );
-            return {
-              ...review,
-              travel_packages: { title: "ไม่ระบุ" },
-              profiles: { display_name: "ไม่ระบุ" },
-            };
-          }
-        })
-      );
-
-      setReviews(reviewsWithDetails as Review[]);
-    } catch (error) {
-      console.error("Error fetching reviews:", error);
-      setReviews([]);
-    }
-  };
 
   const fetchDiscountCodes = async () => {
     if (!user || userRole !== "advertiser") return;

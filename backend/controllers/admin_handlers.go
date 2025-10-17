@@ -96,18 +96,7 @@ func GetBookingsByPackageHandler(c *gin.Context, db *gorm.DB) {
 	c.JSON(200, gin.H{"message": "GetBookingsByPackage - Not implemented yet", "data": []interface{}{}})
 }
 
-func GetAllReviewsHandler(c *gin.Context, db *gorm.DB) {
-	c.JSON(200, gin.H{"message": "GetAllReviews - Not implemented yet", "data": []interface{}{}})
-}
-
-func GetReviewsByPackageHandler(c *gin.Context, db *gorm.DB) {
-	c.JSON(200, gin.H{"message": "GetReviewsByPackage - Not implemented yet", "data": []interface{}{}})
-}
 
 func GetCommissionsHandler(c *gin.Context, db *gorm.DB) {
 	c.JSON(200, gin.H{"message": "GetCommissions - Not implemented yet", "data": []interface{}{}})
-}
-
-func GetReviewsHandler(c *gin.Context, db *gorm.DB) {
-	c.JSON(200, gin.H{"message": "GetReviews - Not implemented yet", "data": []interface{}{}})
 }

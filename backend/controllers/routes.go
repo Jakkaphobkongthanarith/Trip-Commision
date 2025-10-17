@@ -122,13 +122,6 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		})
 	}
 
-	// Reviews routes
-	r.GET("/api/reviews", func(c *gin.Context) {
-		GetReviewsHandler(c, db)
-	})
-	r.GET("/api/reviews/package/:packageId", func(c *gin.Context) {
-		GetReviewsByPackageHandler(c, db)
-	})
 
 	// Auth routes
 	r.POST("/api/signup", SignupHandler)
