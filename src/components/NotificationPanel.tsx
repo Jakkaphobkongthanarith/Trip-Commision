@@ -32,6 +32,7 @@ interface Notification {
     | "booking"
     | "payment"
     | "discount"
+    | "promotion"
     | "commission"
     | "system"
     | "info";
@@ -49,6 +50,7 @@ const categoryConfig = {
   booking: { icon: Calendar, color: "bg-blue-500", label: "การจอง" },
   payment: { icon: DollarSign, color: "bg-green-500", label: "การชำระเงิน" },
   discount: { icon: Gift, color: "bg-purple-500", label: "ส่วนลด" },
+  promotion: { icon: Gift, color: "bg-pink-500", label: "โปรโมชั่น" },
   commission: { icon: DollarSign, color: "bg-yellow-500", label: "คอมมิชชั่น" },
   system: { icon: AlertCircle, color: "bg-red-500", label: "ระบบ" },
   info: { icon: Info, color: "bg-gray-500", label: "ข้อมูล" },
@@ -311,8 +313,10 @@ export function NotificationPanel() {
           ) : (
             <div className="space-y-3">
               {notifications.map((notification) => {
-                const config = categoryConfig[notification.category];
-                const priorityStyle = priorityConfig[notification.priority];
+                const config =
+                  categoryConfig[notification.category] || categoryConfig.info;
+                const priorityStyle =
+                  priorityConfig[notification.priority] || priorityConfig[2];
                 const IconComponent = config.icon;
 
                 return (

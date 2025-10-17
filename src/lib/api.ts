@@ -131,7 +131,7 @@ export const bookingAPI = {
 
   // ยืนยันการชำระเงิน - try multiple endpoints
   confirmPayment: (bookingId: string) =>
-    apiRequest(`/api/bookings/${bookingId}/confirm`, {
+    apiRequest(`/api/booking/${bookingId}/confirm-payment`, {
       method: "PUT",
     }),
 
@@ -144,5 +144,80 @@ export const bookingAPI = {
   confirmPaymentAlt2: (bookingId: string) =>
     apiRequest(`/api/bookings/${bookingId}/confirm-payment`, {
       method: "PUT",
+    }),
+};
+
+export const discountCodeAPI = {
+  // Manager APIs - จัดการ discount codes
+  getAllDiscountCodes: () => apiRequest("/api/manager/discount-codes"),
+  getAllAdvertisers: () => apiRequest("/api/manager/advertisers"),
+  getAllPackages: () => apiRequest("/api/manager/packages"),
+
+  // สร้างโค้ดส่วนลดสำหรับ advertiser เฉพาะ
+  createForAdvertiser: (data: {
+    package_id: string;
+    advertiser_id: string;
+    discount_value: number;
+    discount_type: "percentage" | "fixed";
+  }) =>
+    apiRequest("/api/discount-codes/advertiser", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  // สร้างโค้ดส่วนลดทั่วไป
+  createGlobal: (data: {
+    discount_value: number;
+    discount_type: "percentage" | "fixed";
+    max_uses?: number;
+    expires_at?: string;
+  }) =>
+    apiRequest("/api/global-discount-codes", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  // ดึงโค้ดส่วนลดทั่วไป
+  getAllGlobalCodes: () => apiRequest("/api/manager/global-discount-codes"),
+
+  // เปิด/ปิดสถานะโค้ดส่วนลด
+  toggleStatus: (id: string, isActive: boolean) =>
+    apiRequest(`/api/discount-codes/${id}/toggle`, {
+      method: "PUT",
+      body: JSON.stringify({ is_active: isActive }),
+    }),
+
+  // เปิด/ปิดสถานะโค้ดส่วนลดทั่วไป
+  toggleGlobalStatus: (id: string, isActive: boolean) =>
+    apiRequest(`/api/global-discount-codes/${id}/toggle`, {
+      method: "PUT",
+      body: JSON.stringify({ is_active: isActive }),
+    }),
+
+  // ลบโค้ดส่วนลด
+  delete: (id: string) =>
+    apiRequest(`/api/discount-codes/${id}`, {
+      method: "DELETE",
+    }),
+
+  // ลบโค้ดส่วนลดทั่วไป
+  deleteGlobal: (id: string) =>
+    apiRequest(`/api/global-discount-codes/${id}`, {
+      method: "DELETE",
+    }),
+
+  // Advertiser APIs - ดูโค้ดของตัวเอง
+  getByAdvertiser: (advertiserId: string) =>
+    apiRequest(`/api/advertiser/${advertiserId}/discount-codes`),
+
+  // ดูค่าคอมมิชชั่น
+  getCommissionsByAdvertiser: (advertiserId: string) =>
+    apiRequest(`/api/advertiser/${advertiserId}/commissions`),
+
+  // Public API - ตรวจสอบความถูกต้องของโค้ด
+  validate: (code: string, packageId: string) =>
+    apiRequest("/api/discount-codes/validate", {
+      method: "POST",
+      body: JSON.stringify({ code, package_id: packageId }),
     }),
 };

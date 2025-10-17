@@ -151,6 +151,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	r.GET("/api/manager/discount-codes", discountCodeController.GetAllDiscountCodes)
 	r.GET("/api/manager/global-discount-codes", discountCodeController.GetAllGlobalDiscountCodes)
 	r.GET("/api/manager/advertisers", discountCodeController.GetAllAdvertisers)
+	r.GET("/api/manager/packages", discountCodeController.GetAllPackages)
 	r.PUT("/api/discount-codes/:id/toggle", discountCodeController.ToggleDiscountCodeStatus)
 	r.PUT("/api/global-discount-codes/:id/toggle", discountCodeController.ToggleGlobalDiscountCodeStatus)
 	

@@ -36,13 +36,15 @@ func (dc *DiscountCodeController) GetAllDiscountCodes(c *gin.Context) {
 		}
 		
 		result = append(result, gin.H{
-			"id":                  code.ID,
-			"code":               code.Code,
-			"advertiser_id":      code.AdvertiserID,
-			"advertiser_name":    advertiserName,
-			"discount_percentage": code.DiscountPercentage,
-			"is_active":         code.IsActive,
-			"created_at":        code.CreatedAt,
+			"id":              code.ID,
+			"code":           code.Code,
+			"advertiser_id":  code.AdvertiserID,
+			"advertiser_name": advertiserName,
+			"discount_value": code.DiscountValue,
+			"discount_type":  code.DiscountType,
+			"commission_rate": code.CommissionRate,
+			"is_active":      code.IsActive,
+			"created_at":     code.CreatedAt,
 		})
 	}
 
@@ -109,12 +111,10 @@ func (dc *DiscountCodeController) ToggleGlobalDiscountCodeStatus(c *gin.Context)
 // CreateDiscountCodeForAdvertiser - Manager สร้างโค้ดส่วนลดให้ Advertiser สำหรับแพคเกจเฉพาะ
 func (dc *DiscountCodeController) CreateDiscountCodeForAdvertiser(c *gin.Context) {
 	var req struct {
-		AdvertiserID       string   `json:"advertiser_id" binding:"required"`
-		PackageID          string   `json:"package_id" binding:"required"`
-		DiscountPercentage float64  `json:"discount_percentage" binding:"required,min=1,max=50"`
-		CommissionRate     float64  `json:"commission_rate"`
-		MaxUses            *int     `json:"max_uses"`
-		ExpiresAt          *string  `json:"expires_at"`
+		AdvertiserID    string  `json:"advertiser_id" binding:"required"`
+		PackageID       string  `json:"package_id" binding:"required"`
+		DiscountValue   float64 `json:"discount_value" binding:"required"`
+		DiscountType    string  `json:"discount_type" binding:"required,oneof=percentage fixed"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -135,17 +135,31 @@ func (dc *DiscountCodeController) CreateDiscountCodeForAdvertiser(c *gin.Context
 		return
 	}
 
-	// ตรวจสอบว่า advertiser รับผิดชอบแพคเกจนี้หรือไม่
+	// ตรวจสอบว่าแพ็กเกจมีอยู่จริง
 	var pkg models.TravelPackage
-	if err := dc.DB.Where("id = ? AND advertiser_id = ?", packageID, advertiserID).First(&pkg).Error; err != nil {
-		c.JSON(403, gin.H{"error": "Advertiser is not responsible for this package"})
+	if err := dc.DB.First(&pkg, packageID).Error; err != nil {
+		c.JSON(404, gin.H{"error": "Package not found"})
 		return
 	}
 
-	// ดึงข้อมูล advertiser
+	// ตรวจสอบว่า advertiser มีอยู่จริงและเป็น advertiser
 	var advertiser models.User
 	if err := dc.DB.Preload("Profile").First(&advertiser, advertiserID).Error; err != nil {
 		c.JSON(404, gin.H{"error": "Advertiser not found"})
+		return
+	}
+
+	// ตรวจสอบว่าเป็น advertiser จริง
+	var userRole models.UserRole
+	if err := dc.DB.Where("user_id = ? AND role = ?", advertiserID, "advertiser").First(&userRole).Error; err != nil {
+		c.JSON(403, gin.H{"error": "User is not an advertiser"})
+		return
+	}
+
+	// ตรวจสอบว่ามี discount code สำหรับแพ็กเกจและ advertiser คู่นี้อยู่แล้วหรือไม่
+	var existingCode models.DiscountCode
+	if err := dc.DB.Where("package_id = ? AND advertiser_id = ?", packageID, advertiserID).First(&existingCode).Error; err == nil {
+		c.JSON(400, gin.H{"error": "Discount code already exists for this package and advertiser"})
 		return
 	}
 
@@ -155,47 +169,39 @@ func (dc *DiscountCodeController) CreateDiscountCodeForAdvertiser(c *gin.Context
 		advertiserName = advertiser.Profile.DisplayName
 	}
 
-	code := models.GenerateDiscountCode(advertiserName, req.DiscountPercentage)
+	// ใช้ discount value สำหรับสร้างโค้ด
+	code := models.GenerateDiscountCode(advertiserName, req.DiscountValue)
 	
 	// ตรวจสอบว่าโค้ดซ้ำหรือไม่
 	for {
-		var existingCode models.DiscountCode
-		if err := dc.DB.Where("code = ?", code).First(&existingCode).Error; err != nil {
+		var duplicateCode models.DiscountCode
+		if err := dc.DB.Where("code = ?", code).First(&duplicateCode).Error; err != nil {
 			break // ไม่เจอโค้ดซ้ำ
 		}
-		code = models.GenerateDiscountCode(advertiserName, req.DiscountPercentage)
+		code = models.GenerateDiscountCode(advertiserName, req.DiscountValue)
 	}
 
-	// Parse expires_at
-	var expiresAt *time.Time
-	if req.ExpiresAt != nil && *req.ExpiresAt != "" {
-		parsedTime, err := time.Parse("2006-01-02T15:04:05Z", *req.ExpiresAt)
-		if err != nil {
-			parsedTime, err = time.Parse("2006-01-02", *req.ExpiresAt)
-			if err != nil {
-				c.JSON(400, gin.H{"error": "Invalid expires_at format"})
-				return
-			}
-		}
-		expiresAt = &parsedTime
-	}
-
-	// Set default commission rate
-	commissionRate := req.CommissionRate
-	if commissionRate == 0 {
-		commissionRate = 5.00 // 5% default
+	// คำนวณ commission rate อัตโนมัติ (ตัวอย่าง: ใช้ 5% สำหรับทุกกรณี)
+	// สามารถปรับตามธุรกิจได้ เช่น:
+	// - แพ็กเกจราคาสูง = commission สูง
+	// - advertiser VIP = commission พิเศษ
+	commissionRate := 5.0 // Default 5%
+	if pkg.Price >= 10000 {
+		commissionRate = 7.0 // ราคาสูง commission เพิ่ม
 	}
 	
+	// สร้าง discount code ใหม่ (ไม่กำหนดเวลาหมดอายุและจำนวนการใช้)
 	discountCode := models.DiscountCode{
-		ID:                 uuid.New(),
-		Code:               code,
-		AdvertiserID:       advertiserID,
-		PackageID:          packageID,
-		DiscountPercentage: req.DiscountPercentage,
-		CommissionRate:     commissionRate,
-		MaxUses:            req.MaxUses,
-		IsActive:           &[]bool{true}[0], // แก้เป็น pointer
-		ExpiresAt:          expiresAt,
+		ID:             uuid.New(),
+		Code:           code,
+		AdvertiserID:   advertiserID,
+		PackageID:      packageID,
+		DiscountValue:  req.DiscountValue,
+		DiscountType:   req.DiscountType,
+		CommissionRate: commissionRate,
+		MaxUses:        nil, // ไม่จำกัดจำนวนการใช้
+		IsActive:       &[]bool{true}[0],
+		ExpiresAt:      nil, // ไม่มีวันหมดอายุ (ใช้ตามแพ็กเกจ)
 	}
 
 	if err := dc.DB.Create(&discountCode).Error; err != nil {
@@ -222,8 +228,10 @@ func (dc *DiscountCodeController) CreateDiscountCodeForAdvertiser(c *gin.Context
 // CreateGlobalDiscountCode - Manager สร้างโค้ดส่วนลดสำหรับผู้ใช้ทั่วไป
 func (dc *DiscountCodeController) CreateGlobalDiscountCode(c *gin.Context) {
 	var req struct {
-		DiscountPercentage float64 `json:"discount_percentage" binding:"required,min=1,max=50"`
-		ExpiresAt          *string `json:"expires_at"`
+		DiscountValue float64 `json:"discount_value" binding:"required,min=1"`
+		DiscountType  string  `json:"discount_type" binding:"required,oneof=percentage fixed"`
+		MaxUses      *int    `json:"max_uses"`
+		ExpiresAt    *string `json:"expires_at"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -246,7 +254,7 @@ func (dc *DiscountCodeController) CreateGlobalDiscountCode(c *gin.Context) {
 	}
 
 	// สร้างโค้ดอัตโนมัติ
-	code := models.GenerateGlobalDiscountCode(req.DiscountPercentage)
+	code := models.GenerateGlobalDiscountCode(req.DiscountValue)
 	
 	// ตรวจสอบว่าโค้ดซ้ำหรือไม่
 	for {
@@ -254,15 +262,18 @@ func (dc *DiscountCodeController) CreateGlobalDiscountCode(c *gin.Context) {
 		if err := dc.DB.Where("code = ?", code).First(&existingCode).Error; err != nil {
 			break // ไม่เจอโค้ดซ้ำ
 		}
-		code = models.GenerateGlobalDiscountCode(req.DiscountPercentage)
+		code = models.GenerateGlobalDiscountCode(req.DiscountValue)
 	}
 	
 	globalCode := models.GlobalDiscountCode{
-		ID:                 uuid.New(),
-		Code:               code,
-		DiscountPercentage: req.DiscountPercentage,
-		IsActive:           true,
-		ExpiresAt:          expiresAt,
+		ID:           uuid.New(),
+		Code:         code,
+		DiscountValue: req.DiscountValue,
+		DiscountType:  req.DiscountType,
+		MaxUses:      req.MaxUses,
+		CurrentUses:  0,
+		IsActive:     true,
+		ExpiresAt:    expiresAt,
 	}
 
 	if err := dc.DB.Create(&globalCode).Error; err != nil {
@@ -274,6 +285,9 @@ func (dc *DiscountCodeController) CreateGlobalDiscountCode(c *gin.Context) {
 		})
 		return
 	}
+
+	// ส่ง notification ให้ทุกคนเมื่อมีโค้ดส่วนลดทั่วไปใหม่
+	go SendGlobalDiscountCodeNotification(globalCode, dc.DB)
 
 	c.JSON(201, gin.H{
 		"message": "Global discount code created successfully",
@@ -327,7 +341,7 @@ func (dc *DiscountCodeController) ValidateDiscountCode(c *gin.Context) {
 
 			var count int64
 			dc.DB.Table("package_advertisers").
-				Where("package_id = ? AND advertiser_id = ?", packageID, discountCode.AdvertiserID).
+				Where("travel_package_id = ? AND advertiser_id = ?", packageID, discountCode.AdvertiserID).
 				Count(&count)
 			
 			if count == 0 {
@@ -337,11 +351,12 @@ func (dc *DiscountCodeController) ValidateDiscountCode(c *gin.Context) {
 		}
 
 		c.JSON(200, gin.H{
-			"valid":               true,
-			"type":               "advertiser",
-			"discount_percentage": discountCode.DiscountPercentage,
-			"discount_code_id":   discountCode.ID,
-			"advertiser_id":      discountCode.AdvertiserID,
+			"valid":          true,
+			"type":           "advertiser",
+			"discount_value": discountCode.DiscountValue,
+			"discount_type":  discountCode.DiscountType,
+			"discount_code_id": discountCode.ID,
+			"advertiser_id":  discountCode.AdvertiserID,
 		})
 		return
 	}
@@ -355,10 +370,11 @@ func (dc *DiscountCodeController) ValidateDiscountCode(c *gin.Context) {
 		}
 
 		c.JSON(200, gin.H{
-			"valid":               true,
-			"type":               "global",
-			"discount_percentage": globalCode.DiscountPercentage,
-			"global_code_id":     globalCode.ID,
+			"valid":          true,
+			"type":          "global",
+			"discount_value": globalCode.DiscountValue,
+			"discount_type":  globalCode.DiscountType,
+			"global_code_id": globalCode.ID,
 		})
 		return
 	}
@@ -383,7 +399,7 @@ func (dc *DiscountCodeController) UseDiscountCode(c *gin.Context) {
 	// เริ่ม transaction
 	tx := dc.DB.Begin()
 
-	var discountPercentage float64
+	var discountAmount float64
 	var advertiserID *uuid.UUID
 
 	if req.DiscountCodeID != nil {
@@ -394,7 +410,13 @@ func (dc *DiscountCodeController) UseDiscountCode(c *gin.Context) {
 			c.JSON(404, gin.H{"error": "Discount code not found"})
 			return
 		}
-		discountPercentage = discountCode.DiscountPercentage
+		
+		// คำนวณส่วนลดตาม type
+		if discountCode.DiscountType == "percentage" {
+			discountAmount = req.OriginalAmount * (discountCode.DiscountValue / 100)
+		} else { // fixed
+			discountAmount = discountCode.DiscountValue
+		}
 		advertiserID = &discountCode.AdvertiserID
 	} else if req.GlobalCodeID != nil {
 		// ใช้ global code
@@ -404,15 +426,16 @@ func (dc *DiscountCodeController) UseDiscountCode(c *gin.Context) {
 			c.JSON(404, gin.H{"error": "Global discount code not found"})
 			return
 		}
-		discountPercentage = globalCode.DiscountPercentage
+		if globalCode.DiscountType == "percentage" {
+			discountAmount = req.OriginalAmount * (globalCode.DiscountValue / 100)
+		} else { // fixed
+			discountAmount = globalCode.DiscountValue
+		}
 	} else {
 		tx.Rollback()
 		c.JSON(400, gin.H{"error": "Either discount_code_id or global_code_id is required"})
 		return
 	}
-
-	// คำนวณส่วนลด
-	discountAmount := req.OriginalAmount * (discountPercentage / 100)
 	finalAmount := req.OriginalAmount - discountAmount
 
 	// อัปเดต booking ด้วยข้อมูลส่วนลด
@@ -447,21 +470,36 @@ func (dc *DiscountCodeController) UseDiscountCode(c *gin.Context) {
 	})
 }
 
-// CreateCommission - สร้างค่าคอมมิชชั่น (ปรับให้ตรงกับ schema ที่มีอยู่)
+// CreateCommission - สร้างค่าคอมมิชชั่น (ใช้ commission rate จากโค้ดส่วนลด)
 func (dc *DiscountCodeController) CreateCommission(tx *gorm.DB, advertiserID uuid.UUID, bookingID uuid.UUID, finalAmount float64, discountCodeID *string) {
-	// ค่าคอมมิชชั่นคงที่ 5%
-	commissionRate := 5.0
+	// ดึงข้อมูล discount code เพื่อใช้ commission rate
+	var discountCode models.DiscountCode
+	commissionRate := 5.0 // default rate
+	
+	if discountCodeID != nil {
+		if err := tx.Where("id = ?", *discountCodeID).First(&discountCode).Error; err == nil {
+			commissionRate = discountCode.CommissionRate
+		}
+	}
+	
 	commissionAmount := finalAmount * (commissionRate / 100)
 	
-	// สร้าง commission ใหม่ (ไม่ใช้ DiscountCodeID เพราะไม่มีใน schema)
+	// สร้าง commission ใหม่
 	commission := models.Commission{
 		ID:                   uuid.New(),
-		BookingID:            bookingID,           // เรียงตาม schema
-		AdvertiserID:         advertiserID,       // เรียงตาม schema
+		BookingID:            bookingID,
+		AdvertiserID:         advertiserID,
 		CommissionAmount:     commissionAmount,
 		CommissionPercentage: commissionRate,
 		Status:               "pending",
 	}
+	
+	// เพิ่ม DiscountCodeID ถ้ามี
+	if discountCodeID != nil {
+		discountCodeUUID, _ := uuid.Parse(*discountCodeID)
+		commission.DiscountCodeID = &discountCodeUUID
+	}
+	
 	tx.Create(&commission)
 }
 
@@ -505,6 +543,27 @@ func (dc *DiscountCodeController) GetAllAdvertisers(c *gin.Context) {
 			"id":           advertiser.ID,
 			"email":        advertiser.Email,
 			"display_name": advertiserName,
+		})
+	}
+
+	c.JSON(200, result)
+}
+
+// GetAllPackages - ดู packages ทั้งหมดสำหรับ Manager เลือกตอนสร้างโค้ดส่วนลด
+func (dc *DiscountCodeController) GetAllPackages(c *gin.Context) {
+	var packages []models.TravelPackage
+	if err := dc.DB.Where("is_active = ?", true).Find(&packages).Error; err != nil {
+		c.JSON(500, gin.H{"error": "Failed to fetch packages"})
+		return
+	}
+
+	var result []gin.H
+	for _, pkg := range packages {
+		result = append(result, gin.H{
+			"id":       pkg.ID,
+			"title":    pkg.Title,
+			"location": pkg.Location,
+			"price":    pkg.Price,
 		})
 	}
 

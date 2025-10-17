@@ -168,7 +168,14 @@ const Navbar = () => {
                         className="cursor-pointer"
                       >
                         <BarChart3 className="h-4 w-4 mr-2" />
-                        จัดการ Discount Codes
+                        {t("nav.dashboard")}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => navigate("/discount-management")}
+                        className="cursor-pointer"
+                      >
+                        <Percent className="h-4 w-4 mr-2" />
+                        จัดการโค้ดส่วนลด
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => navigate("/members")}
@@ -291,6 +298,20 @@ const Navbar = () => {
                 {userRole === "manager" && (
                   <>
                     <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => navigate("/manager")}
+                      className="cursor-pointer"
+                    >
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      {t("nav.dashboard")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => navigate("/discount-management")}
+                      className="cursor-pointer"
+                    >
+                      <Percent className="h-4 w-4 mr-2" />
+                      จัดการโค้ดส่วนลด
+                    </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => navigate("/members")}
                       className="cursor-pointer"

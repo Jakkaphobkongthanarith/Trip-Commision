@@ -18,9 +18,10 @@ import AdvertiserDashboard from "./pages/AdvertiserDashboard";
 import ManagerDashboard from "./pages/ManagerDashboard";
 import MemberManagement from "./pages/MemberManagement";
 import AdminDashboard from "./pages/AdminDashboard";
-import PackageManagement from "./pages/PackageManagement";
+import PackageManagement from "./pages/PackageManagementClean";
 import BookingTest from "./pages/BookingTest";
 import DiscountCodes from "./pages/DiscountCodes";
+import DiscountCodeManagement from "./pages/DiscountCodeManagement";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -92,6 +93,14 @@ const App = () => (
                 />
                 <Route path="/booking-test" element={<BookingTest />} />
                 <Route path="/discount-codes" element={<DiscountCodes />} />
+                <Route
+                  path="/discount-management"
+                  element={
+                    <ProtectedRoute>
+                      <DiscountCodeManagement />
+                    </ProtectedRoute>
+                  }
+                />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

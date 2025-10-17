@@ -198,7 +198,7 @@ func ConfirmPaymentHandler(c *gin.Context, db *gorm.DB) {
 
 	// ดึงข้อมูล booking ก่อนอัปเดต
 	var booking models.Booking
-	if err := db.First(&booking, bookingID).Error; err != nil {
+	if err := db.First(&booking, "id = ?", bookingID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Booking not found"})
 		return
 	}

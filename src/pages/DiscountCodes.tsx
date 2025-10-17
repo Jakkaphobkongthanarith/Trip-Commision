@@ -11,9 +11,14 @@ import Navbar from "@/components/Navbar";
 interface GlobalDiscountCode {
   id: string;
   code: string;
-  discount_percentage: number;
+  discount_value: number;
+  discount_type: "percentage" | "fixed";
+  max_uses: number | null;
+  current_uses: number;
   is_active: boolean;
+  expires_at: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 const API_BASE_URL =
@@ -37,11 +42,14 @@ export default function DiscountCodesPage() {
       }
 
       const data = await response.json();
-      // Filter only active codes
-      const activeCodes = data.filter(
-        (code: GlobalDiscountCode) => code.is_active
-      );
-      setGlobalCodes(activeCodes);
+      // Sort by created date (newest first) and show all codes (including expired ones for reference)
+      const sortedCodes = data
+        .filter((code: GlobalDiscountCode) => code.is_active) // Only show active codes
+        .sort(
+          (a: GlobalDiscountCode, b: GlobalDiscountCode) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      setGlobalCodes(sortedCodes);
     } catch (error) {
       console.error("Error fetching discount codes:", error);
       setGlobalCodes([]);
@@ -82,6 +90,50 @@ export default function DiscountCodesPage() {
       month: "long",
       day: "numeric",
     });
+  };
+
+  // Check if code is still usable
+  const isCodeUsable = (code: GlobalDiscountCode) => {
+    // Check if expired
+    if (code.expires_at && new Date(code.expires_at) < new Date()) {
+      return false;
+    }
+
+    // Check if max uses reached
+    if (code.max_uses && code.current_uses >= code.max_uses) {
+      return false;
+    }
+
+    return code.is_active;
+  };
+
+  // Get status info for display
+  const getCodeStatus = (code: GlobalDiscountCode) => {
+    if (!code.is_active) {
+      return {
+        text: "ปิดใช้งาน",
+        color: "bg-red-100 text-red-800 border-red-300",
+      };
+    }
+
+    if (code.expires_at && new Date(code.expires_at) < new Date()) {
+      return {
+        text: "หมดอายุ",
+        color: "bg-orange-100 text-orange-800 border-orange-300",
+      };
+    }
+
+    if (code.max_uses && code.current_uses >= code.max_uses) {
+      return {
+        text: "ใช้ครบแล้ว",
+        color: "bg-yellow-100 text-yellow-800 border-yellow-300",
+      };
+    }
+
+    return {
+      text: "ใช้งานได้",
+      color: "bg-green-100 text-green-800 border-green-300",
+    };
   };
 
   return (
@@ -167,9 +219,15 @@ export default function DiscountCodesPage() {
                     <div className="flex items-center justify-between">
                       <Badge
                         variant="secondary"
-                        className="bg-gradient-to-r from-green-100 to-green-200 text-green-800 border-green-300"
+                        className={`${
+                          code.discount_type === "percentage"
+                            ? "bg-gradient-to-r from-green-100 to-green-200 text-green-800 border-green-300"
+                            : "bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border-blue-300"
+                        }`}
                       >
-                        ลด {code.discount_percentage}%
+                        {code.discount_type === "percentage"
+                          ? `ลด ${code.discount_value}%`
+                          : `ลด ฿${code.discount_value}`}
                       </Badge>
                       <Tag className="h-5 w-5 text-muted-foreground" />
                     </div>
@@ -185,32 +243,37 @@ export default function DiscountCodesPage() {
 
                     <div className="space-y-2 text-sm text-muted-foreground">
                       <div className="flex justify-between">
-                        <span>ส่วนลด:</span>
-                        <span className="font-semibold text-green-600">
-                          {code.discount_percentage}%
+                        <span>มูลค่าส่วนลด:</span>
+                        <span
+                          className={`font-semibold ${
+                            code.discount_type === "percentage"
+                              ? "text-green-600"
+                              : "text-blue-600"
+                          }`}
+                        >
+                          {code.discount_type === "percentage"
+                            ? `${code.discount_value}%`
+                            : `฿${code.discount_value}`}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span>วันที่สร้าง:</span>
-                        <span>{formatDate(code.created_at)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>สถานะ:</span>
-                        <Badge
-                          variant="default"
-                          className="bg-green-100 text-green-800 border-green-300"
-                        >
-                          ใช้งานได้
-                        </Badge>
+                        <span>ประเภท:</span>
+                        <span className="font-medium">
+                          {code.discount_type === "percentage"
+                            ? "ลดเปอร์เซ็นต์"
+                            : "ลดเป็นจำนวนเงิน"}
+                        </span>
                       </div>
                     </div>
 
                     <Button
                       className="w-full"
                       onClick={() => copyToClipboard(code.code)}
+                      disabled={!isCodeUsable(code)}
+                      variant={isCodeUsable(code) ? "default" : "secondary"}
                     >
                       <Copy className="h-4 w-4 mr-2" />
-                      คัดลอกโค้ด
+                      {isCodeUsable(code) ? "คัดลอกโค้ด" : "ไม่สามารถใช้ได้"}
                     </Button>
                   </CardContent>
                 </Card>
@@ -235,6 +298,24 @@ export default function DiscountCodesPage() {
                   <li>กดปุ่ม "ใช้โค้ด" เพื่อยืนยัน</li>
                   <li>ระบบจะคำนวณส่วนลดให้อัตโนมัติ</li>
                 </ol>
+
+                <div className="mt-4 grid md:grid-cols-2 gap-3">
+                  <div className="p-3 bg-green-100 rounded-lg">
+                    <p className="text-sm font-medium text-green-800">
+                      🔢 <strong>ส่วนลดเปอร์เซ็นต์:</strong>
+                      <br />
+                      ลดตามเปอร์เซ็นต์ของราคาทั้งหมด (เช่น ลด 10%)
+                    </p>
+                  </div>
+                  <div className="p-3 bg-blue-100 rounded-lg">
+                    <p className="text-sm font-medium text-blue-800">
+                      💰 <strong>ส่วนลดจำนวนเงิน:</strong>
+                      <br />
+                      ลดเป็นจำนวนเงินคงที่ (เช่น ลด ฿100)
+                    </p>
+                  </div>
+                </div>
+
                 <div className="mt-4 p-3 bg-blue-100 rounded-lg">
                   <p className="text-sm font-medium">
                     💡 <strong>เคล็ดลับ:</strong>{" "}

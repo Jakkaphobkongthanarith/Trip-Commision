@@ -5,6 +5,7 @@ import { packageAPI, bookingAPI } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Navigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import {
   Select,
@@ -37,6 +38,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import {
   Edit,
   Trash2,
@@ -89,31 +91,12 @@ interface User {
   email: string;
 }
 
-interface AdvertiserDiscountCode {
-  id: string;
-  code: string;
-  advertiser_id: string;
-  advertiser_name: string;
-  discount_percentage: number;
-  is_active: boolean;
-  created_at: string;
-}
-
 interface GlobalDiscountCode {
   id: string;
   code: string;
   discount_percentage: number;
   is_active: boolean;
   created_at: string;
-}
-
-interface CreateAdvertiserDiscountForm {
-  advertiser_id: string;
-  package_id: string; // เพิ่มใหม่
-  discount_percentage: number;
-  commission_rate: number; // เพิ่มใหม่
-  max_uses?: number; // เพิ่มใหม่
-  expires_at?: string; // วันหมดอายุ (optional)
 }
 
 interface CreateGlobalDiscountForm {
@@ -141,27 +124,13 @@ export default function PackageManagement() {
   const [selectedPackageTitle, setSelectedPackageTitle] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Discount Code states
-  const [advertiserCodes, setAdvertiserCodes] = useState<
-    AdvertiserDiscountCode[]
-  >([]);
+  // Discount Code states - เหลือเฉพาะ Global
   const [globalCodes, setGlobalCodes] = useState<GlobalDiscountCode[]>([]);
-  const [isAdvertiserDiscountDialogOpen, setIsAdvertiserDiscountDialogOpen] =
-    useState(false);
   const [isGlobalDiscountDialogOpen, setIsGlobalDiscountDialogOpen] =
     useState(false);
-  const [activeTab, setActiveTab] = useState<
-    "packages" | "advertiser-discounts" | "global-discounts"
-  >("packages");
-  const [advertiserDiscountForm, setAdvertiserDiscountForm] =
-    useState<CreateAdvertiserDiscountForm>({
-      advertiser_id: "",
-      package_id: "",
-      discount_percentage: 10,
-      commission_rate: 5.0,
-      max_uses: undefined,
-      expires_at: "",
-    });
+  const [activeTab, setActiveTab] = useState<"packages" | "global-discounts">(
+    "packages"
+  );
   const [globalDiscountForm, setGlobalDiscountForm] =
     useState<CreateGlobalDiscountForm>({
       discount_percentage: 10,
@@ -201,7 +170,6 @@ export default function PackageManagement() {
       fetchPackages();
       fetchAdvertisers();
       fetchExistingTags();
-      fetchAdvertiserDiscountCodes();
       fetchGlobalDiscountCodes();
     }
   }, [userRole]);
@@ -311,22 +279,6 @@ export default function PackageManagement() {
     } catch (error) {
       console.error("Error fetching existing tags:", error);
       setExistingTags([]);
-    }
-  };
-
-  const fetchAdvertiserDiscountCodes = async () => {
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/manager/discount-codes`
-      );
-      if (!response.ok)
-        throw new Error("Failed to fetch advertiser discount codes");
-
-      const data = await response.json();
-      setAdvertiserCodes(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Error fetching advertiser discount codes:", error);
-      setAdvertiserCodes([]);
     }
   };
 

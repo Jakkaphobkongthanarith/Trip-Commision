@@ -49,7 +49,8 @@ const PackageDetails = () => {
   const [appliedDiscount, setAppliedDiscount] = useState<{
     valid: boolean;
     type: string;
-    discount_percentage: number;
+    discount_value: number;
+    discount_type: "percentage" | "fixed";
     discount_code_id?: string;
     global_code_id?: string;
     advertiser_id?: string;
@@ -88,7 +89,11 @@ const PackageDetails = () => {
         setAppliedDiscount(data);
         toast({
           title: "ใช้โค้ดส่วนลดได้",
-          description: `ลด ${data.discount_percentage}% - ${
+          description: `ลด ${
+            data.discount_type === "percentage"
+              ? `${data.discount_value}%`
+              : `฿${data.discount_value}`
+          } - ${
             data.type === "advertiser"
               ? "โค้ดจาก Advertiser"
               : "โค้ดสำหรับทุกคน"
@@ -152,9 +157,12 @@ const PackageDetails = () => {
       setContactPhone(userProfile.phone || "");
       setContactEmail(user.email || "");
     } else if (!useProfileData) {
-      setContactName("");
-      setContactPhone("");
-      setContactEmail("");
+      // Clear fields only when explicitly unchecked, not on initial load
+      if (contactName || contactPhone || contactEmail) {
+        setContactName("");
+        setContactPhone("");
+        setContactEmail("");
+      }
     }
   }, [useProfileData, userProfile, user]);
 
@@ -221,6 +229,16 @@ const PackageDetails = () => {
     ? packageData.max_guests - (packageData.current_bookings || 0)
     : 0;
 
+  // Calculate discount amount for display
+  const discountAmount = appliedDiscount
+    ? appliedDiscount.discount_type === "percentage"
+      ? ((packageData.finalPrice || packageData.price) *
+          guestCount *
+          appliedDiscount.discount_value) /
+        100
+      : appliedDiscount.discount_value
+    : 0;
+
   const handleCLG = async () => {
     console.log("bookingLoading  ->", bookingLoading);
     console.log("availableSpots  ->", availableSpots);
@@ -283,8 +301,13 @@ const PackageDetails = () => {
 
       // Add discount code discount
       if (appliedDiscount) {
-        discountAmount +=
-          (totalAmount * appliedDiscount.discount_percentage) / 100;
+        if (appliedDiscount.discount_type === "percentage") {
+          discountAmount +=
+            (totalAmount * appliedDiscount.discount_value) / 100;
+        } else {
+          // fixed
+          discountAmount += appliedDiscount.discount_value;
+        }
       }
 
       const finalAmount = totalAmount - discountAmount;
@@ -643,7 +666,10 @@ const PackageDetails = () => {
                       <div className="flex items-center gap-2 text-sm text-green-600">
                         <Check className="h-4 w-4" />
                         <span>
-                          ใช้โค้ดส่วนลด {appliedDiscount.discount_percentage}%
+                          ใช้โค้ดส่วนลด{" "}
+                          {appliedDiscount.discount_type === "percentage"
+                            ? `${appliedDiscount.discount_value}%`
+                            : `฿${appliedDiscount.discount_value}`}{" "}
                           สำเร็จ
                           {appliedDiscount.type === "advertiser"
                             ? " (จาก Advertiser)"
@@ -737,16 +763,13 @@ const PackageDetails = () => {
                   {appliedDiscount && (
                     <div className="flex justify-between text-sm text-green-600">
                       <span>
-                        ส่วนลดจากโค้ด ({appliedDiscount.discount_percentage}%):
+                        ส่วนลดจากโค้ด (
+                        {appliedDiscount.discount_type === "percentage"
+                          ? `${appliedDiscount.discount_value}%`
+                          : "ส่วนลดคงที่"}
+                        ):
                       </span>
-                      <span>
-                        -฿
-                        {(
-                          (packageData.finalPrice || packageData.price) *
-                          guestCount *
-                          (appliedDiscount.discount_percentage / 100)
-                        ).toLocaleString()}
-                      </span>
+                      <span>-฿{discountAmount.toLocaleString()}</span>
                     </div>
                   )}
                   <Separator />
@@ -759,9 +782,14 @@ const PackageDetails = () => {
                           (packageData.finalPrice || packageData.price) *
                           guestCount;
                         if (appliedDiscount) {
-                          finalPrice =
-                            finalPrice *
-                            (1 - appliedDiscount.discount_percentage / 100);
+                          if (appliedDiscount.discount_type === "percentage") {
+                            finalPrice =
+                              finalPrice *
+                              (1 - appliedDiscount.discount_value / 100);
+                          } else {
+                            finalPrice =
+                              finalPrice - appliedDiscount.discount_value;
+                          }
                         }
                         return finalPrice.toLocaleString();
                       })()}

@@ -10,20 +10,29 @@ import (
 
 // ส่ง notification เมื่อ advertiser ได้รับโค้ดส่วนลดใหม่
 func SendNotificationToAdvertiser(advertiserID uuid.UUID, discountCode models.DiscountCode, db *gorm.DB) {
+	// สร้าง message ตาม discount type
+	discountText := ""
+	if discountCode.DiscountType == "percentage" {
+		discountText = fmt.Sprintf("%.0f%%", discountCode.DiscountValue)
+	} else {
+		discountText = fmt.Sprintf("฿%.0f", discountCode.DiscountValue)
+	}
+
 	notification := models.Notification{
 		UserID:   advertiserID,
 		Title:    "🎉 โค้ดส่วนลดใหม่!",
-		Message:  fmt.Sprintf("คุณได้รับโค้ดส่วนลด %v%% สำหรับแพคเกจ %s โค้ด: %s", 
-				   discountCode.DiscountPercentage, discountCode.Package.Title, discountCode.Code),
+		Message:  fmt.Sprintf("คุณได้รับโค้ดส่วนลด %s สำหรับแพคเกจ %s โค้ด: %s", 
+				   discountText, discountCode.Package.Title, discountCode.Code),
 		Type:     "discount_code",
 		Category: "info",
 		Priority: 2,
 		ActionURL: "/advertiser/discount-codes",
-		Data: map[string]interface{}{
+		Data: models.JSONMap{
 			"discount_code_id": discountCode.ID,
 			"package_id": discountCode.PackageID,
 			"code": discountCode.Code,
-			"discount_percentage": discountCode.DiscountPercentage,
+			"discount_value": discountCode.DiscountValue,
+			"discount_type": discountCode.DiscountType,
 		},
 	}
 
@@ -48,7 +57,7 @@ func SendCommissionEarnedNotification(commission models.Commission, db *gorm.DB)
 		Category: "info",
 		Priority: 2,
 		ActionURL: "/advertiser/commissions",
-		Data: map[string]interface{}{
+		Data: models.JSONMap{
 			"commission_id": commission.ID,
 			"amount": commission.CommissionAmount,
 			"discount_code": discountCode.Code,
@@ -78,7 +87,7 @@ func SendNewBookingNotificationToAdvertiser(booking models.Booking, pkg models.T
 		Category: "important", 
 		Priority: 1,
 		ActionURL: fmt.Sprintf("/advertiser/bookings?package_id=%s", pkg.ID),
-		Data: map[string]interface{}{
+		Data: models.JSONMap{
 			"package_id": pkg.ID,
 			"booking_id": booking.ID,
 			"current_bookings": currentBookings,
@@ -103,7 +112,7 @@ func SendPaymentSuccessNotification(booking models.Booking, db *gorm.DB) {
 		Category: "important",
 		Priority: 1,
 		ActionURL: fmt.Sprintf("/bookings/%s", booking.ID),
-		Data: map[string]interface{}{
+		Data: models.JSONMap{
 			"booking_id": booking.ID,
 			"package_title": pkg.Title,
 			"amount": booking.TotalAmount,
@@ -134,4 +143,47 @@ func CreateCommission(bookingID, advertiserID, discountCodeID uuid.UUID, amount,
 	go SendCommissionEarnedNotification(commission, db)
 
 	return nil
+}
+
+// ส่ง notification เมื่อมีโค้ดส่วนลดทั่วไปใหม่ (ส่งให้ทุกคน)
+func SendGlobalDiscountCodeNotification(globalCode models.GlobalDiscountCode, db *gorm.DB) {
+	// สร้าง message ตาม discount type
+	discountText := ""
+	if globalCode.DiscountType == "percentage" {
+		discountText = fmt.Sprintf("%.0f%%", globalCode.DiscountValue)
+	} else {
+		discountText = fmt.Sprintf("฿%.0f", globalCode.DiscountValue)
+	}
+
+	// ดึง users ทั้งหมด (global discount code ใช้ได้กับทุกคน)
+	var users []models.User
+	db.Find(&users)
+
+	// สร้าง notifications สำหรับทุกคน
+	var notifications []models.Notification
+	for _, user := range users {
+		notification := models.Notification{
+			UserID:   user.ID,
+			Title:    "🎁 โค้ดส่วนลดใหม่!",
+			Message:  fmt.Sprintf("โค้ดส่วนลด %s ใช้ได้กับทุกแพคเกจ! โค้ด: %s", 
+					   discountText, globalCode.Code),
+			Type:     "global_discount_code",
+			Category: "promotion",
+			Priority: 2,
+			ActionURL: "/packages",
+			Data: models.JSONMap{
+				"global_code_id": globalCode.ID,
+				"code": globalCode.Code,
+				"discount_value": globalCode.DiscountValue,
+				"discount_type": globalCode.DiscountType,
+			},
+		}
+		notifications = append(notifications, notification)
+	}
+
+	// Batch insert notifications
+	if len(notifications) > 0 {
+		db.Create(&notifications)
+		fmt.Printf("Sent %d global discount code notifications for code: %s\n", len(notifications), globalCode.Code)
+	}
 }
