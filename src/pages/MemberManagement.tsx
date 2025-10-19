@@ -198,8 +198,8 @@ const MemberManagement = () => {
       <Navbar />
       <div className="container mx-auto p-6 pt-24">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">จัดการสมาชิก</h1>
-          <p className="text-white/80">ดูและจัดการข้อมูลสมาชิกในระบบ</p>
+          <h1 className="text-3xl font-bold text-black mb-2">จัดการสมาชิก</h1>
+          <p className="text-black/80">ดูและจัดการข้อมูลสมาชิกในระบบ</p>
         </div>
 
         {/* Stats Cards */}

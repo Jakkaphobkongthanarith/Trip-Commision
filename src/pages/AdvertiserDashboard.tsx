@@ -617,17 +617,6 @@ const AdvertiserDashboard = () => {
               <CardContent>
                 <div className="text-2xl font-bold">
                   ฿
-                  {(
-                    monthlyCommission +
-                    discountCommissions.reduce(
-                      (total: number, commission: any) =>
-                        total + (commission.commission_amount || 0),
-                      0
-                    )
-                  ).toLocaleString()}
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  ปกติ: ฿{monthlyCommission.toLocaleString()} | โค้ดส่วนลด: ฿
                   {discountCommissions
                     .reduce(
                       (total: number, commission: any) =>
@@ -636,8 +625,11 @@ const AdvertiserDashboard = () => {
                     )
                     .toLocaleString()}
                 </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  จากการใช้โค้ดส่วนลด
+                </div>
                 <div className="text-xs text-muted-foreground">
-                  {selectedMonth}/{selectedYear}
+                  {discountSelectedMonth}/{discountSelectedYear}
                 </div>
               </CardContent>
             </Card>
