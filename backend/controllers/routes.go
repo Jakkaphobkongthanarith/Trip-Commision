@@ -89,15 +89,8 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		UpdateUserRoleHandler(c, db)
 	})
 
-	// Commissions management
-	r.GET("/api/commissions", func(c *gin.Context) {
-		GetCommissionsHandler(c, db)
-	})
-
-	// Commission calculation routes
-	commissionController := NewCommissionController(db)
-	r.GET("/api/advertiser/:advertiser_id/commissions/monthly", commissionController.GetAdvertiserMonthlyCommissions)
-	r.GET("/api/advertiser/:advertiser_id/commissions/summary", commissionController.GetAdvertiserCommissionSummary)
+	// Note: Traditional commission system disabled - only discount code commissions are used
+	// Commission endpoints are now handled by promo_code_controller.go
 
 	// Bookings routes
 	r.GET("/api/bookings", func(c *gin.Context) {

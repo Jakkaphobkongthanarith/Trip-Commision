@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 	"trip-trader-backend/models"
 
@@ -524,22 +525,121 @@ func (dc *DiscountCodeController) CreateCommission(tx *gorm.DB, advertiserID uui
 	tx.Create(&commission)
 }
 
-// GetCommissionsByAdvertiser - ดูค่าคอมมิชชั่น
+// DiscountCommissionData โครงสร้างข้อมูลค่าคอมมิชชั่นจากโค้ดส่วนลด
+type DiscountCommissionData struct {
+	PackageID        string  `json:"package_id"`
+	PackageName      string  `json:"package_name"`
+	TotalRevenue     float64 `json:"total_revenue"`
+	DiscountCodeID   string  `json:"discount_code_id"`
+	DiscountCode     string  `json:"discount_code"`
+	UsagePercentage  float64 `json:"usage_percentage"`
+	CommissionRate   float64 `json:"commission_rate"`
+	CommissionAmount float64 `json:"commission_amount"`
+}
+
+// GetCommissionsByAdvertiser - ดูค่าคอมมิชชั่นจากโค้ดส่วนลด
 func (dc *DiscountCodeController) GetCommissionsByAdvertiser(c *gin.Context) {
 	advertiserID := c.Param("advertiser_id")
-
-	var commissions []models.Commission
-	if err := dc.DB.Where("advertiser_id = ?", advertiserID).
-		Preload("Advertiser").
-		Preload("Booking").
-		Preload("DiscountCode").
-		Order("created_at DESC").
-		Find(&commissions).Error; err != nil {
-		c.JSON(500, gin.H{"error": "Failed to fetch commissions"})
+	
+	// รับ query parameters สำหรับเดือน/ปี (ใช้เดือนปัจจุบันเป็น default)
+	monthStr := c.DefaultQuery("month", fmt.Sprintf("%d", time.Now().Month()))
+	yearStr := c.DefaultQuery("year", fmt.Sprintf("%d", time.Now().Year()))
+	
+	month, err := strconv.Atoi(monthStr)
+	if err != nil || month < 1 || month > 12 {
+		c.JSON(400, gin.H{"error": "Invalid month parameter"})
 		return
 	}
-
-	c.JSON(200, commissions)
+	
+	year, err := strconv.Atoi(yearStr)
+	if err != nil || year < 2020 || year > 2030 {
+		c.JSON(400, gin.H{"error": "Invalid year parameter"})
+		return
+	}
+	
+	// สร้างช่วงวันที่สำหรับเดือนที่เลือก
+	startDate := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+	endDate := startDate.AddDate(0, 1, 0).Add(-time.Second)
+	
+	// ดึงข้อมูล commissions ที่มีอยู่แล้วในระบบสำหรับ advertiser นี้
+	var commissions []models.Commission
+	if err := dc.DB.Where("advertiser_id = ? AND created_at >= ? AND created_at <= ?", 
+		advertiserID, startDate, endDate).
+		Find(&commissions).Error; err != nil {
+		c.JSON(500, gin.H{"error": "Failed to fetch commissions", "details": err.Error()})
+		return
+	}
+	
+	// จัดกลุ่มค่าคอมมิชชั่นตาม discount code
+	packageRevenue := make(map[string]*DiscountCommissionData)
+	
+	for _, commission := range commissions {
+		if commission.DiscountCodeID == nil {
+			continue // ข้าม commission ที่ไม่ได้มาจาก discount code
+		}
+		
+		discountCodeIDStr := commission.DiscountCodeID.String()
+		
+		if packageRevenue[discountCodeIDStr] == nil {
+			// ดึงข้อมูล discount code
+			var discountCode models.DiscountCode
+			if err := dc.DB.Preload("Package").First(&discountCode, *commission.DiscountCodeID).Error; err != nil {
+				continue
+			}
+			
+			// คำนวณ usage percentage
+			var currentUses int64
+			dc.DB.Model(&models.Booking{}).
+				Where("discount_code_id = ? AND payment_status IN (?)", discountCode.ID, []string{"paid", "confirmed", "completed"}).
+				Count(&currentUses)
+			
+			usagePercentage := float64(0)
+			maxUses := 1 // default
+			if discountCode.MaxUses != nil {
+				maxUses = *discountCode.MaxUses
+				if maxUses > 0 {
+					usagePercentage = (float64(currentUses) / float64(maxUses)) * 100
+				}
+			}
+			
+			// คำนวณ commission rate ตาม usage percentage
+			commissionRate := float64(0)
+			if usagePercentage >= 50 && usagePercentage < 75 {
+				commissionRate = 3
+			} else if usagePercentage >= 75 && usagePercentage < 100 {
+				commissionRate = 5
+			} else if usagePercentage >= 100 {
+				commissionRate = 10
+			}
+			
+			packageName := "ไม่พบแพ็กเกจ"
+			packageID := discountCode.PackageID.String()
+			if discountCode.Package.Title != "" {
+				packageName = discountCode.Package.Title
+			}
+			
+			packageRevenue[discountCodeIDStr] = &DiscountCommissionData{
+				PackageID:        packageID,
+				PackageName:      packageName,
+				TotalRevenue:     0,
+				DiscountCodeID:   discountCode.ID.String(),
+				DiscountCode:     discountCode.Code,
+				UsagePercentage:  usagePercentage,
+				CommissionRate:   commissionRate,
+				CommissionAmount: 0,
+			}
+		}
+		
+		packageRevenue[discountCodeIDStr].CommissionAmount += commission.CommissionAmount
+	}
+	
+	// แปลงเป็น array สำหรับ response
+	var result []DiscountCommissionData
+	for _, pkg := range packageRevenue {
+		result = append(result, *pkg)
+	}
+	
+	c.JSON(200, result)
 }
 
 // GetAllAdvertisers - ดู advertisers ทั้งหมดสำหรับ Manager

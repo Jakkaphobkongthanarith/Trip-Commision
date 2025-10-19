@@ -255,7 +255,8 @@ const AdvertiserDashboard = () => {
         return;
       }
 
-      const data = await apiRequest(`/api/commissions`);
+      // เปลี่ยนเป็น API สำหรับดึงค่าคอมมิชชั่นจาก discount code เท่านั้น
+      const data = await apiRequest(`/api/advertiser/${user.id}/commissions`);
 
       // ตรวจสอบว่า data เป็น array หรือไม่
       const commissionsArray = Array.isArray(data)
