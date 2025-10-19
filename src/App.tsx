@@ -19,7 +19,6 @@ import ManagerDashboard from "./pages/ManagerDashboard";
 import MemberManagement from "./pages/MemberManagement";
 import AdminDashboard from "./pages/AdminDashboard";
 import PackageManagement from "./pages/PackageManagementClean";
-import BookingTest from "./pages/BookingTest";
 import DiscountCodes from "./pages/DiscountCodes";
 import DiscountCodeManagement from "./pages/DiscountCodeManagement";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -91,7 +90,6 @@ const App = () => (
                     </ProtectedRoute>
                   }
                 />
-                <Route path="/booking-test" element={<BookingTest />} />
                 <Route path="/discount-codes" element={<DiscountCodes />} />
                 <Route
                   path="/discount-management"
