@@ -94,6 +94,11 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		GetCommissionsHandler(c, db)
 	})
 
+	// Commission calculation routes
+	commissionController := NewCommissionController(db)
+	r.GET("/api/advertiser/:advertiser_id/commissions/monthly", commissionController.GetAdvertiserMonthlyCommissions)
+	r.GET("/api/advertiser/:advertiser_id/commissions/summary", commissionController.GetAdvertiserCommissionSummary)
+
 	// Bookings routes
 	r.GET("/api/bookings", func(c *gin.Context) {
 		// รองรับทั้ง query parameter และ path parameter

@@ -302,9 +302,30 @@ func (dc *DiscountCodeController) GetDiscountCodesByAdvertiser(c *gin.Context) {
 	var discountCodes []models.DiscountCode
 	if err := dc.DB.Where("advertiser_id = ?", advertiserID).
 		Preload("Advertiser").
+		Preload("Package").
 		Find(&discountCodes).Error; err != nil {
 		c.JSON(500, gin.H{"error": "Failed to fetch discount codes"})
 		return
+	}
+
+	// คำนวณ current_uses สำหรับแต่ละโค้ด
+	for i := range discountCodes {
+		var currentUses int64
+		// เปลี่ยน condition ให้รองรับทั้ง paid, confirmed และ completed
+		dc.DB.Model(&models.Booking{}).
+			Where("discount_code_id = ? AND payment_status IN (?)", discountCodes[i].ID, []string{"paid", "confirmed", "completed"}).
+			Count(&currentUses)
+		discountCodes[i].CurrentUses = int(currentUses)
+		
+		// Debug log - เพิ่มการดู bookings ที่ใช้โค้ดนี้
+		var debugBookings []models.Booking
+		dc.DB.Where("discount_code_id = ?", discountCodes[i].ID).Find(&debugBookings)
+		fmt.Printf("🔍 Discount Code %s (ID: %s):\n", discountCodes[i].Code, discountCodes[i].ID)
+		fmt.Printf("   - Total bookings with this code: %d\n", len(debugBookings))
+		for _, booking := range debugBookings {
+			fmt.Printf("   - Booking ID: %s, Payment Status: %s\n", booking.ID, booking.PaymentStatus)
+		}
+		fmt.Printf("   - Calculated current_uses: %d\n", currentUses)
 	}
 
 	c.JSON(200, discountCodes)

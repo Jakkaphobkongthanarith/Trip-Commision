@@ -4,14 +4,39 @@ import { useAuth } from "@/contexts/AuthContext";
 interface DiscountCode {
   id: string;
   code: string;
-  discount_percentage: number;
+  discount_value: number; // ✅ เปลี่ยนจาก discount_percentage
+  discount_type: string; // ✅ เพิ่มใหม่
   max_uses: number;
   current_uses: number;
-  usage_percentage: number;
-  commission_rate: number;
-  tier: string;
+  usage_percentage: number; // คำนวณจาก current_uses/max_uses
+  commission_rate: number; // คำนวณตาม business rules
+  tier: string; // คำนวณตาม usage_percentage
   is_active: boolean;
   expires_at?: string;
+  package_id?: string;
+  package_name?: string;
+  package?: {
+    max_guests: number;
+    title: string;
+  };
+}
+
+interface PackageCommissionData {
+  package_id: string;
+  package_name: string;
+  usage_rate: number;
+  current_uses: number;
+  max_uses: number;
+  commission_rate: number;
+  total_revenue: number;
+  commission_amount: number;
+}
+
+interface MonthlyCommissionResponse {
+  month: number;
+  year: number;
+  total_commission: number;
+  packages: PackageCommissionData[];
 }
 import { Navigate, useNavigate } from "react-router-dom";
 import {
@@ -38,6 +63,14 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { apiRequest } from "@/lib/api";
 import {
   DollarSign,
@@ -62,13 +95,14 @@ interface Commission {
 }
 
 interface DiscountCommission {
-  id: string;
-  advertiser_id: string;
-  booking_id: string;
+  package_id: string;
+  package_name: string;
+  total_revenue: number;
+  discount_code_id: string;
+  discount_code: string;
+  usage_percentage: number;
+  commission_rate: number;
   commission_amount: number;
-  commission_percentage: number;
-  status: string;
-  created_at: string;
 }
 
 interface Review {
@@ -144,18 +178,31 @@ const AdvertiserDashboard = () => {
     location: string;
   } | null>(null);
 
+  // Commission month/year selection
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [monthlyCommissionData, setMonthlyCommissionData] = useState<any>(null);
+
+  // Discount commission month/year selection
+  const [discountSelectedMonth, setDiscountSelectedMonth] = useState(
+    new Date().getMonth() + 1
+  );
+  const [discountSelectedYear, setDiscountSelectedYear] = useState(
+    new Date().getFullYear()
+  );
+
   useEffect(() => {
     let isCancelled = false;
     const run = async () => {
       if (!user) return;
       setLoading(true);
-      await Promise.allSettled([
-        fetchUserRole(),
-        fetchCommissions(),
-        fetchUpcomingTrips(),
-        fetchDiscountCodes(),
-        fetchDiscountCommissions(),
-      ]);
+
+      // First, fetch user role
+      await fetchUserRole();
+
+      // Then fetch other data
+      await Promise.allSettled([fetchCommissions(), fetchUpcomingTrips()]);
+
       if (!isCancelled) setLoading(false);
     };
     run();
@@ -163,6 +210,28 @@ const AdvertiserDashboard = () => {
       isCancelled = true;
     };
   }, [user]);
+
+  // Separate useEffect for role-dependent data
+  useEffect(() => {
+    if (!user || !userRole) return;
+
+    const fetchRoleData = async () => {
+      await Promise.allSettled([
+        fetchDiscountCodes(),
+        fetchDiscountCommissions(),
+        fetchMonthlyCommissions(),
+      ]);
+    };
+
+    fetchRoleData();
+  }, [
+    user,
+    userRole,
+    selectedMonth,
+    selectedYear,
+    discountSelectedMonth,
+    discountSelectedYear,
+  ]);
 
   const fetchUserRole = async () => {
     if (!user) return;
@@ -227,16 +296,57 @@ const AdvertiserDashboard = () => {
     }
   };
 
-
-
   const fetchDiscountCodes = async () => {
     if (!user || userRole !== "advertiser") return;
 
     try {
+      console.log("🔍 Fetching discount codes for user:", user.id);
+
       const data = await apiRequest(
         `/api/advertiser/${user.id}/discount-codes`
       );
-      setDiscountCodes(Array.isArray(data) ? data : []);
+      console.log("🔍 Raw discount codes response:", data);
+
+      if (!Array.isArray(data)) {
+        console.log("Invalid discount codes format:", data);
+        setDiscountCodes([]);
+        return;
+      }
+
+      // Transform data ให้ตรงกับ interface ใหม่
+      const transformedCodes = data.map((code: any) => {
+        const maxGuests = code.package?.max_guests || code.max_uses;
+        const usagePercentage = maxGuests
+          ? (code.current_uses / maxGuests) * 100
+          : 0;
+
+        // คำนวณ commission rate ตาม business rules
+        let commissionRate = 0;
+        let tier = "ไม่มีค่าคอมมิชชั่น";
+
+        if (usagePercentage > 50 && usagePercentage < 75) {
+          commissionRate = 3;
+          tier = "Bronze (3%)";
+        } else if (usagePercentage >= 75 && usagePercentage < 100) {
+          commissionRate = 5;
+          tier = "Silver (5%)";
+        } else if (usagePercentage >= 100) {
+          commissionRate = 10;
+          tier = "Gold (10%)";
+        }
+
+        return {
+          ...code,
+          usage_percentage: usagePercentage,
+          commission_rate: commissionRate,
+          tier: tier,
+          package_name: code.package?.title || "ไม่พบแพ็กเกจ",
+          package_id: code.package_id,
+        };
+      });
+
+      console.log("🔍 Transformed discount codes:", transformedCodes);
+      setDiscountCodes(transformedCodes);
     } catch (error) {
       console.error("Error fetching discount codes:", error);
       setDiscountCodes([]);
@@ -247,8 +357,103 @@ const AdvertiserDashboard = () => {
     if (!user || userRole !== "advertiser") return;
 
     try {
-      const data = await apiRequest(`/api/advertiser/${user.id}/commissions`);
-      setDiscountCommissions(Array.isArray(data) ? data : []);
+      console.log(
+        "🔍 Fetching discount commissions for:",
+        user.id,
+        discountSelectedMonth,
+        discountSelectedYear
+      );
+
+      // ดึงข้อมูล bookings ทั้งหมด
+      const bookingsData = await apiRequest(`/api/bookings`);
+      const bookingsArray = Array.isArray(bookingsData)
+        ? bookingsData
+        : bookingsData?.bookings || [];
+
+      // ดึงข้อมูล discount codes ของ advertiser นี้
+      const discountCodesData = await apiRequest(
+        `/api/advertiser/${user.id}/discount-codes`
+      );
+      const advertiserDiscountCodes = Array.isArray(discountCodesData)
+        ? discountCodesData
+        : [];
+
+      // กรอง bookings ที่มี status = "confirmed" และอยู่ในเดือน/ปีที่เลือก
+      const confirmedBookings = bookingsArray.filter((booking: any) => {
+        const bookingDate = new Date(booking.created_at);
+        return (
+          booking.status === "confirmed" &&
+          bookingDate.getMonth() + 1 === discountSelectedMonth &&
+          bookingDate.getFullYear() === discountSelectedYear &&
+          booking.discount_code_id // มีการใช้ discount code
+        );
+      });
+
+      // จัดกลุ่ม bookings ตาม package_id และคำนวณรายได้
+      const packageRevenue: {
+        [key: string]: {
+          package_id: string;
+          package_name: string;
+          total_revenue: number;
+          discount_code_id: string;
+          discount_code: string;
+          usage_percentage: number;
+          commission_rate: number;
+          commission_amount: number;
+        };
+      } = {};
+
+      confirmedBookings.forEach((booking: any) => {
+        // หา discount code ที่ตรงกัน
+        const discountCode = advertiserDiscountCodes.find(
+          (dc: any) => dc.id === booking.discount_code_id
+        );
+        if (!discountCode) return; // ข้าม booking ที่ไม่ใช่ discount code ของ advertiser นี้
+
+        const packageId = booking.package_id;
+
+        if (!packageRevenue[packageId]) {
+          // คำนวณ usage percentage และ commission rate
+          const maxGuests =
+            discountCode.package?.max_guests || discountCode.max_uses;
+          const usagePercentage = maxGuests
+            ? (discountCode.current_uses / maxGuests) * 100
+            : 0;
+
+          let commissionRate = 0;
+          if (usagePercentage > 50 && usagePercentage < 75) {
+            commissionRate = 3;
+          } else if (usagePercentage >= 75 && usagePercentage < 100) {
+            commissionRate = 5;
+          } else if (usagePercentage >= 100) {
+            commissionRate = 10;
+          }
+
+          packageRevenue[packageId] = {
+            package_id: packageId,
+            package_name:
+              discountCode.package?.title ||
+              discountCode.package_name ||
+              "ไม่พบแพ็กเกจ",
+            total_revenue: 0,
+            discount_code_id: discountCode.id,
+            discount_code: discountCode.code,
+            usage_percentage: usagePercentage,
+            commission_rate: commissionRate,
+            commission_amount: 0,
+          };
+        }
+
+        packageRevenue[packageId].total_revenue += booking.final_amount || 0;
+      });
+
+      // คำนวณค่าคอมมิชชั่น
+      Object.values(packageRevenue).forEach((pkg) => {
+        pkg.commission_amount = (pkg.total_revenue * pkg.commission_rate) / 100;
+      });
+
+      console.log("🔍 Calculated package revenues:", packageRevenue);
+      setDiscountCommissions(Object.values(packageRevenue) as any);
     } catch (error) {
       console.error("Error fetching discount commissions:", error);
       setDiscountCommissions([]);
@@ -284,6 +489,33 @@ const AdvertiserDashboard = () => {
     } catch (error) {
       console.error("Error fetching upcoming trips:", error);
       setUpcomingTrips([]);
+    }
+  };
+
+  const fetchMonthlyCommissions = async () => {
+    if (!user || userRole !== "advertiser") return;
+
+    try {
+      console.log(
+        "🔍 Fetching monthly commissions for:",
+        user.id,
+        selectedMonth,
+        selectedYear
+      );
+
+      const data = await apiRequest(
+        `/api/advertiser/${user.id}/commissions/monthly?month=${selectedMonth}&year=${selectedYear}`
+      );
+
+      console.log("🔍 Monthly commission data:", data);
+      setMonthlyCommissionData(data);
+
+      // อัปเดต monthlyCommission สำหรับ stats card
+      setMonthlyCommission(data.total_commission || 0);
+    } catch (error) {
+      console.error("Error fetching monthly commissions:", error);
+      setMonthlyCommissionData(null);
+      setMonthlyCommission(0);
     }
   };
 
@@ -360,12 +592,12 @@ const AdvertiserDashboard = () => {
       <Navbar />
       <div className="container mx-auto p-6 pt-24">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">
+          <h1 className="text-3xl font-bold text-black mb-2">
             {userRole === "customer"
               ? "แดชบอร์ดนักท่องเที่ยว"
               : "แดชบอร์ดคนกลาง"}
           </h1>
-          <p className="text-white/80">
+          <p className="text-black/80">
             {userRole === "customer"
               ? "ข้อมูลการเดินทางและรีวิวของคุณ"
               : "ภาพรวมและสถิติของคุณ"}
@@ -378,13 +610,34 @@ const AdvertiserDashboard = () => {
             <Card className="bg-white/95 backdrop-blur-sm">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  ค่าคอมมิชชั่นเดือนนี้
+                  ค่าคอมมิชชั่นเดือนที่เลือก
                 </CardTitle>
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  ฿{monthlyCommission.toLocaleString()}
+                  ฿
+                  {(
+                    monthlyCommission +
+                    discountCommissions.reduce(
+                      (total: number, commission: any) =>
+                        total + (commission.commission_amount || 0),
+                      0
+                    )
+                  ).toLocaleString()}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  ปกติ: ฿{monthlyCommission.toLocaleString()} | โค้ดส่วนลด: ฿
+                  {discountCommissions
+                    .reduce(
+                      (total: number, commission: any) =>
+                        total + (commission.commission_amount || 0),
+                      0
+                    )
+                    .toLocaleString()}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {selectedMonth}/{selectedYear}
                 </div>
               </CardContent>
             </Card>
@@ -710,6 +963,7 @@ const AdvertiserDashboard = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>โค้ด</TableHead>
+                        <TableHead>แพ็กเกจ</TableHead>
                         <TableHead>ส่วนลด</TableHead>
                         <TableHead>การใช้งาน</TableHead>
                         <TableHead>เปอร์เซ็นต์การใช้</TableHead>
@@ -725,13 +979,34 @@ const AdvertiserDashboard = () => {
                             {discountCode.code}
                           </TableCell>
                           <TableCell>
-                            {discountCode.discount_percentage}%
+                            {discountCode.package_name ? (
+                              <Button
+                                variant="link"
+                                className="p-0 h-auto text-blue-600 hover:text-blue-800"
+                                onClick={() =>
+                                  navigate(
+                                    `/packages/${discountCode.package_id}`
+                                  )
+                                }
+                              >
+                                {discountCode.package_name}
+                              </Button>
+                            ) : (
+                              <span className="text-gray-400">
+                                ไม่พบแพ็กเกจ
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {discountCode.discount_type === "percentage"
+                              ? `${discountCode.discount_value}%`
+                              : `฿${discountCode.discount_value}`}
                           </TableCell>
                           <TableCell>
                             <div className="space-y-1">
                               <div className="text-sm">
                                 {discountCode.current_uses}/
-                                {discountCode.max_uses}
+                                {discountCode.package?.max_guests || "ไม่ระบุ"}
                               </div>
                               <div className="w-full bg-gray-200 rounded-full h-2">
                                 <div
@@ -788,126 +1063,190 @@ const AdvertiserDashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Promo Commission History */}
+            {/* Discount Commission Month/Year Selector */}
             <Card className="mt-6 bg-white/95 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle>
+                  เลือกเดือน/ปี สำหรับค่าคอมมิชชั่นจากโค้ดส่วนลด
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-4 items-end">
+                  <div className="space-y-2">
+                    <Label>เดือน</Label>
+                    <Select
+                      value={discountSelectedMonth.toString()}
+                      onValueChange={(value) =>
+                        setDiscountSelectedMonth(parseInt(value))
+                      }
+                    >
+                      <SelectTrigger className="w-40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">มกราคม</SelectItem>
+                        <SelectItem value="2">กุมภาพันธ์</SelectItem>
+                        <SelectItem value="3">มีนาคม</SelectItem>
+                        <SelectItem value="4">เมษายน</SelectItem>
+                        <SelectItem value="5">พฤษภาคม</SelectItem>
+                        <SelectItem value="6">มิถุนายน</SelectItem>
+                        <SelectItem value="7">กรกฎาคม</SelectItem>
+                        <SelectItem value="8">สิงหาคม</SelectItem>
+                        <SelectItem value="9">กันยายน</SelectItem>
+                        <SelectItem value="10">ตุลาคม</SelectItem>
+                        <SelectItem value="11">พฤศจิกายน</SelectItem>
+                        <SelectItem value="12">ธันวาคม</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>ปี</Label>
+                    <Select
+                      value={discountSelectedYear.toString()}
+                      onValueChange={(value) =>
+                        setDiscountSelectedYear(parseInt(value))
+                      }
+                    >
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 11 }, (_, i) => 2020 + i).map(
+                          (year) => (
+                            <SelectItem key={year} value={year.toString()}>
+                              {year}
+                            </SelectItem>
+                          )
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button onClick={fetchDiscountCommissions} variant="outline">
+                    ดูข้อมูล
+                  </Button>
+                </div>
+              </CardContent>
               <CardHeader>
                 <CardTitle>ค่าคอมมิชชั่นจากโค้ดส่วนลด</CardTitle>
                 <CardDescription>
+                  เดือน {discountSelectedMonth}/{discountSelectedYear} -
                   รายการค่าคอมมิชชั่นจากการใช้โค้ดส่วนลด
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {discountCommissions.length === 0 ? (
                   <p className="text-muted-foreground text-center py-4">
-                    ยังไม่มีค่าคอมมิชชั่นจากโค้ดส่วนลด
+                    ไม่มีค่าคอมมิชชั่นจากโค้ดส่วนลดในเดือนนี้
                   </p>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>วันที่</TableHead>
-                        <TableHead>Booking ID</TableHead>
-                        <TableHead>อัตราคอมมิชชั่น</TableHead>
-                        <TableHead>จำนวนเงิน</TableHead>
-                        <TableHead>สถานะ</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {discountCommissions.slice(0, 10).map((commission) => (
-                        <TableRow key={commission.id}>
-                          <TableCell>
-                            {new Date(commission.created_at).toLocaleDateString(
-                              "th-TH"
-                            )}
-                          </TableCell>
-                          <TableCell className="font-mono text-xs">
-                            {commission.booking_id.slice(0, 8)}...
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {commission.commission_percentage}%
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <span className="font-semibold text-green-600">
-                              ฿{commission.commission_amount.toLocaleString()}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                commission.status === "paid"
-                                  ? "default"
-                                  : "secondary"
-                              }
-                            >
-                              {commission.status === "paid"
-                                ? "จ่ายแล้ว"
-                                : "รอดำเนินการ"}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
+                  <>
+                    <div className="mb-4 p-4 bg-green-50 rounded-lg border">
+                      <p className="text-sm text-green-600 mb-1">
+                        รวมค่าคอมมิชชั่นในเดือนนี้
+                      </p>
+                      <p className="text-2xl font-bold text-green-700">
+                        ฿
+                        {discountCommissions
+                          .reduce(
+                            (total: number, commission: any) =>
+                              total + (commission.commission_amount || 0),
+                            0
+                          )
+                          .toLocaleString()}
+                      </p>
+                    </div>
 
-            {/* Regular Commission History */}
-            <Card className="mt-6 bg-white/95 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle>ประวัติค่าคอมมิชชั่นทั่วไป</CardTitle>
-                <CardDescription>
-                  รายการค่าคอมมิชชั่นจากการจองปกติ
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {commissions.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-4">
-                    ยังไม่มีข้อมูลค่าคอมมิชชั่น
-                  </p>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>วันที่</TableHead>
-                        <TableHead>จำนวนเงิน</TableHead>
-                        <TableHead>เปอร์เซ็นต์</TableHead>
-                        <TableHead>สถานะ</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {commissions.slice(0, 10).map((commission) => (
-                        <TableRow key={commission.id}>
-                          <TableCell>
-                            {new Date(commission.created_at).toLocaleDateString(
-                              "th-TH"
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            ฿{commission.commission_amount.toLocaleString()}
-                          </TableCell>
-                          <TableCell>
-                            {commission.commission_percentage}%
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                commission.status === "paid"
-                                  ? "default"
-                                  : "secondary"
-                              }
-                            >
-                              {commission.status === "paid"
-                                ? "จ่ายแล้ว"
-                                : "รอจ่าย"}
-                            </Badge>
-                          </TableCell>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>ชื่อแพ็กเกจ</TableHead>
+                          <TableHead>โค้ดส่วนลด</TableHead>
+                          <TableHead>Usage Rate</TableHead>
+                          <TableHead>รายได้รวม</TableHead>
+                          <TableHead>อัตราคอมมิชชั่น</TableHead>
+                          <TableHead>จำนวนเงิน</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {discountCommissions.map(
+                          (commission: any, index: number) => (
+                            <TableRow key={commission.package_id || index}>
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium">
+                                    {commission.package_name}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {commission.package_id}
+                                  </p>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <span className="font-mono font-bold text-blue-600">
+                                  {commission.discount_code}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium">
+                                      {commission.usage_percentage?.toFixed(1)}%
+                                    </span>
+                                  </div>
+                                  <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div
+                                      className={`h-2 rounded-full ${
+                                        commission.usage_percentage >= 100
+                                          ? "bg-green-600"
+                                          : commission.usage_percentage >= 75
+                                          ? "bg-blue-600"
+                                          : commission.usage_percentage > 50
+                                          ? "bg-yellow-600"
+                                          : "bg-gray-400"
+                                      }`}
+                                      style={{
+                                        width: `${Math.min(
+                                          commission.usage_percentage || 0,
+                                          100
+                                        )}%`,
+                                      }}
+                                    ></div>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                ฿
+                                {commission.total_revenue?.toLocaleString() ||
+                                  0}
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant={
+                                    commission.commission_rate >= 10
+                                      ? "default"
+                                      : commission.commission_rate >= 5
+                                      ? "secondary"
+                                      : commission.commission_rate >= 3
+                                      ? "outline"
+                                      : "destructive"
+                                  }
+                                >
+                                  {commission.commission_rate}%
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <span className="font-semibold text-green-600">
+                                  ฿
+                                  {commission.commission_amount?.toLocaleString() ||
+                                    0}
+                                </span>
+                              </TableCell>
+                            </TableRow>
+                          )
+                        )}
+                      </TableBody>
+                    </Table>
+                  </>
                 )}
               </CardContent>
             </Card>

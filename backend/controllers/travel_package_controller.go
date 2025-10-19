@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"strings"
 	"trip-trader-backend/models"
 
@@ -43,13 +44,16 @@ func convertAllPackagesTags(packages []models.TravelPackage) []models.TravelPack
 	return packages
 }
 
-// ดึง travel packages ทั้งหมดพร้อมข้อมูล advertiser
+// ดึง travel packages ทั้งหมดพร้อมข้อมูล advertiser (เฉพาะ active packages)
 func GetAllPackagesHandler(c *gin.Context, db *gorm.DB) {
 	var packages []models.TravelPackage
-	println("Fetching all packages with advertisers")
+	println("Fetching all active packages with advertisers")
 	
-	// ใช้ GORM Find พร้อม Preload ข้อมูล Advertisers (many-to-many relationship)
-	result := db.Preload("Advertisers").Preload("Advertiser").Find(&packages)
+	// ใช้ GORM Find พร้อม Preload ข้อมูล Advertisers และกรองเฉพาะ active packages
+	result := db.Where("is_active = ? OR is_active IS NULL", true).
+		Preload("Advertisers").
+		Preload("Advertiser").
+		Find(&packages)
 	if result.Error != nil {
 		c.JSON(500, gin.H{"error": result.Error.Error()})
 		return
@@ -61,22 +65,29 @@ func GetAllPackagesHandler(c *gin.Context, db *gorm.DB) {
 	c.JSON(200, packages)
 }
 
-// ดึง travel package โดย ID - แสดงเป็น packageList ที่ filter ด้วย packageId
+// ดึง travel package โดย ID - แสดงเป็น packageList ที่ filter ด้วย packageId (เฉพาะ active packages)
 func GetPackageByIDHandler(c *gin.Context, db *gorm.DB) {
 	id := c.Param("id")
 	var pkg models.TravelPackage
 	
 	// Debug log
-	println("Searching for package with ID:", id)
+	println("Searching for active package with ID:", id)
 	
-	result := db.Where("id = ?", id).First(&pkg)
+	result := db.Where("id = ? AND (is_active = ? OR is_active IS NULL)", id, true).First(&pkg)
 	if result.Error != nil {
 		println("Error:", result.Error.Error())
-		c.JSON(404, gin.H{
-			"error": "Package not found", 
-			"id": id,
-			"sql_error": result.Error.Error(),
-		})
+		if result.Error == gorm.ErrRecordNotFound {
+			c.JSON(404, gin.H{
+				"error": "Package not found or has been deactivated", 
+				"id": id,
+			})
+		} else {
+			c.JSON(404, gin.H{
+				"error": "Package not found", 
+				"id": id,
+				"sql_error": result.Error.Error(),
+			})
+		}
 		return
 	}
 	
@@ -140,6 +151,10 @@ func CreatePackageHandler(c *gin.Context, db *gorm.DB) {
 	
 	// สร้าง UUID สำหรับ package ใหม่
 	pkg.ID = uuid.New()
+	
+	// Set default is_active = true
+	trueValue := true
+	pkg.IsActive = &trueValue
 	
 	// สร้าง record ใหม่ (GORM Create)
 	result := db.Create(&pkg)
@@ -230,14 +245,21 @@ func UpdatePackageHandler(c *gin.Context, db *gorm.DB) {
 
 	// จัดการ advertiser_ids (multiple advertisers support)
 	if advertiserIdsInterface, ok := requestData["advertiser_ids"]; ok {
+		fmt.Printf("🔍 Received advertiser_ids: %+v (Type: %T)\n", advertiserIdsInterface, advertiserIdsInterface)
+		
 		// Convert interface{} to []string
 		if advertiserIdsSlice, ok := advertiserIdsInterface.([]interface{}); ok {
 			var advertiserIds []string
 			for _, id := range advertiserIdsSlice {
 				if idStr, ok := id.(string); ok {
 					advertiserIds = append(advertiserIds, idStr)
+					fmt.Printf("🔍 Added advertiser ID: %s\n", idStr)
+				} else {
+					fmt.Printf("⚠️ Invalid advertiser ID type: %+v (Type: %T)\n", id, id)
 				}
 			}
+			
+			fmt.Printf("🔍 Total advertiser IDs parsed: %d\n", len(advertiserIds))
 			
 			// อัปเดต package-advertiser relationships
 			if len(advertiserIds) > 0 {
@@ -260,10 +282,20 @@ func UpdatePackageHandler(c *gin.Context, db *gorm.DB) {
 						AdvertiserID:    advertiserUUID,
 					}
 					
+					fmt.Printf("🔗 Creating relationship: Package %s <-> Advertiser %s\n", packageUUID, advertiserUUID)
+					
 					if err := db.Create(&relationship).Error; err != nil {
-						c.JSON(500, gin.H{"error": "Failed to create advertiser relationship"})
+						fmt.Printf("❌ Failed to create relationship: %v\n", err)
+						c.JSON(500, gin.H{
+							"error": "Failed to create advertiser relationship",
+							"details": err.Error(),
+							"package_id": packageUUID.String(),
+							"advertiser_id": advertiserUUID.String(),
+						})
 						return
 					}
+					
+					fmt.Printf("✅ Relationship created successfully\n")
 				}
 				
 				// อัปเดต primary advertiser_id (ใช้ advertiser คนแรกเป็น primary)
@@ -439,7 +471,7 @@ func GetPackageAdvertisersHandler(c *gin.Context, db *gorm.DB) {
 	c.JSON(200, pkg.Advertisers)
 }
 
-// ลบ travel package (พร้อมกับ relationships)
+// ลบ travel package (Soft Delete - ปิดการใช้งานแทนการลบ)
 func DeletePackageHandler(c *gin.Context, db *gorm.DB) {
 	packageID := c.Param("id")
 	
@@ -450,23 +482,62 @@ func DeletePackageHandler(c *gin.Context, db *gorm.DB) {
 		return
 	}
 	
-	// ลบ package-advertiser relationships ก่อน
-	if err := db.Where("package_id = ?", packageUUID).Delete(&models.PackageAdvertiser{}).Error; err != nil {
-		c.JSON(500, gin.H{"error": "Failed to delete package relationships"})
+	// เริ่ม transaction เพื่อให้การอัปเดตเป็น atomic
+	tx := db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+	
+	// ตรวจสอบว่า package มีอยู่จริงหรือไม่
+	var pkg models.TravelPackage
+	if err := tx.First(&pkg, packageUUID).Error; err != nil {
+		tx.Rollback()
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(404, gin.H{"error": "Package not found"})
+		} else {
+			c.JSON(500, gin.H{"error": "Failed to find package"})
+		}
 		return
 	}
 	
-	// ลบ package
-	result := db.Where("id = ?", packageUUID).Delete(&models.TravelPackage{})
-	if result.Error != nil {
-		c.JSON(500, gin.H{"error": result.Error.Error()})
+	// ตรวจสอบว่า package ถูกปิดใช้งานแล้วหรือไม่
+	if pkg.IsActive != nil && !*pkg.IsActive {
+		tx.Rollback()
+		c.JSON(400, gin.H{"error": "Package is already deactivated"})
 		return
 	}
 	
-	if result.RowsAffected == 0 {
-		c.JSON(404, gin.H{"error": "Package not found"})
+	// 1. ปิดการใช้งาน discount codes ที่เชื่อมกับ package นี้
+	falseValue := false
+	if err := tx.Model(&models.DiscountCode{}).
+		Where("package_id = ? AND is_active = ?", packageUUID, true).
+		Update("is_active", &falseValue).Error; err != nil {
+		tx.Rollback()
+		c.JSON(500, gin.H{"error": "Failed to deactivate discount codes"})
 		return
 	}
+	
+	// 2. ปิดการใช้งาน package (Soft Delete)
+	if err := tx.Model(&models.TravelPackage{}).
+		Where("id = ?", packageUUID).
+		Update("is_active", &falseValue).Error; err != nil {
+		tx.Rollback()
+		c.JSON(500, gin.H{"error": "Failed to deactivate package"})
+		return
+	}
+	
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(500, gin.H{"error": "Failed to commit transaction"})
+		return
+	}
+	
+	c.JSON(200, gin.H{
+		"message": "Package deactivated successfully",
+		"note": "Package and related discount codes have been deactivated but preserved in database",
+	})
 	
 	c.JSON(200, gin.H{"message": "Package deleted successfully"})
 }

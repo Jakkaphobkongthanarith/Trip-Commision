@@ -23,6 +23,7 @@ type TravelPackage struct {
 	DiscountPercentage float64 `json:"discount_percentage" gorm:"column:discount_percentage;default:0"`
 	MobileNumber     *string   `json:"mobile_number" gorm:"column:mobile_number;type:text"`
 	AdvertiserID     *uuid.UUID `json:"advertiser_id" gorm:"column:advertiser_id;type:uuid"` // Primary advertiser (backward compatibility)
+	IsActive         *bool     `json:"is_active" gorm:"column:is_active;type:boolean;default:true"` // เพิ่มสำหรับ soft delete
 	
 	// Multiple advertisers relationship (many-to-many)
 	Advertisers []User `json:"advertisers,omitempty" gorm:"many2many:package_advertisers;joinForeignKey:travel_package_id;joinReferences:advertiser_id;"`
@@ -34,5 +35,5 @@ type TravelPackage struct {
 type PackageAdvertiser struct {
 	TravelPackageID uuid.UUID `json:"travel_package_id" gorm:"column:travel_package_id;type:uuid;primaryKey"`
 	AdvertiserID    uuid.UUID `json:"advertiser_id" gorm:"column:advertiser_id;type:uuid;primaryKey"`
-	PdfURL           *string   `json:"pdf_url" gorm:"column:pdf_url;type:text"`
+	PdfURL          *string   `json:"pdf_url,omitempty" gorm:"column:pdf_url;type:text;null"` // Optional PDF URL
 }

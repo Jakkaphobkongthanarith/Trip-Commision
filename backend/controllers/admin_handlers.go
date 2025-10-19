@@ -98,5 +98,31 @@ func GetBookingsByPackageHandler(c *gin.Context, db *gorm.DB) {
 
 
 func GetCommissionsHandler(c *gin.Context, db *gorm.DB) {
-	c.JSON(200, gin.H{"message": "GetCommissions - Not implemented yet", "data": []interface{}{}})
+	var commissions []map[string]interface{}
+	
+	// Query commissions with JOIN to get more details
+	err := db.Raw(`
+		SELECT 
+			c.id,
+			c.booking_id,
+			c.commission_amount,
+			c.commission_percentage,
+			c.status,
+			c.created_at,
+			b.customer_id as advertiser_id,
+			b.package_id
+		FROM commissions c
+		LEFT JOIN bookings b ON c.booking_id = b.id
+		ORDER BY c.created_at DESC
+	`).Scan(&commissions).Error
+	
+	if err != nil {
+		c.JSON(500, gin.H{
+			"error":   "Failed to fetch commissions",
+			"details": err.Error(),
+		})
+		return
+	}
+	
+	c.JSON(200, commissions)
 }

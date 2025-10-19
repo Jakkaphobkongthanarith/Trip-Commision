@@ -17,14 +17,16 @@ import (
 )
 
 type CreateBookingPaymentRequest struct {
-	PackageID        uuid.UUID `json:"packageId" binding:"required"`
-	GuestCount       int       `json:"guestCount" binding:"required,min=1"`
-	TotalAmount      float64   `json:"totalAmount" binding:"required,min=0"`
-	FinalAmount      float64   `json:"finalAmount" binding:"required,min=0"`
-	ContactName      string    `json:"contact_name" binding:"required"`
-	ContactPhone     string    `json:"contact_phone" binding:"required"`
-	ContactEmail     string    `json:"contact_email" binding:"required,email"`
-	SpecialRequests  *string   `json:"special_requests"`
+	PackageID        uuid.UUID  `json:"packageId" binding:"required"`
+	GuestCount       int        `json:"guestCount" binding:"required,min=1"`
+	TotalAmount      float64    `json:"totalAmount" binding:"required,min=0"`
+	FinalAmount      float64    `json:"finalAmount" binding:"required,min=0"`
+	DiscountCodeID   *uuid.UUID `json:"discount_code_id,omitempty"`    // ใช้ snake_case ตาม frontend
+	GlobalCodeID     *uuid.UUID `json:"global_code_id,omitempty"`      // ใช้ snake_case ตาม frontend
+	ContactName      string     `json:"contact_name" binding:"required"`
+	ContactPhone     string     `json:"contact_phone" binding:"required"`
+	ContactEmail     string     `json:"contact_email" binding:"required,email"`
+	SpecialRequests  *string    `json:"special_requests"`
 }
 
 func CreateBookingPaymentHandler(c *gin.Context, db *gorm.DB) {
@@ -74,6 +76,8 @@ func CreateBookingPaymentHandler(c *gin.Context, db *gorm.DB) {
 		TotalAmount:     req.TotalAmount,
 		DiscountAmount:  req.TotalAmount - req.FinalAmount,
 		FinalAmount:     req.FinalAmount,
+		DiscountCodeID:  req.DiscountCodeID,   // เพิ่มการบันทึก discount code ID
+		GlobalCodeID:    req.GlobalCodeID,     // เพิ่มการบันทึก global code ID
 		Status:          "pending",
 		PaymentStatus:   "pending",
 		ExpiresAt:       &expiresAt,
@@ -83,10 +87,18 @@ func CreateBookingPaymentHandler(c *gin.Context, db *gorm.DB) {
 		SpecialRequests: req.SpecialRequests,
 	}
 
+	// Debug log สำหรับ discount codes
+	fmt.Printf("🎫 Creating booking with discount info:\n")
+	fmt.Printf("   - Discount Code ID: %v\n", req.DiscountCodeID)
+	fmt.Printf("   - Global Code ID: %v\n", req.GlobalCodeID)
+	fmt.Printf("   - Discount Amount: %.2f\n", req.TotalAmount - req.FinalAmount)
+
 	if err := db.Create(&booking).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create booking"})
 		return
 	}
+
+	fmt.Printf("✅ Booking created successfully with ID: %s\n", booking.ID)
 
 	// Check if we're in test mode (for mockup)
 	stripeKey := os.Getenv("STRIPE_SECRET_KEY")

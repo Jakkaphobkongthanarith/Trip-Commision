@@ -29,7 +29,7 @@ func (nc *NotificationController) CreateTestNotifications(c *gin.Context) {
 			Message:     "การจองแพคเกจ 'เที่ยวอยุธยา 2 วัน 1 คืน' เสร็จสมบูรณ์แล้ว",
 			Category:    "payment",
 			Priority:    1,
-			ActionURL:   "/booking/details/123",
+			ActionURL:   "/profile",
 			IsRead:      false,
 		},
 		{
@@ -39,7 +39,7 @@ func (nc *NotificationController) CreateTestNotifications(c *gin.Context) {
 			Message:     "ใช้โค้ด SAVE15 สำหรับการจองครั้งถัดไป วันหมดอายุ: 31 ธ.ค. 2024",
 			Category:    "discount",
 			Priority:    2,
-			ActionURL:   "/discount-codes",
+			ActionURL:   "/advertiser",
 			IsRead:      false,
 		},
 		{
@@ -49,7 +49,7 @@ func (nc *NotificationController) CreateTestNotifications(c *gin.Context) {
 			Message:     "คุณได้รับคอมมิชชั่นจากการใช้โค้ด SUMMER20 จำนวน 450 บาท",
 			Category:    "commission",
 			Priority:    1,
-			ActionURL:   "/advertiser/commissions",
+			ActionURL:   "/advertiser",
 			IsRead:      true,
 		},
 		{
@@ -59,7 +59,7 @@ func (nc *NotificationController) CreateTestNotifications(c *gin.Context) {
 			Message:     "อีก 3 วันจะถึงวันเดินทางของคุณ โปรดเตรียมเอกสารให้พร้อม",
 			Category:    "booking",
 			Priority:    1,
-			ActionURL:   "/booking/checklist/456",
+			ActionURL:   "/profile",
 			IsRead:      false,
 		},
 	}

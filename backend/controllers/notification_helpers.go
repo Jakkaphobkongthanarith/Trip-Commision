@@ -26,7 +26,7 @@ func SendNotificationToAdvertiser(advertiserID uuid.UUID, discountCode models.Di
 		Type:     "discount_code",
 		Category: "info",
 		Priority: 2,
-		ActionURL: "/advertiser/discount-codes",
+		ActionURL: "/advertiser",  // แก้ไขให้ไปหน้า AdvertiserDashboard แทน
 		Data: models.JSONMap{
 			"discount_code_id": discountCode.ID,
 			"package_id": discountCode.PackageID,
@@ -56,7 +56,7 @@ func SendCommissionEarnedNotification(commission models.Commission, db *gorm.DB)
 		Type:     "commission_earned",
 		Category: "info",
 		Priority: 2,
-		ActionURL: "/advertiser/commissions",
+		ActionURL: "/advertiser",  // แก้ไขให้ไปหน้า AdvertiserDashboard แทน
 		Data: models.JSONMap{
 			"commission_id": commission.ID,
 			"amount": commission.CommissionAmount,
@@ -86,7 +86,7 @@ func SendNewBookingNotificationToAdvertiser(booking models.Booking, pkg models.T
 		Type:     "new_booking",
 		Category: "important", 
 		Priority: 1,
-		ActionURL: fmt.Sprintf("/advertiser/bookings?package_id=%s", pkg.ID),
+		ActionURL: "/advertiser",  // แก้ไขให้ไปหน้า AdvertiserDashboard แทน
 		Data: models.JSONMap{
 			"package_id": pkg.ID,
 			"booking_id": booking.ID,
@@ -106,12 +106,12 @@ func SendPaymentSuccessNotification(booking models.Booking, db *gorm.DB) {
 
 	notification := models.Notification{
 		UserID:   booking.CustomerID,
-		Title:    "✅ จองสำเร็จ!",
+		Title:    "🎉 การจองสำเร็จ!",
 		Message:  fmt.Sprintf("การจอง %s ของคุณสำเร็จแล้ว เตรียมพร้อมสำหรับการเดินทาง!", pkg.Title),
 		Type:     "booking_success",
 		Category: "important",
 		Priority: 1,
-		ActionURL: fmt.Sprintf("/bookings/%s", booking.ID),
+		ActionURL: "/profile",  // แก้ไขให้ไปหน้า Profile แทน
 		Data: models.JSONMap{
 			"booking_id": booking.ID,
 			"package_title": pkg.Title,
