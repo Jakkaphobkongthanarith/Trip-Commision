@@ -36,6 +36,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { ImageCrop } from "@/components/ImageCrop";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -158,6 +159,11 @@ export default function PackageManagement() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Image crop states
+  const [showCrop, setShowCrop] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string>("");
+  const [aspectRatio, setAspectRatio] = useState<number>(16 / 9); // Default 16:9 for package cards
 
   // Advertiser selection modal states
   const [isAdvertiserModalOpen, setIsAdvertiserModalOpen] = useState(false);
@@ -712,13 +718,11 @@ export default function PackageManagement() {
     setIsUploading(true);
     try {
       const objectUrl = URL.createObjectURL(file);
-      setImagePreview(objectUrl);
-      setFormData((prev) => ({ ...prev, image_url: objectUrl }));
-
-      toast({
-        title: "สำเร็จ",
-        description: "อัปโหลดรูปภาพเรียบร้อยแล้ว",
-      });
+      
+      // Open crop modal instead of directly setting image
+      setCropImageSrc(objectUrl);
+      setShowCrop(true);
+      
     } catch (error) {
       console.error("Error uploading image:", error);
       toast({
@@ -728,6 +732,26 @@ export default function PackageManagement() {
       });
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  // Crop functions
+  const handleCropComplete = (croppedImageUrl: string) => {
+    setImagePreview(croppedImageUrl);
+    setFormData((prev) => ({ ...prev, image_url: croppedImageUrl }));
+    setShowCrop(false);
+    
+    toast({
+      title: "สำเร็จ",
+      description: "ปรับแต่งรูปภาพเรียบร้อยแล้ว",
+    });
+  };
+
+  const handleCropCancel = () => {
+    setShowCrop(false);
+    if (cropImageSrc) {
+      URL.revokeObjectURL(cropImageSrc);
+      setCropImageSrc("");
     }
   };
 
@@ -1116,7 +1140,26 @@ export default function PackageManagement() {
 
                   {/* Image Upload */}
                   <div className="space-y-4">
-                    <Label htmlFor="image">รูปภาพแพคเกจ *</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="image">รูปภาพแพคเกจ *</Label>
+                      <div className="flex items-center gap-2">
+                        <Label className="text-sm">อัตราส่วน:</Label>
+                        <Select
+                          value={aspectRatio.toString()}
+                          onValueChange={(value) => setAspectRatio(parseFloat(value))}
+                        >
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={(16 / 9).toString()}>16:9 (แนวนอน)</SelectItem>
+                            <SelectItem value={(4 / 3).toString()}>4:3 (มาตรฐาน)</SelectItem>
+                            <SelectItem value="1">1:1 (สี่เหลี่ยมจัตุรัส)</SelectItem>
+                            <SelectItem value={(3 / 4).toString()}>3:4 (แนวตั้ง)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                     <div
                       className={`relative border-2 border-dashed rounded-lg p-6 transition-colors ${
                         isDragOver
@@ -1172,7 +1215,22 @@ export default function PackageManagement() {
                     )}
 
                     <div className="space-y-2">
-                      <Label htmlFor="image_url">หรือใส่ URL รูปภาพ</Label>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="image_url">หรือใส่ URL รูปภาพ</Label>
+                        {formData.image_url && !imagePreview && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setCropImageSrc(formData.image_url);
+                              setShowCrop(true);
+                            }}
+                          >
+                            🎨 Crop รูปภาพ
+                          </Button>
+                        )}
+                      </div>
                       <Input
                         type="url"
                         id="image_url"
@@ -1729,6 +1787,15 @@ export default function PackageManagement() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Image Crop Modal */}
+      <ImageCrop
+        src={cropImageSrc}
+        isOpen={showCrop}
+        onClose={handleCropCancel}
+        onCropComplete={handleCropComplete}
+        aspectRatio={aspectRatio}
+      />
     </div>
   );
 }
