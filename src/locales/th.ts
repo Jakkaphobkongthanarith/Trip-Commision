@@ -6,17 +6,18 @@ export default {
   "nav.logout": "ออกจากระบบ",
   "nav.profile": "โปรไฟล์",
   "nav.dashboard": "แดชบอร์ด",
-  
+
   // Hero Section
   "hero.discover": "ค้นพบ",
-  "hero.journey": "การเดินทางที่",
-  "hero.unique": "ไม่เหมือนใคร",
+  "hero.journey": "การเดินทาง",
+  "hero.unique": "ที่ไม่เหมือนใคร",
   "hero.description": "แพลตฟอร์มท่องเที่ยวที่รวมแพคเกจสุดพิเศษจากทั่วประเทศไทย",
-  "hero.description2": "พร้อมระบบส่วนลดและค่าคอมมิชชั่นสำหลับนักโฆษณา",
-  
+  "hero.description2": "พร้อมระบบส่วนลดและค่าคอมมิชชันสำหรับนักโฆษณา",
+
   // Packages
   "packages.title": "แพคเกจท่องเที่ยวยอดนิยม",
-  "packages.description": "เลือกจากแพคเกจท่องเที่ยวคุณภาพสูงที่คัดสรรมาเป็นพิเศษ",
+  "packages.description":
+    "เลือกจากแพคเกจท่องเที่ยวคุณภาพสูงที่คัดสรรมาเป็นพิเศษ",
   "packages.description2": "พร้อมส่วนลดและโปรโมชั่นสุดพิเศษ",
   "packages.viewAll": "ดูแพคเกจทั้งหมด",
   "packages.loading": "กำลังโหลด...",
@@ -32,11 +33,11 @@ export default {
   "packages.showing": "แสดง",
   "packages.from": "จาก",
   "packages.items2": "รายการ",
-  
+
   // Search
   "search.placeholder": "ค้นหาแพคเกจท่องเที่ยว...",
   "search.button": "ค้นหา",
-  
+
   // Package Details
   "details.backToHome": "กลับหน้าหลัก",
   "details.discount": "ลด",
@@ -58,22 +59,24 @@ export default {
   "details.phone": "เบอร์โทรศัพท์",
   "details.email": "อีเมล",
   "details.specialRequests": "ความต้องการพิเศษ",
-  "details.specialRequestsPlaceholder": "ระบุความต้องการพิเศษ (ถ้าไม่มีให้เว้นว่าง)",
+  "details.specialRequestsPlaceholder":
+    "ระบุความต้องการพิเศษ (ถ้าไม่มีให้เว้นว่าง)",
   "details.guests": "จำนวนผู้เข้าพัก",
   "details.total": "ยอดรวม",
   "details.discount2": "ส่วนลด",
   "details.finalTotal": "ยอดสุทธิ",
   "details.bookNow": "จองเลย",
   "details.processing": "กำลังดำเนินการ...",
-  
+
   // Footer CTA
   "cta.title": "พร้อมเริ่มต้นการเดินทางแล้วใช่มั้ย?",
-  "cta.description": "สมัครสมาชิกวันนี้เพื่อรับส่วนลดพิเศษและข้อเสนอสุดพิเศษจากเรา",
-  
+  "cta.description":
+    "สมัครสมาชิกวันนี้เพื่อรับส่วนลดพิเศษและข้อเสนอสุดพิเศษจากเรา",
+
   // Common
   "common.baht": "฿",
   "common.required": "*",
-  
+
   // Tags Sidebar
   "tags.title": "หมวดหมู่",
   "tags.search": "ค้นหาหมวดหมู่...",
@@ -90,7 +93,7 @@ export default {
   "nav.role.advertiser": "คนกลาง",
   "nav.role.manager": "ผู้จัดการ",
   "nav.role.loggedInAs": "ลอคอินในฐานะ",
-  
+
   // Profile Page
   "profile.title": "โปรไฟล์ของฉัน",
   "profile.backToHome": "กลับหน้าหลัก",
@@ -127,7 +130,7 @@ export default {
   "profile.saveSuccessDesc": "ข้อมูลโปรไฟล์ของคุณได้รับการอัปเดตแล้ว",
   "profile.saveError": "เกิดข้อผิดพลาด",
   "profile.saveErrorDesc": "ไม่สามารถบันทึกข้อมูลได้",
-  
+
   // Toast Messages
   "toast.signOutError": "เกิดข้อผิดพลาด",
   "toast.signOutErrorDesc": "ไม่สามารถออกจากระบบได้",

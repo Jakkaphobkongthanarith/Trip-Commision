@@ -35,5 +35,4 @@ type TravelPackage struct {
 type PackageAdvertiser struct {
 	TravelPackageID uuid.UUID `json:"travel_package_id" gorm:"column:travel_package_id;type:uuid;primaryKey"`
 	AdvertiserID    uuid.UUID `json:"advertiser_id" gorm:"column:advertiser_id;type:uuid;primaryKey"`
-	PdfURL          *string   `json:"pdf_url,omitempty" gorm:"column:pdf_url;type:text;null"` // Optional PDF URL
 }

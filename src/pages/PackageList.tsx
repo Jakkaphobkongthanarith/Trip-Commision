@@ -27,7 +27,7 @@ const MainContent = ({
   return (
     <div
       className={`flex-1 bg-background transition-all duration-300 ${
-        isCollapsed ? "" : "ml-[20%]"
+        isCollapsed ? "" : "md:ml-[20%]"
       }`}
     >
       <main className="flex-1">

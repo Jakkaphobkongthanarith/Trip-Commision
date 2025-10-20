@@ -130,7 +130,7 @@ const SearchBar = () => {
 
         <Button
           size="lg"
-          className="lg:col-span-2 bg-sunset-gradient hover:opacity-90 text-white font-semibold shadow-elegant hover:shadow-glow transition-all duration-300 h-12"
+          className="lg:col-span-2 bg-sunset-gradient hover:opacity-90 text-white font-semibold shadow-elegant hover:shadow-glow transition-all duration-300 h-12 self-center"
           onClick={handleSearch}
         >
           <Search className="h-5 w-5 mr-2" />

@@ -171,6 +171,36 @@ export default function PackageManagement() {
     }
   }, [userRole]);
 
+  // Auto-calculate duration from date range
+  useEffect(() => {
+    if (formData.available_from && formData.available_to) {
+      const startDate = new Date(formData.available_from);
+      const endDate = new Date(formData.available_to);
+
+      if (endDate > startDate) {
+        const timeDiff = endDate.getTime() - startDate.getTime();
+        const dayDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+        setFormData((prev) => ({
+          ...prev,
+          duration: dayDiff.toString(),
+        }));
+      } else if (endDate.getTime() === startDate.getTime()) {
+        // Same day = 1 day trip
+        setFormData((prev) => ({
+          ...prev,
+          duration: "1",
+        }));
+      }
+    } else {
+      // Reset duration if dates are cleared
+      setFormData((prev) => ({
+        ...prev,
+        duration: "",
+      }));
+    }
+  }, [formData.available_from, formData.available_to]);
+
   // Early return หลังจาก useState ทั้งหมด
   if (loading) {
     return (
@@ -283,6 +313,17 @@ export default function PackageManagement() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate duration
+    if (!formData.duration || parseInt(formData.duration) <= 0) {
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "กรุณาเลือกวันที่เริ่มและสิ้นสุดให้ถูกต้อง",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -956,7 +997,7 @@ export default function PackageManagement() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="price">ราคา (บาท) *</Label>
                       <Input
@@ -986,19 +1027,6 @@ export default function PackageManagement() {
                             discount_percentage: e.target.value,
                           })
                         }
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="duration">ระยะเวลา (วัน) *</Label>
-                      <Input
-                        id="duration"
-                        type="number"
-                        min="1"
-                        value={formData.duration}
-                        onChange={(e) =>
-                          setFormData({ ...formData, duration: e.target.value })
-                        }
-                        required
                       />
                     </div>
                   </div>
@@ -1051,6 +1079,24 @@ export default function PackageManagement() {
                       />
                     </div>
                   </div>
+
+                  {/* Auto-calculated duration display */}
+                  {formData.available_from && formData.available_to && (
+                    <div className="p-4 bg-muted/30 rounded-lg border">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Calendar className="h-4 w-4 text-primary" />
+                        <Label className="text-sm font-medium">
+                          ระยะเวลาที่คำนวณได้
+                        </Label>
+                      </div>
+                      <p className="text-lg font-semibold text-primary">
+                        {formData.duration} วัน
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        คำนวณจากวันที่เริ่ม - วันที่สิ้นสุด
+                      </p>
+                    </div>
+                  )}
 
                   {/* Advertiser Selection */}
                   <div>
