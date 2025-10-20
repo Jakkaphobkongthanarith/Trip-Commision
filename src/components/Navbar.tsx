@@ -86,15 +86,6 @@ const Navbar = () => {
             {t("nav.packages")}
           </Button>
 
-          <Button
-            variant="ghost"
-            onClick={() => navigate("/discount-codes")}
-            className="text-foreground hover:text-primary"
-          >
-            <Percent className="h-4 w-4 mr-2" />
-            โค้ดส่วนลด
-          </Button>
-
           {user ? (
             <div className="flex items-center space-x-4">
               <NotificationPanel />

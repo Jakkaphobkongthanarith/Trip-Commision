@@ -1,7 +1,11 @@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { Search, MapPin, Calendar, DollarSign } from "lucide-react";
 import { useState } from "react";
@@ -20,20 +24,20 @@ const SearchBar = () => {
 
   const handleSearch = () => {
     const params = new URLSearchParams();
-    if (searchQuery) params.set('search', searchQuery);
-    if (location) params.set('location', location);
-    
+    if (searchQuery) params.set("search", searchQuery);
+    if (location) params.set("location", location);
+
     // Format date range
     if (dateRange?.from) {
-      params.set('date', format(dateRange.from, 'yyyy-MM-dd'));
+      params.set("date", format(dateRange.from, "yyyy-MM-dd"));
     }
-    
+
     // Price range
     if (priceRange[0] > 0 || priceRange[1] < 50000) {
-      params.set('minPrice', priceRange[0].toString());
-      params.set('maxPrice', priceRange[1].toString());
+      params.set("minPrice", priceRange[0].toString());
+      params.set("maxPrice", priceRange[1].toString());
     }
-    
+
     navigate(`/packages?${params.toString()}`);
   };
 
@@ -52,7 +56,7 @@ const SearchBar = () => {
             className="h-12 border-muted/50 focus:border-primary bg-background/50 backdrop-blur-sm transition-all"
           />
         </div>
-        
+
         <div className="space-y-3">
           <label className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Calendar className="h-4 w-4 text-primary" />
@@ -82,7 +86,10 @@ const SearchBar = () => {
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 bg-popover border-border shadow-elegant" align="start">
+            <PopoverContent
+              className="w-auto p-0 bg-popover border-border shadow-elegant"
+              align="start"
+            >
               <CalendarComponent
                 initialFocus
                 mode="range"
@@ -96,26 +103,33 @@ const SearchBar = () => {
             </PopoverContent>
           </Popover>
         </div>
-        
+
         <div className="space-y-3 lg:col-span-2">
           <label className="text-sm font-semibold text-foreground flex items-center gap-2">
             <DollarSign className="h-4 w-4 text-primary" />
-            ช่วงราคา: ฿{priceRange[0].toLocaleString()} - ฿{priceRange[1].toLocaleString()}
+            ช่วงราคา: ฿{priceRange[0].toLocaleString()} - ฿
+            {priceRange[1].toLocaleString()}
           </label>
-          <div className="px-2 py-4 rounded-lg border border-muted/50 bg-background/50 backdrop-blur-sm">
+          <div className="px-4 py-6 rounded-lg border border-muted/50 bg-background/50 backdrop-blur-sm space-y-4">
             <Slider
               min={0}
               max={50000}
               step={1000}
               value={priceRange}
-              onValueChange={(value) => setPriceRange(value as [number, number])}
+              onValueChange={(value) =>
+                setPriceRange(value as [number, number])
+              }
               className="w-full"
             />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>฿0</span>
+              <span>฿50,000</span>
+            </div>
           </div>
         </div>
-        
-        <Button 
-          size="lg" 
+
+        <Button
+          size="lg"
           className="lg:col-span-2 bg-sunset-gradient hover:opacity-90 text-white font-semibold shadow-elegant hover:shadow-glow transition-all duration-300 h-12"
           onClick={handleSearch}
         >
