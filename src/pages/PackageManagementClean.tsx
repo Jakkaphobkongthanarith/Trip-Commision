@@ -718,11 +718,10 @@ export default function PackageManagement() {
     setIsUploading(true);
     try {
       const objectUrl = URL.createObjectURL(file);
-      
+
       // Open crop modal instead of directly setting image
       setCropImageSrc(objectUrl);
       setShowCrop(true);
-      
     } catch (error) {
       console.error("Error uploading image:", error);
       toast({
@@ -737,16 +736,31 @@ export default function PackageManagement() {
 
   // Crop functions
   const handleCropComplete = (croppedImageUrl: string) => {
+    // croppedImageUrl จะเป็น Supabase URL แล้ว ไม่ใช่ blob URL
     setImagePreview(croppedImageUrl);
     setFormData((prev) => ({ ...prev, image_url: croppedImageUrl }));
     setShowCrop(false);
-    
+
     toast({
       title: "สำเร็จ",
-      description: "ปรับแต่งรูปภาพเรียบร้อยแล้ว",
+      description: "อัปโหลดและปรับแต่งรูปภาพเรียบร้อยแล้ว",
     });
   };
 
+  const handleUploadStart = () => {
+    toast({
+      title: "กำลังอัปโหลด...",
+      description: "โปรดรอสักครู่",
+    });
+  };
+
+  const handleUploadError = (error: string) => {
+    toast({
+      title: "เกิดข้อผิดพลาด",
+      description: error,
+      variant: "destructive",
+    });
+  };
   const handleCropCancel = () => {
     setShowCrop(false);
     if (cropImageSrc) {
@@ -1146,16 +1160,26 @@ export default function PackageManagement() {
                         <Label className="text-sm">อัตราส่วน:</Label>
                         <Select
                           value={aspectRatio.toString()}
-                          onValueChange={(value) => setAspectRatio(parseFloat(value))}
+                          onValueChange={(value) =>
+                            setAspectRatio(parseFloat(value))
+                          }
                         >
                           <SelectTrigger className="w-32">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value={(16 / 9).toString()}>16:9 (แนวนอน)</SelectItem>
-                            <SelectItem value={(4 / 3).toString()}>4:3 (มาตรฐาน)</SelectItem>
-                            <SelectItem value="1">1:1 (สี่เหลี่ยมจัตุรัส)</SelectItem>
-                            <SelectItem value={(3 / 4).toString()}>3:4 (แนวตั้ง)</SelectItem>
+                            <SelectItem value={(16 / 9).toString()}>
+                              16:9 (แนวนอน)
+                            </SelectItem>
+                            <SelectItem value={(4 / 3).toString()}>
+                              4:3 (มาตรฐาน)
+                            </SelectItem>
+                            <SelectItem value="1">
+                              1:1 (สี่เหลี่ยมจัตุรัส)
+                            </SelectItem>
+                            <SelectItem value={(3 / 4).toString()}>
+                              3:4 (แนวตั้ง)
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -1794,6 +1818,8 @@ export default function PackageManagement() {
         isOpen={showCrop}
         onClose={handleCropCancel}
         onCropComplete={handleCropComplete}
+        onUploadStart={handleUploadStart}
+        onUploadError={handleUploadError}
         aspectRatio={aspectRatio}
       />
     </div>

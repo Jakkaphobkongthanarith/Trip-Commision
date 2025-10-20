@@ -12,7 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Crop as CropIcon, RotateCcw, Check, X } from "lucide-react";
+import { Crop as CropIcon, RotateCcw, Check, X, Upload } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import "react-image-crop/dist/ReactCrop.css";
 
 interface ImageCropProps {
@@ -21,6 +22,8 @@ interface ImageCropProps {
   onClose: () => void;
   onCropComplete: (croppedImageUrl: string) => void;
   aspectRatio?: number; // เช่น 16/9, 4/3, 1 (สำหรับสี่เหลี่ยมจัตุรัส)
+  onUploadStart?: () => void; // เมื่อเริ่มอัปโหลด
+  onUploadError?: (error: string) => void; // เมื่อมี error
 }
 
 function centerAspectCrop(
@@ -49,11 +52,14 @@ export function ImageCrop({
   onClose,
   onCropComplete,
   aspectRatio = 16 / 9, // Default aspect ratio
+  onUploadStart,
+  onUploadError,
 }: ImageCropProps) {
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
   const [scale, setScale] = useState(1);
   const [rotate, setRotate] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -65,7 +71,7 @@ export function ImageCrop({
   }
 
   const getCroppedImg = useCallback(
-    (image: HTMLImageElement, crop: PixelCrop): Promise<string> => {
+    (image: HTMLImageElement, crop: PixelCrop): Promise<Blob> => {
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
 
@@ -112,8 +118,7 @@ export function ImageCrop({
               reject(new Error("Canvas is empty"));
               return;
             }
-            const url = URL.createObjectURL(blob);
-            resolve(url);
+            resolve(blob);
           },
           "image/jpeg",
           0.95
@@ -123,20 +128,89 @@ export function ImageCrop({
     [scale, rotate]
   );
 
+  // อัปโหลดไฟล์ไป Supabase Storage
+  const uploadToSupabase = async (blob: Blob): Promise<string> => {
+    try {
+      console.log("Starting Supabase upload...");
+
+      // Skip bucket validation และลองอัปโหลดตรงๆ
+      // เนื่องจาก RLS policy อาจบล็อกการ list buckets
+      console.log("Skipping bucket validation, proceeding with upload...");
+
+      // สร้างชื่อไฟล์ไม่ซ้ำ
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2, 15);
+      const fileName = `cropped_${timestamp}_${randomId}.jpg`;
+      const filePath = `packages/${fileName}`;
+
+      console.log("Uploading to path:", filePath);
+
+      // อัปโหลดไฟล์
+      const { data, error } = await supabase.storage
+        .from("package-images")
+        .upload(filePath, blob, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: "image/jpeg",
+        });
+
+      if (error) {
+        console.error("Supabase upload error:", error);
+        throw new Error(`อัปโหลดไม่สำเร็จ: ${error.message}`);
+      }
+
+      console.log("Upload successful:", data);
+
+      // ได้ URL สาธารณะ
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("package-images").getPublicUrl(filePath);
+
+      console.log("Generated public URL:", publicUrl);
+      return publicUrl;
+    } catch (error) {
+      console.error("Error uploading to Supabase:", error);
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error("เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ");
+    }
+  };
+
   const handleCropComplete = useCallback(async () => {
     if (completedCrop && imgRef.current) {
+      setIsUploading(true);
+      onUploadStart?.();
+
       try {
-        const croppedImageUrl = await getCroppedImg(
-          imgRef.current,
-          completedCrop
-        );
-        onCropComplete(croppedImageUrl);
+        // สร้าง cropped image blob
+        const croppedBlob = await getCroppedImg(imgRef.current, completedCrop);
+
+        // อัปโหลดไป Supabase Storage
+        const uploadedUrl = await uploadToSupabase(croppedBlob);
+
+        // ส่ง URL ที่อัปโหลดแล้วกลับไป
+        onCropComplete(uploadedUrl);
         onClose();
       } catch (error) {
-        console.error("Error cropping image:", error);
+        console.error("Error processing image:", error);
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ";
+        onUploadError?.(errorMessage);
+      } finally {
+        setIsUploading(false);
       }
     }
-  }, [completedCrop, getCroppedImg, onCropComplete, onClose]);
+  }, [
+    completedCrop,
+    getCroppedImg,
+    onCropComplete,
+    onClose,
+    onUploadStart,
+    onUploadError,
+  ]);
 
   const resetCrop = () => {
     if (imgRef.current) {
@@ -249,11 +323,20 @@ export function ImageCrop({
             </Button>
             <Button
               onClick={handleCropComplete}
-              disabled={!completedCrop}
-              className="bg-green-600 hover:bg-green-700"
+              disabled={!completedCrop || isUploading}
+              className="bg-green-600 hover:bg-green-700 disabled:opacity-50"
             >
-              <Check className="h-4 w-4 mr-2" />
-              ใช้รูปภาพนี้
+              {isUploading ? (
+                <>
+                  <Upload className="h-4 w-4 mr-2 animate-spin" />
+                  กำลังอัปโหลด...
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4 mr-2" />
+                  ใช้รูปภาพนี้
+                </>
+              )}
             </Button>
           </div>
         </div>
