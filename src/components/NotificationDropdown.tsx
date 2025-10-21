@@ -20,19 +20,18 @@ interface Notification {
   createdAt: string;
 }
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 export default function NotificationDropdown() {
   const { user } = useAuth();
-  const { 
-    notifications, 
-    unreadCount, 
+  const {
+    notifications,
+    unreadCount,
     isConnected,
-    markAsRead, 
-    markAllAsRead, 
+    markAsRead,
+    markAllAsRead,
     deleteNotification,
-    fetchNotifications 
+    fetchNotifications,
   } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -91,7 +90,7 @@ export default function NotificationDropdown() {
     }
   };
 
-  // 🚫 TEMPORARILY DISABLED: เมื่อเปิด popup ให้ fetch ข้อมูลใหม่ (fallback)  
+  // 🚫 TEMPORARILY DISABLED: เมื่อเปิด popup ให้ fetch ข้อมูลใหม่ (fallback)
   // Testing WebSocket implementation - remove comments when WebSocket is confirmed working
   // useEffect(() => {
   //   if (isOpen && user?.id) {
@@ -107,7 +106,11 @@ export default function NotificationDropdown() {
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
           {/* แสดงสถานะการเชื่อมต่อ WebSocket */}
-          <div className={`absolute -top-0.5 -left-0.5 h-2 w-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+          <div
+            className={`absolute -top-0.5 -left-0.5 h-2 w-2 rounded-full ${
+              isConnected ? "bg-green-500" : "bg-red-500"
+            }`}
+          />
           {unreadCount > 0 && (
             <Badge
               variant="destructive"
@@ -123,7 +126,12 @@ export default function NotificationDropdown() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h3 className="font-semibold">การแจ้งเตือน</h3>
-              <div className={`h-2 w-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} title={isConnected ? 'เชื่อมต่อแล้ว' : 'ไม่ได้เชื่อมต่อ'} />
+              <div
+                className={`h-2 w-2 rounded-full ${
+                  isConnected ? "bg-green-500" : "bg-red-500"
+                }`}
+                title={isConnected ? "เชื่อมต่อแล้ว" : "ไม่ได้เชื่อมต่อ"}
+              />
             </div>
             <div className="flex gap-2">
               {unreadCount > 0 && (

@@ -7,19 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Navigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
   CommandEmpty,
@@ -50,7 +39,6 @@ import {
   Search,
   Users,
   Calendar,
-  Percent,
 } from "lucide-react";
 
 interface Package {
@@ -89,19 +77,7 @@ interface User {
   email: string;
 }
 
-interface GlobalDiscountCode {
-  id: string;
-  code: string;
-  discount_percentage: number;
-  is_active: boolean;
-  created_at: string;
-}
 
-interface CreateGlobalDiscountForm {
-  discount_percentage: number;
-  max_uses?: number;
-  expires_at?: string;
-}
 
 export default function PackageManagement() {
   const { user } = useAuth();
@@ -121,21 +97,6 @@ export default function PackageManagement() {
   >([]);
   const [selectedPackageTitle, setSelectedPackageTitle] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-
-  // Global Discount states only
-  const [globalCodes, setGlobalCodes] = useState<GlobalDiscountCode[]>([]);
-  const [isGlobalDiscountDialogOpen, setIsGlobalDiscountDialogOpen] =
-    useState(false);
-  const [activeTab, setActiveTab] = useState<"packages" | "global-discounts">(
-    "packages"
-  );
-  const [globalDiscountForm, setGlobalDiscountForm] =
-    useState<CreateGlobalDiscountForm>({
-      discount_percentage: 10,
-      max_uses: undefined,
-      expires_at: "",
-    });
-  const [isDiscountSubmitting, setIsDiscountSubmitting] = useState(false);
 
   // Package form state
   const [formData, setFormData] = useState({
@@ -173,7 +134,6 @@ export default function PackageManagement() {
       fetchPackages();
       fetchAdvertisers();
       fetchExistingTags();
-      fetchGlobalDiscountCodes();
     }
   }, [userRole]);
 
@@ -302,20 +262,7 @@ export default function PackageManagement() {
     }
   };
 
-  const fetchGlobalDiscountCodes = async () => {
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/manager/global-discount-codes`
-      );
-      if (!response.ok)
-        throw new Error("Failed to fetch global discount codes");
-      const data = await response.json();
-      setGlobalCodes(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Error fetching global discount codes:", error);
-      setGlobalCodes([]);
-    }
-  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -526,174 +473,13 @@ export default function PackageManagement() {
     }
   };
 
-  const sendNotificationToAllUsers = async (message: string) => {
-    try {
-      if (!user?.id) return;
 
-      const response = await fetch(`${API_BASE_URL}/api/notifications`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_id: user,
-          title: "โค้ดส่วนลดใหม่!",
-          message: message,
-          type: "global_discount",
-          category: "promotion",
-          priority: "medium",
-        }),
-      });
 
-      if (!response.ok) {
-        throw new Error(`Notification failed: ${response.status}`);
-      }
-    } catch (error) {
-      console.error("❌ Error sending notification:", error);
-      throw error;
-    }
-  };
 
-  const handleCreateGlobalDiscountCode = async () => {
-    if (globalDiscountForm.discount_percentage <= 0) {
-      toast({
-        title: "เกิดข้อผิดพลาด",
-        description: "กรุณากรอกส่วนลดให้ถูกต้อง",
-        variant: "destructive",
-      });
-      return;
-    }
 
-    setIsDiscountSubmitting(true);
-    try {
-      const requestData = {
-        discount_percentage: globalDiscountForm.discount_percentage,
-        max_uses: globalDiscountForm.max_uses,
-        ...(globalDiscountForm.expires_at &&
-          globalDiscountForm.expires_at.trim() !== "" && {
-            expires_at: new Date(globalDiscountForm.expires_at).toISOString(),
-          }),
-      };
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/global-discount-codes`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(requestData),
-        }
-      );
 
-      if (!response.ok) {
-        throw new Error("Failed to create global discount code");
-      }
 
-      const responseData = await response.json();
-
-      let discountCode = "ตรวจสอบในระบบ";
-      if (responseData.code) {
-        if (typeof responseData.code === "string") {
-          discountCode = responseData.code;
-        } else if (responseData.code.code) {
-          discountCode = responseData.code.code;
-        }
-      }
-
-      try {
-        const notificationMessage = `🎉 โค้ดส่วนลดใหม่! ลด ${globalDiscountForm.discount_percentage}% สำหรับทุกแพ็กเกจ โค้ด: ${discountCode}`;
-        await sendNotificationToAllUsers(notificationMessage);
-        window.dispatchEvent(new CustomEvent("notificationCreated"));
-      } catch (notificationError) {
-        console.error("❌ Notification failed:", notificationError);
-      }
-
-      toast({
-        title: "สำเร็จ",
-        description: "สร้าง Global Discount Code เรียบร้อย!",
-      });
-
-      setIsGlobalDiscountDialogOpen(false);
-      setGlobalDiscountForm({
-        discount_percentage: 10,
-        max_uses: undefined,
-        expires_at: "",
-      });
-      fetchGlobalDiscountCodes();
-    } catch (error) {
-      console.error("Error creating global discount code:", error);
-      toast({
-        title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถสร้าง Global Discount Code ได้",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDiscountSubmitting(false);
-    }
-  };
-
-  const toggleGlobalDiscountCodeStatus = async (
-    codeId: string,
-    currentStatus: boolean
-  ) => {
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/global-discount-codes/${codeId}/toggle`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ is_active: !currentStatus }),
-        }
-      );
-
-      if (!response.ok) throw new Error("Failed to toggle status");
-
-      fetchGlobalDiscountCodes();
-      toast({
-        title: "สำเร็จ",
-        description: "เปลี่ยนสถานะ Global Discount Code แล้ว",
-      });
-    } catch (error) {
-      console.error("Error toggling global code status:", error);
-      toast({
-        title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถเปลี่ยนสถานะได้",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const deleteGlobalDiscountCode = async (codeId: string) => {
-    if (!confirm("คุณแน่ใจหรือไม่ที่จะลบโค้ดส่วนลดนี้?")) return;
-
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/global-discount-codes/${codeId}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-      if (!response.ok)
-        throw new Error("Failed to delete global discount code");
-
-      fetchGlobalDiscountCodes();
-      toast({
-        title: "สำเร็จ",
-        description: "ลบโค้ดส่วนลดทั่วไปแล้ว",
-      });
-    } catch (error) {
-      console.error("Error deleting global discount code:", error);
-      toast({
-        title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถลบโค้ดส่วนลดทั่วไปได้",
-        variant: "destructive",
-      });
-    }
-  };
 
   // Image upload functions
   const handleImageUpload = async (file: File) => {
@@ -977,22 +763,8 @@ export default function PackageManagement() {
     <div className="container mx-auto px-4 py-8 pt-24">
       <Navbar />
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">จัดการแพคเกจและโค้ดส่วนลด</h1>
+        <h1 className="text-3xl font-bold">จัดการแพคเกจ</h1>
       </div>
-
-      <Tabs
-        value={activeTab}
-        onValueChange={(value) => setActiveTab(value as any)}
-        className="w-full"
-      >
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="packages">จัดการแพคเกจ</TabsTrigger>
-          <TabsTrigger value="global-discounts">
-            โค้ดส่วนลดผู้ใช้ทั่วไป
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="packages" className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">แพคเกจท่องเที่ยว</h2>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -1405,284 +1177,95 @@ export default function PackageManagement() {
             </div>
           </div>
 
-          {/* Packages List */}
-          <div className="grid gap-6">
-            {filteredPackages.map((pkg) => (
-              <Card key={pkg.id}>
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-xl">{pkg.title}</CardTitle>
-                      <p className="text-muted-foreground">{pkg.location}</p>
-                      <div className="flex items-center gap-4 mt-2 text-sm">
-                        <span className="font-semibold text-green-600">
-                          ฿{pkg.price?.toLocaleString()}
-                        </span>
-                        {pkg.discount_percentage > 0 && (
-                          <span className="bg-red-100 text-red-800 px-2 py-1 rounded">
-                            ลด {pkg.discount_percentage}%
-                          </span>
-                        )}
-                        <span className="text-muted-foreground">
-                          {pkg.duration} วัน
-                        </span>
-                        <span className="text-muted-foreground">
-                          สูงสุด {pkg.max_guests} คน
-                        </span>
-                      </div>
-                      <div className="mt-2">
-                        <p className="text-sm text-muted-foreground">
-                          ผู้โฆษณา: {getAdvertiserNames(pkg.advertisers)}
-                        </p>
-                      </div>
-                      {pkg.tags && normalizeTags(pkg.tags).length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {normalizeTags(pkg.tags).map((tag, index) => (
-                            <span
-                              key={index}
-                              className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => fetchPackageBookings(pkg.id, pkg.title)}
-                      >
-                        <Calendar className="w-4 h-4 mr-1" />
-                        จอง
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(pkg)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDelete(pkg.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div></div>
-                    {pkg.image_url && (
-                      <img
-                        src={pkg.image_url}
-                        alt={pkg.title}
-                        className="w-16 h-16 object-cover rounded"
-                      />
+      {/* Packages List */}
+      <div className="grid gap-6">
+        {filteredPackages.map((pkg) => (
+          <Card key={pkg.id}>
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="text-xl">{pkg.title}</CardTitle>
+                  <p className="text-muted-foreground">{pkg.location}</p>
+                  <div className="flex items-center gap-4 mt-2 text-sm">
+                    <span className="font-semibold text-green-600">
+                      ฿{pkg.price?.toLocaleString()}
+                    </span>
+                    {pkg.discount_percentage > 0 && (
+                      <span className="bg-red-100 text-red-800 px-2 py-1 rounded">
+                        ลด {pkg.discount_percentage}%
+                      </span>
                     )}
+                    <span className="text-muted-foreground">
+                      {pkg.duration} วัน
+                    </span>
+                    <span className="text-muted-foreground">
+                      สูงสุด {pkg.max_guests} คน
+                    </span>
                   </div>
-                  {pkg.description && (
-                    <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                      {pkg.description}
+                  <div className="mt-2">
+                    <p className="text-sm text-muted-foreground">
+                      ผู้โฆษณา: {getAdvertiserNames(pkg.advertisers)}
                     </p>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        {/* Global Discount Codes Tab */}
-        <TabsContent value="global-discounts" className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">โค้ดส่วนลดผู้ใช้ทั่วไป</h2>
-            <Dialog
-              open={isGlobalDiscountDialogOpen}
-              onOpenChange={setIsGlobalDiscountDialogOpen}
-            >
-              <DialogTrigger asChild>
-                <Button
-                  onClick={() => {
-                    setGlobalDiscountForm({
-                      discount_percentage: 10,
-                      max_uses: undefined,
-                      expires_at: "",
-                    });
-                    setIsGlobalDiscountDialogOpen(true);
-                  }}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  สร้างโค้ดส่วนลดผู้ใช้ทั่วไป
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle>สร้างโค้ดส่วนลดผู้ใช้ทั่วไป</DialogTitle>
-                  <p className="text-sm text-muted-foreground">
-                    โค้ดนี้จะใช้ได้กับทุกแพคเกจ และไม่มีค่าคอมมิชชั่น
-                  </p>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="global-discount" className="text-right">
-                      ส่วนลด (%)
-                    </Label>
-                    <Input
-                      id="global-discount"
-                      type="number"
-                      value={globalDiscountForm.discount_percentage}
-                      onChange={(e) =>
-                        setGlobalDiscountForm({
-                          ...globalDiscountForm,
-                          discount_percentage: Number(e.target.value),
-                        })
-                      }
-                      min="1"
-                      max="50"
-                      className="col-span-3"
-                    />
                   </div>
-
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="global-max-uses" className="text-right">
-                      จำนวนใช้สูงสุด
-                    </Label>
-                    <Input
-                      id="global-max-uses"
-                      type="number"
-                      value={globalDiscountForm.max_uses || ""}
-                      onChange={(e) =>
-                        setGlobalDiscountForm({
-                          ...globalDiscountForm,
-                          max_uses: e.target.value
-                            ? Number(e.target.value)
-                            : undefined,
-                        })
-                      }
-                      min="1"
-                      placeholder="ไม่จำกัด"
-                      className="col-span-3"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="global-expires" className="text-right">
-                      หมดอายุ
-                    </Label>
-                    <Input
-                      id="global-expires"
-                      type="datetime-local"
-                      value={globalDiscountForm.expires_at || ""}
-                      onChange={(e) =>
-                        setGlobalDiscountForm({
-                          ...globalDiscountForm,
-                          expires_at: e.target.value,
-                        })
-                      }
-                      className="col-span-3"
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end space-x-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsGlobalDiscountDialogOpen(false)}
-                  >
-                    ยกเลิก
-                  </Button>
-                  <Button
-                    type="submit"
-                    onClick={handleCreateGlobalDiscountCode}
-                    disabled={isDiscountSubmitting}
-                  >
-                    {isDiscountSubmitting ? "กำลังสร้าง..." : "สร้างโค้ดส่วนลด"}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          {/* Global Discount Codes List */}
-          {globalCodes.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Percent className="h-12 w-12 text-gray-400 mb-4" />
-                <p className="text-gray-500 mb-4">
-                  ยังไม่มีโค้ดส่วนลดผู้ใช้ทั่วไป
-                </p>
-                <p className="text-sm text-gray-400 text-center">
-                  เริ่มต้นสร้างโค้ดส่วนลดสำหรับผู้ใช้ทั่วไป
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4">
-              {globalCodes.map((code) => (
-                <Card key={code.id}>
-                  <CardContent className="pt-6">
-                    <div className="flex justify-between items-start">
-                      <div className="space-y-2">
-                        <div className="flex items-center space-x-3">
-                          <span className="font-mono text-lg font-bold bg-gray-100 px-3 py-1 rounded">
-                            {code.code}
-                          </span>
-                          <span
-                            className={`px-2 py-1 rounded text-sm ${
-                              code.is_active
-                                ? "bg-green-100 text-green-800"
-                                : "bg-gray-100 text-gray-600"
-                            }`}
-                          >
-                            {code.is_active ? "ใช้งานได้" : "ปิดการใช้งาน"}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                          <span>ส่วนลด {code.discount_percentage}%</span>
-                          <span>
-                            สร้างเมื่อ{" "}
-                            {new Date(code.created_at).toLocaleDateString(
-                              "th-TH"
-                            )}
-                          </span>
-                        </div>
-                        <p className="text-sm text-blue-600">
-                          ใช้ได้กับทุกแพคเกจ • ไม่มีค่าคอมมิชชั่น
-                        </p>
-                      </div>
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            toggleGlobalDiscountCodeStatus(
-                              code.id,
-                              code.is_active
-                            )
-                          }
+                  {pkg.tags && normalizeTags(pkg.tags).length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {normalizeTags(pkg.tags).map((tag, index) => (
+                        <span
+                          key={index}
+                          className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded"
                         >
-                          {code.is_active ? "ปิดใช้งาน" : "เปิดใช้งาน"}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => deleteGlobalDiscountCode(code.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+                          {tag}
+                        </span>
+                      ))}
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+                  )}
+                </div>
+                <div className="flex space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fetchPackageBookings(pkg.id, pkg.title)}
+                  >
+                    <Calendar className="w-4 h-4 mr-1" />
+                    ผู้จอง
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEdit(pkg)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDelete(pkg.id)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div></div>
+                {pkg.image_url && (
+                  <img
+                    src={pkg.image_url}
+                    alt={pkg.title}
+                    className="w-16 h-16 object-cover rounded"
+                  />
+                )}
+              </div>
+              {pkg.description && (
+                <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                  {pkg.description}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
       {/* Bookings Dialog */}
       <Dialog open={bookingsDialogOpen} onOpenChange={setBookingsDialogOpen}>

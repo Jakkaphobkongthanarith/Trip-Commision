@@ -1,5 +1,8 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { websocketService, NotificationMessage } from '../services/websocketService';
+import { useEffect, useRef, useState, useCallback } from "react";
+import {
+  websocketService,
+  NotificationMessage,
+} from "../services/websocketService";
 
 interface UseWebSocketOptions {
   userID?: string;
@@ -19,12 +22,16 @@ interface UseWebSocketReturn {
   reconnect: () => void;
 }
 
-export const useWebSocket = (options: UseWebSocketOptions = {}): UseWebSocketReturn => {
+export const useWebSocket = (
+  options: UseWebSocketOptions = {}
+): UseWebSocketReturn => {
   const [isConnected, setIsConnected] = useState(false);
-  const [lastMessage, setLastMessage] = useState<NotificationMessage | null>(null);
+  const [lastMessage, setLastMessage] = useState<NotificationMessage | null>(
+    null
+  );
   const optionsRef = useRef(options);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
-  
+
   // Update options ref when options change
   useEffect(() => {
     optionsRef.current = options;
@@ -41,7 +48,7 @@ export const useWebSocket = (options: UseWebSocketOptions = {}): UseWebSocketRet
   // WebSocket connection handler
   const handleConnect = useCallback(() => {
     setIsConnected(true);
-    console.log('🔗 WebSocket connected via useWebSocket hook');
+    console.log("🔗 WebSocket connected via useWebSocket hook");
     if (optionsRef.current.onConnect) {
       optionsRef.current.onConnect();
     }
@@ -50,7 +57,7 @@ export const useWebSocket = (options: UseWebSocketOptions = {}): UseWebSocketRet
   // WebSocket disconnection handler
   const handleDisconnect = useCallback(() => {
     setIsConnected(false);
-    console.log('🔌 WebSocket disconnected via useWebSocket hook');
+    console.log("🔌 WebSocket disconnected via useWebSocket hook");
     if (optionsRef.current.onDisconnect) {
       optionsRef.current.onDisconnect();
     }
@@ -58,31 +65,34 @@ export const useWebSocket = (options: UseWebSocketOptions = {}): UseWebSocketRet
 
   // WebSocket error handler
   const handleError = useCallback((error: Event) => {
-    console.error('❌ WebSocket error via useWebSocket hook:', error);
+    console.error("❌ WebSocket error via useWebSocket hook:", error);
     if (optionsRef.current.onError) {
       optionsRef.current.onError(error);
     }
   }, []);
 
   // Connect function
-  const connect = useCallback((userID?: string) => {
-    try {
-      // Add event listeners
-      websocketService.addMessageListener(handleMessage);
-      
-      // Update service options using the new method
-      websocketService.updateOptions({
-        onConnect: handleConnect,
-        onDisconnect: handleDisconnect,
-        onError: handleError,
-      });
+  const connect = useCallback(
+    (userID?: string) => {
+      try {
+        // Add event listeners
+        websocketService.addMessageListener(handleMessage);
 
-      // Connect with userID
-      websocketService.connect(userID || optionsRef.current.userID);
-    } catch (error) {
-      console.error('❌ Error connecting WebSocket:', error);
-    }
-  }, [handleMessage, handleConnect, handleDisconnect, handleError]);
+        // Update service options using the new method
+        websocketService.updateOptions({
+          onConnect: handleConnect,
+          onDisconnect: handleDisconnect,
+          onError: handleError,
+        });
+
+        // Connect with userID
+        websocketService.connect(userID || optionsRef.current.userID);
+      } catch (error) {
+        console.error("❌ Error connecting WebSocket:", error);
+      }
+    },
+    [handleMessage, handleConnect, handleDisconnect, handleError]
+  );
 
   // Disconnect function
   const disconnect = useCallback(() => {
@@ -90,12 +100,12 @@ export const useWebSocket = (options: UseWebSocketOptions = {}): UseWebSocketRet
       websocketService.removeMessageListener(handleMessage);
       websocketService.disconnect();
       setIsConnected(false);
-      
+
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
     } catch (error) {
-      console.error('❌ Error disconnecting WebSocket:', error);
+      console.error("❌ Error disconnecting WebSocket:", error);
     }
   }, [handleMessage]);
 
@@ -103,7 +113,7 @@ export const useWebSocket = (options: UseWebSocketOptions = {}): UseWebSocketRet
   const reconnect = useCallback(() => {
     disconnect();
     websocketService.resetReconnectAttempts();
-    
+
     // Delay reconnection slightly to ensure clean disconnect
     reconnectTimeoutRef.current = setTimeout(() => {
       connect(optionsRef.current.userID);
@@ -115,7 +125,7 @@ export const useWebSocket = (options: UseWebSocketOptions = {}): UseWebSocketRet
     try {
       websocketService.sendMessage(message);
     } catch (error) {
-      console.error('❌ Error sending WebSocket message:', error);
+      console.error("❌ Error sending WebSocket message:", error);
     }
   }, []);
 
