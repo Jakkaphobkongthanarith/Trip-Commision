@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"trip-trader-backend/models"
+	"trip-trader-backend/services"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -23,6 +24,13 @@ type DashboardStats struct {
 	TotalBookings     int64   `json:"totalBookings"`
 	ThisMonthBookings int64   `json:"thisMonthBookings"`
 	TotalRevenue      float64 `json:"totalRevenue"`
+}
+
+type PerformanceAnalysisResponse struct {
+	Status            string                              `json:"status"`
+	QueryPerformance  services.QueryPerformanceMetrics   `json:"query_performance"`
+	RecommendedIndexes []string                           `json:"recommended_indexes"`
+	Timestamp         time.Time                          `json:"timestamp"`
 }
 
 type RecentBooking struct {
@@ -43,64 +51,92 @@ type RecentPackage struct {
 	AdvertiserName string  `json:"advertiser_name"`
 }
 
-// GetDashboardStats - ดึงสถิติสำหรับ Manager Dashboard
+// GetDashboardStats - ดึงสถิติสำหรับ Manager Dashboard (ใช้ GORM ORM)
 func (mc *ManagerController) GetDashboardStats(c *gin.Context) {
 	var stats DashboardStats
 
-	// Count total users (excluding managers)
-	mc.DB.Table("users").Where("role != ?", "manager").Count(&stats.TotalUsers)
+	// Count total users ด้วย GORM Model
+	mc.DB.Model(&models.UserRole{}).Where("role != ?", "manager").Count(&stats.TotalUsers)
 
-	// Count total advertisers
-	mc.DB.Table("users").Where("role = ?", "advertiser").Count(&stats.TotalAdvertisers)
+	// Count total advertisers ด้วย GORM Model
+	mc.DB.Model(&models.UserRole{}).Where("role = ?", "advertiser").Count(&stats.TotalAdvertisers)
 
-	// Count total packages
-	mc.DB.Table("travel_packages").Count(&stats.TotalPackages)
+	// Count total packages ด้วย GORM Model
+	mc.DB.Model(&models.TravelPackage{}).Count(&stats.TotalPackages)
 
-	// Count active packages
-	mc.DB.Table("travel_packages").Where("is_active = ?", true).Count(&stats.ActivePackages)
+	// Count active packages ด้วย GORM Model
+	mc.DB.Model(&models.TravelPackage{}).Where("is_active = ?", true).Count(&stats.ActivePackages)
 
-	// Count total bookings
-	mc.DB.Table("bookings").Count(&stats.TotalBookings)
+	// Count total bookings ด้วย GORM Model
+	mc.DB.Model(&models.Booking{}).Count(&stats.TotalBookings)
 
-	// Count this month bookings
+	// Count this month bookings ด้วย GORM Model
 	now := time.Now()
 	firstOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
-	mc.DB.Table("bookings").
+	mc.DB.Model(&models.Booking{}).
 		Where("created_at >= ?", firstOfMonth).
 		Count(&stats.ThisMonthBookings)
 
-	// Calculate total revenue (sum of all confirmed bookings)
-	mc.DB.Table("bookings").
+	// Calculate total revenue ด้วย GORM Model (sum of all confirmed bookings)
+	type RevenueResult struct {
+		Total float64 `gorm:"column:total"`
+	}
+	var revenue RevenueResult
+	mc.DB.Model(&models.Booking{}).
+		Select("COALESCE(SUM(final_amount), 0) as total").
 		Where("status = ?", "confirmed").
-		Select("COALESCE(SUM(final_amount), 0)").
-		Scan(&stats.TotalRevenue)
+		Scan(&revenue)
+	stats.TotalRevenue = revenue.Total
 
 	c.JSON(http.StatusOK, stats)
 }
 
-// GetRecentBookings - ดึงการจองล่าสุด 10 รายการ
+// GetRecentBookings - ดึงการจองล่าสุด 10 รายการ (ใช้ GORM ORM)
 func (mc *ManagerController) GetRecentBookings(c *gin.Context) {
 	var bookings []RecentBooking
 
-	query := `
-		SELECT 
-			b.id,
-			tp.title as package_title,
-			b.contact_name as user_name,
-			DATE(b.created_at) as booking_date,
-			b.final_amount as total_price,
-			b.status
-		FROM bookings b
-		LEFT JOIN travel_packages tp ON b.package_id = tp.id
-		ORDER BY b.created_at DESC
-		LIMIT 10
-	`
+	// ใช้ GORM ORM แทน raw SQL เพื่อความปลอดภัย
+	type BookingResult struct {
+		ID           string  `gorm:"column:id"`
+		PackageTitle string  `gorm:"column:package_title"`
+		UserName     string  `gorm:"column:user_name"`
+		BookingDate  string  `gorm:"column:booking_date"`
+		TotalPrice   float64 `gorm:"column:total_price"`
+		Status       string  `gorm:"column:status"`
+	}
 
-	if err := mc.DB.Raw(query).Scan(&bookings).Error; err != nil {
+	var results []BookingResult
+
+	err := mc.DB.Table("bookings b").
+		Select(`b.id, 
+				tp.title as package_title,
+				b.contact_name as user_name,
+				DATE(b.created_at) as booking_date,
+				b.final_amount as total_price,
+				b.status`).
+		Joins("LEFT JOIN travel_packages tp ON b.package_id = tp.id").
+		Order("b.created_at DESC").
+		Limit(10).
+		Find(&results).Error
+
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to fetch recent bookings",
+			"details": err.Error(),
 		})
 		return
+	}
+
+	// แปลงผลลัพธ์
+	for _, result := range results {
+		bookings = append(bookings, RecentBooking{
+			ID:           result.ID,
+			PackageTitle: result.PackageTitle,
+			UserName:     result.UserName,
+			BookingDate:  result.BookingDate,
+			TotalPrice:   result.TotalPrice,
+			Status:       result.Status,
+		})
 	}
 
 	c.JSON(http.StatusOK, bookings)
@@ -165,7 +201,7 @@ func (mc *ManagerController) GetRecentPackages(c *gin.Context) {
 	c.JSON(http.StatusOK, packages)
 }
 
-// GetUserStatistics - สถิติผู้ใช้รายละเอียด
+// GetUserStatistics - สถิติผู้ใช้รายละเอียด (ใช้ GORM ORM)
 func (mc *ManagerController) GetUserStatistics(c *gin.Context) {
 	type UserStats struct {
 		Role  string `json:"role"`
@@ -174,16 +210,17 @@ func (mc *ManagerController) GetUserStatistics(c *gin.Context) {
 
 	var userStats []UserStats
 	
-	query := `
-		SELECT role, COUNT(*) as count 
-		FROM users 
-		WHERE role != 'manager'
-		GROUP BY role
-	`
+	// ใช้ GORM ORM แทน raw SQL เพื่อความปลอดภัย
+	err := mc.DB.Table("user_roles").
+		Select("role, COUNT(*) as count").
+		Where("role != ?", "manager").
+		Group("role").
+		Find(&userStats).Error
 
-	if err := mc.DB.Raw(query).Scan(&userStats).Error; err != nil {
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to fetch user statistics",
+			"details": err.Error(),
 		})
 		return
 	}
@@ -191,7 +228,7 @@ func (mc *ManagerController) GetUserStatistics(c *gin.Context) {
 	c.JSON(http.StatusOK, userStats)
 }
 
-// GetPackageStatistics - สถิติแพคเกจรายละเอียด
+// GetPackageStatistics - สถิติแพคเกจรายละเอียด (ใช้ GORM ORM)
 func (mc *ManagerController) GetPackageStatistics(c *gin.Context) {
 	type PackageStats struct {
 		TotalPackages    int64   `json:"total_packages"`
@@ -203,30 +240,40 @@ func (mc *ManagerController) GetPackageStatistics(c *gin.Context) {
 
 	var stats PackageStats
 
-	// Count packages by status
-	mc.DB.Table("travel_packages").Count(&stats.TotalPackages)
-	mc.DB.Table("travel_packages").Where("is_active = ?", true).Count(&stats.ActivePackages)
-	mc.DB.Table("travel_packages").Where("is_active = ?", false).Count(&stats.InactivePackages)
+	// Count packages by status ด้วย GORM Model
+	mc.DB.Model(&models.TravelPackage{}).Count(&stats.TotalPackages)
+	mc.DB.Model(&models.TravelPackage{}).Where("is_active = ?", true).Count(&stats.ActivePackages)
+	mc.DB.Model(&models.TravelPackage{}).Where("is_active = ?", false).Count(&stats.InactivePackages)
 
-	// Calculate average price
-	mc.DB.Table("travel_packages").
+	// Calculate average price ด้วย GORM Model
+	type AvgPriceResult struct {
+		Average float64 `gorm:"column:average"`
+	}
+	var avgPrice AvgPriceResult
+	mc.DB.Model(&models.TravelPackage{}).
+		Select("COALESCE(AVG(price), 0) as average").
 		Where("is_active = ?", true).
-		Select("COALESCE(AVG(price), 0)").
-		Scan(&stats.AvgPrice)
+		Scan(&avgPrice)
+	stats.AvgPrice = avgPrice.Average
 
-	// Find top location
-	mc.DB.Table("travel_packages").
+	// Find top location ด้วย GORM Model
+	type LocationResult struct {
+		Location string `gorm:"column:location"`
+	}
+	var topLocation LocationResult
+	mc.DB.Model(&models.TravelPackage{}).
 		Select("location").
 		Where("is_active = ?", true).
 		Group("location").
 		Order("COUNT(*) DESC").
 		Limit(1).
-		Scan(&stats.TopLocation)
+		Scan(&topLocation)
+	stats.TopLocation = topLocation.Location
 
 	c.JSON(http.StatusOK, stats)
 }
 
-// GetMonthlyBookingStats - สถิติการจองรายเดือน (12 เดือนล่าสุด)
+// GetMonthlyBookingStats - สถิติการจองรายเดือน (12 เดือนล่าสุด) ใช้ GORM ORM + PostgreSQL
 func (mc *ManagerController) GetMonthlyBookingStats(c *gin.Context) {
 	type MonthlyStats struct {
 		Month    string  `json:"month"`
@@ -236,25 +283,64 @@ func (mc *ManagerController) GetMonthlyBookingStats(c *gin.Context) {
 
 	var monthlyStats []MonthlyStats
 
-	query := `
-		SELECT 
-			TO_CHAR(created_at, 'YYYY-MM') as month,
-			COUNT(*) as bookings,
-			COALESCE(SUM(final_amount), 0) as revenue
-		FROM bookings 
-		WHERE created_at >= NOW() - INTERVAL '12 months'
-			AND status = 'confirmed'
-		GROUP BY TO_CHAR(created_at, 'YYYY-MM')
-		ORDER BY month DESC
-		LIMIT 12
-	`
+	// ใช้ GORM ORM แทน raw SQL เพื่อความปลอดภัย
+	// คำนวณวันที่ 12 เดือนที่แล้ว
+	twelveMonthsAgo := time.Now().AddDate(0, -12, 0)
 
-	if err := mc.DB.Raw(query).Scan(&monthlyStats).Error; err != nil {
+	// ใช้ PostgreSQL TO_CHAR function ด้วย GORM
+	type MonthlyResult struct {
+		Month    string  `gorm:"column:month"`
+		Bookings int64   `gorm:"column:bookings"`
+		Revenue  float64 `gorm:"column:revenue"`
+	}
+
+	var results []MonthlyResult
+	
+	err := mc.DB.Model(&models.Booking{}).
+		Select(`TO_CHAR(created_at, 'YYYY-MM') as month,
+				COUNT(*) as bookings,
+				COALESCE(SUM(final_amount), 0) as revenue`).
+		Where("created_at >= ? AND status = ?", twelveMonthsAgo, "confirmed").
+		Group("TO_CHAR(created_at, 'YYYY-MM')").
+		Order("month DESC").
+		Limit(12).
+		Find(&results).Error
+
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to fetch monthly booking statistics",
+			"details": err.Error(),
 		})
 		return
 	}
 
+	// แปลงผลลัพธ์
+	for _, result := range results {
+		monthlyStats = append(monthlyStats, MonthlyStats{
+			Month:    result.Month,
+			Bookings: result.Bookings,
+			Revenue:  result.Revenue,
+		})
+	}
+
 	c.JSON(http.StatusOK, monthlyStats)
+}
+
+// PerformanceAnalysis - วิเคราะห์ performance ของระบบ database
+func (mc *ManagerController) PerformanceAnalysis(c *gin.Context) {
+	perfMonitor := &services.PerformanceMonitor{DB: mc.DB}
+	
+	// Run performance analysis
+	perfMonitor.AnalyzeQueryPerformance()
+	
+	// Get recommended indexes
+	recommendedIndexes := perfMonitor.GetRecommendedIndexes()
+	
+	response := PerformanceAnalysisResponse{
+		Status:             "completed",
+		RecommendedIndexes: recommendedIndexes,
+		Timestamp:         time.Now(),
+	}
+	
+	c.JSON(http.StatusOK, response)
 }

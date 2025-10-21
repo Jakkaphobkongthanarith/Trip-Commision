@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Clock, Users, Star, Calendar } from "lucide-react";
+import { MapPin, Clock, Users, Calendar } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 
@@ -24,9 +24,6 @@ interface TravelPackage {
   max_guests?: number;
   current_bookings?: number;
   tags?: string[];
-  rating?: number;
-  reviewCount?: number;
-  review_count?: number;
   date?: string;
   available_from?: string;
   available_to?: string;

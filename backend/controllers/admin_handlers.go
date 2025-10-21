@@ -98,23 +98,32 @@ func GetBookingsByPackageHandler(c *gin.Context, db *gorm.DB) {
 
 
 func GetCommissionsHandler(c *gin.Context, db *gorm.DB) {
-	var commissions []map[string]interface{}
+	type CommissionResult struct {
+		ID                   string    `gorm:"column:id"`
+		BookingID            string    `gorm:"column:booking_id"`
+		CommissionAmount     float64   `gorm:"column:commission_amount"`
+		CommissionPercentage float64   `gorm:"column:commission_percentage"`
+		Status               string    `gorm:"column:status"`
+		CreatedAt            time.Time `gorm:"column:created_at"`
+		AdvertiserID         string    `gorm:"column:advertiser_id"`
+		PackageID            string    `gorm:"column:package_id"`
+	}
+
+	var commissions []CommissionResult
 	
-	// Query commissions with JOIN to get more details
-	err := db.Raw(`
-		SELECT 
-			c.id,
-			c.booking_id,
-			c.commission_amount,
-			c.commission_percentage,
-			c.status,
-			c.created_at,
-			b.customer_id as advertiser_id,
-			b.package_id
-		FROM commissions c
-		LEFT JOIN bookings b ON c.booking_id = b.id
-		ORDER BY c.created_at DESC
-	`).Scan(&commissions).Error
+	// ใช้ GORM ORM แทน raw SQL เพื่อความปลอดภัย
+	err := db.Table("commissions c").
+		Select(`c.id,
+				c.booking_id,
+				c.commission_amount,
+				c.commission_percentage,
+				c.status,
+				c.created_at,
+				b.customer_id as advertiser_id,
+				b.package_id`).
+		Joins("LEFT JOIN bookings b ON c.booking_id = b.id").
+		Order("c.created_at DESC").
+		Find(&commissions).Error
 	
 	if err != nil {
 		c.JSON(500, gin.H{

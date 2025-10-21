@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"trip-trader-backend/models"
+	"trip-trader-backend/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -46,16 +47,13 @@ func convertAllPackagesTags(packages []models.TravelPackage) []models.TravelPack
 
 // ดึง travel packages ทั้งหมดพร้อมข้อมูล advertiser (เฉพาะ active packages)
 func GetAllPackagesHandler(c *gin.Context, db *gorm.DB) {
-	var packages []models.TravelPackage
 	println("Fetching all active packages with advertisers")
 	
-	// ใช้ GORM Find พร้อม Preload ข้อมูล Advertisers และกรองเฉพาะ active packages
-	result := db.Where("is_active = ? OR is_active IS NULL", true).
-		Preload("Advertisers").
-		Preload("Advertiser").
-		Find(&packages)
-	if result.Error != nil {
-		c.JSON(500, gin.H{"error": result.Error.Error()})
+	// ใช้ clean service (ไม่มี rating/review)
+	cleanService := &services.PackageStatsService{DB: db}
+	packages, err := cleanService.GetAllPackagesWithStats()
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	
@@ -68,15 +66,23 @@ func GetAllPackagesHandler(c *gin.Context, db *gorm.DB) {
 // ดึง travel package โดย ID - แสดงเป็น packageList ที่ filter ด้วย packageId (เฉพาะ active packages)
 func GetPackageByIDHandler(c *gin.Context, db *gorm.DB) {
 	id := c.Param("id")
-	var pkg models.TravelPackage
+	
+	// Convert id string to UUID
+	packageUUID, err := uuid.Parse(id)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "Invalid package ID format"})
+		return
+	}
 	
 	// Debug log
 	println("Searching for active package with ID:", id)
 	
-	result := db.Where("id = ? AND (is_active = ? OR is_active IS NULL)", id, true).First(&pkg)
-	if result.Error != nil {
-		println("Error:", result.Error.Error())
-		if result.Error == gorm.ErrRecordNotFound {
+	// ใช้ clean service (ไม่มี rating/review)
+	cleanService := &services.PackageStatsService{DB: db}
+	pkg, err := cleanService.GetPackageWithStats(packageUUID)
+	if err != nil {
+		println("Error:", err.Error())
+		if err == gorm.ErrRecordNotFound {
 			c.JSON(404, gin.H{
 				"error": "Package not found or has been deactivated", 
 				"id": id,
@@ -85,17 +91,17 @@ func GetPackageByIDHandler(c *gin.Context, db *gorm.DB) {
 			c.JSON(404, gin.H{
 				"error": "Package not found", 
 				"id": id,
-				"sql_error": result.Error.Error(),
+				"sql_error": err.Error(),
 			})
 		}
 		return
 	}
 	
 	// แปลง tags เป็น array ก่อนส่งกลับ
-	convertTagsToArray(&pkg)
+	convertTagsToArray(pkg)
 	
 	// ส่งกลับเป็น object เดียว (ตามเดิม)
-	c.JSON(200, pkg)
+	c.JSON(200, *pkg)
 }
 
 // สร้าง travel package ใหม่

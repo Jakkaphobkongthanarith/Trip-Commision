@@ -406,8 +406,6 @@ export type Database = {
           max_guests: number | null;
           mobile_number: string | null;
           price: number | null;
-          rating: number | null;
-          review_count: number | null;
           tags: string | null;
           title: string | null;
           updated_at: string;
