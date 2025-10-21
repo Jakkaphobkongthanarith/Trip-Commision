@@ -237,13 +237,32 @@ const PackageList = () => {
   const displayedPackages = filteredPackages.slice(0, visibleCount);
   const hasMorePackages = filteredPackages.length > visibleCount;
 
+  // Debug log
+  console.log("📊 Package Stats:", {
+    totalPackages: packages.length,
+    filteredPackages: filteredPackages.length,
+    visibleCount,
+    displayedPackages: displayedPackages.length,
+    hasMorePackages,
+  });
+
   const loadMore = () => {
-    setVisibleCount((prev) => prev + 9);
+    console.log("🔄 Load More clicked");
+    console.log("📊 Current visibleCount:", visibleCount);
+    console.log("📦 Total filteredPackages:", filteredPackages.length);
+
+    setVisibleCount((prev) => {
+      const newCount = prev + 9;
+      console.log("📈 New visibleCount:", newCount);
+      return newCount;
+    });
   };
 
+  // Reset visible count only when filters change, not on every render
   useEffect(() => {
+    console.log("🔍 Filters changed, resetting visibleCount to 9");
     setVisibleCount(9);
-  }, [selectedTags, searchQuery, locationFilter, minPrice, maxPrice]);
+  }, [selectedTags.join(","), searchQuery, locationFilter, minPrice, maxPrice]); // Join tags to avoid unnecessary resets
 
   const handleTagClick = (tag: string) => {
     const newSearchParams = new URLSearchParams(searchParams);

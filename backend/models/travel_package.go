@@ -1,6 +1,8 @@
 package models
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 )
 
@@ -24,6 +26,8 @@ type TravelPackage struct {
 	MobileNumber     *string   `json:"mobile_number" gorm:"column:mobile_number;type:text"`
 	AdvertiserID     *uuid.UUID `json:"advertiser_id" gorm:"column:advertiser_id;type:uuid"` // Primary advertiser (backward compatibility)
 	IsActive         *bool     `json:"is_active" gorm:"column:is_active;type:boolean;default:true"` // เพิ่มสำหรับ soft delete
+	CreatedAt        time.Time `json:"created_at" gorm:"autoCreateTime"` // เพิ่ม timestamp
+	UpdatedAt        time.Time `json:"updated_at" gorm:"autoUpdateTime"` // เพิ่ม timestamp
 	
 	// Multiple advertisers relationship (many-to-many)
 	Advertisers []User `json:"advertisers,omitempty" gorm:"many2many:package_advertisers;joinForeignKey:travel_package_id;joinReferences:advertiser_id;"`

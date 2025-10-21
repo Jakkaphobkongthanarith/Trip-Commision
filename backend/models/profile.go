@@ -14,4 +14,7 @@ type Profile struct {
 	Address     string    `json:"address" gorm:"type:text"`
 	CreatedAt   time.Time `json:"created_at" gorm:"type:timestamp with time zone;autoCreateTime"`
 	UpdatedAt   time.Time `json:"updated_at" gorm:"type:timestamp with time zone;autoUpdateTime"`
+	
+	// Belongs to User relationship
+	User User `json:"user,omitempty" gorm:"foreignKey:UserID;references:ID"`
 }

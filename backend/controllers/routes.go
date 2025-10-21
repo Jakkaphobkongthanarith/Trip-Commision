@@ -135,6 +135,15 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		c.JSON(http.StatusOK, gin.H{"message": "pong"})
 	})
 
+	// Manager Dashboard routes
+	managerController := &ManagerController{DB: db}
+	r.GET("/api/manager/dashboard/stats", managerController.GetDashboardStats)
+	r.GET("/api/manager/recent-bookings", managerController.GetRecentBookings)
+	r.GET("/api/manager/recent-packages", managerController.GetRecentPackages)
+	r.GET("/api/manager/user-statistics", managerController.GetUserStatistics)
+	r.GET("/api/manager/package-statistics", managerController.GetPackageStatistics)
+	r.GET("/api/manager/monthly-booking-stats", managerController.GetMonthlyBookingStats)
+
 	// Discount Code routes (Advertiser-based และ Global codes)
 	discountCodeController := NewDiscountCodeController(db)
 	

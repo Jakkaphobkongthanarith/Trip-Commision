@@ -56,8 +56,13 @@ type User struct {
 	RawUserMetaData  JSONMap    `json:"raw_user_meta_data" gorm:"type:jsonb"`
 	CreatedAt        time.Time  `json:"created_at" gorm:"type:timestamp with time zone"`
 	UpdatedAt        time.Time  `json:"updated_at" gorm:"type:timestamp with time zone"`
+	
+	// Relationships
 	Role             *UserRole  `json:"role" gorm:"foreignKey:UserID;references:ID"`
 	Profile          *Profile   `json:"profile" gorm:"foreignKey:UserID;references:ID"`
+	
+	// Many-to-many relationship with TravelPackages (for advertisers)
+	AdvertisedPackages []TravelPackage `json:"advertised_packages,omitempty" gorm:"many2many:package_advertisers;joinForeignKey:advertiser_id;joinReferences:travel_package_id;"`
 }
 
 // UserRole represents the public.user_roles table
