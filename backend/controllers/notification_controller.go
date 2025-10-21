@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"trip-trader-backend/models"
+	"trip-trader-backend/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -11,20 +12,26 @@ import (
 )
 
 type NotificationController struct {
-	db *gorm.DB
+	db  *gorm.DB
+	hub *utils.Hub // เพิ่ม WebSocket Hub
 }
 
-func NewNotificationController(db *gorm.DB) *NotificationController {
-	return &NotificationController{db: db}
+func NewNotificationController(db *gorm.DB, hub *utils.Hub) *NotificationController {
+	return &NotificationController{
+		db:  db,
+		hub: hub,
+	}
 }
 
 // สร้าง notification สำหรับ user คนเดียว
 func (nc *NotificationController) CreateNotification(c *gin.Context) {
 	type CreateNotificationRequest struct {
 		UserID  string `json:"user_id" binding:"required"`
-		Title   string `json:"title" binding:"required"`   // เพิ่ม title field
+		Title   string `json:"title" binding:"required"`   
 		Message string `json:"message" binding:"required"`
 		Type    string `json:"type" binding:"required"`
+		Data    map[string]interface{} `json:"data,omitempty"`
+		Priority int   `json:"priority"`
 	}
 
 	var req CreateNotificationRequest
@@ -40,9 +47,10 @@ func (nc *NotificationController) CreateNotification(c *gin.Context) {
 		return
 	}
 
+	// สร้าง notification ในฐานข้อมูล
 	notification := models.Notification{
-		UserID:  userUUID,  // ไม่ใช้ pointer เพราะ required ใน schema
-		Title:   req.Title, // เพิ่ม title
+		UserID:  userUUID,
+		Title:   req.Title,
 		Message: req.Message,
 		Type:    req.Type,
 		IsRead:  false,
@@ -57,7 +65,61 @@ func (nc *NotificationController) CreateNotification(c *gin.Context) {
 		return
 	}
 
+	// ส่งผ่าน WebSocket real-time
+	if nc.hub != nil {
+		wsMessage := utils.NotificationMessage{
+			ID:       notification.ID.String(),
+			UserID:   req.UserID,
+			Type:     req.Type,
+			Title:    req.Title,
+			Message:  req.Message,
+			Data:     req.Data,
+			Priority: req.Priority,
+		}
+		nc.hub.SendToUser(req.UserID, wsMessage)
+		fmt.Printf("📨 WebSocket notification sent to user %s\n", req.UserID)
+	}
+
 	c.JSON(http.StatusCreated, notification)
+}
+
+// CreateNotificationHelper - helper function สำหรับใช้ในส่วนอื่นของระบบ
+func (nc *NotificationController) CreateNotificationHelper(userID, title, message, notifType string, data map[string]interface{}, priority int) error {
+	// Convert user_id string to UUID
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return fmt.Errorf("invalid user ID format: %v", err)
+	}
+
+	// สร้าง notification ในฐานข้อมูล
+	notification := models.Notification{
+		UserID:  userUUID,
+		Title:   title,
+		Message: message,
+		Type:    notifType,
+		IsRead:  false,
+	}
+
+	if err := nc.db.Create(&notification).Error; err != nil {
+		return fmt.Errorf("failed to create notification: %v", err)
+	}
+
+	// ส่งผ่าน WebSocket real-time
+	if nc.hub != nil {
+		wsMessage := utils.NotificationMessage{
+			ID:       notification.ID.String(),
+			UserID:   userID,
+			Type:     notifType,
+			Title:    title,
+			Message:  message,
+			Data:     data,
+			Priority: priority,
+		}
+		nc.hub.SendToUser(userID, wsMessage)
+		fmt.Printf("📨 WebSocket notification sent to user %s: %s\n", userID, title)
+	}
+
+	return nil
 }
 
 // ส่ง notification ให้ผู้ใช้ทั้งหมด (broadcast)
@@ -218,4 +280,27 @@ func (nc *NotificationController) GetUnreadCount(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"unread_count": count})
+}
+
+// WebSocketHandler - endpoint สำหรับ WebSocket connection
+func (nc *NotificationController) WebSocketHandler(c *gin.Context) {
+	if nc.hub == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "WebSocket hub not initialized"})
+		return
+	}
+	nc.hub.HandleWebSocket(c)
+}
+
+// GetConnectedUsers - ดู users ที่ online
+func (nc *NotificationController) GetConnectedUsers(c *gin.Context) {
+	if nc.hub == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "WebSocket hub not initialized"})
+		return
+	}
+	
+	users := nc.hub.GetConnectedUsers()
+	c.JSON(http.StatusOK, gin.H{
+		"connected_users": users,
+		"total": len(users),
+	})
 }

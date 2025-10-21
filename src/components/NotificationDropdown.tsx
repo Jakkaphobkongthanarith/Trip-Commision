@@ -9,128 +9,32 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 interface Notification {
   id: string;
-  user_id: string;
+  title: string;
   message: string;
   type: string;
-  is_read: boolean;
-  created_at: string;
+  isRead: boolean;
+  createdAt: string;
 }
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+  import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 export default function NotificationDropdown() {
   const { user } = useAuth();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const { 
+    notifications, 
+    unreadCount, 
+    isConnected,
+    markAsRead, 
+    markAllAsRead, 
+    deleteNotification,
+    fetchNotifications 
+  } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
-
-  // ดึงข้อมูล notifications
-  const fetchNotifications = async () => {
-    if (!user?.id) {
-      console.log("No user ID available for notifications");
-      return;
-    }
-
-    console.log("Fetching notifications for user:", user.id);
-
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/notifications/user/${user.id}`
-      );
-
-      console.log("Notifications response status:", response.status);
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log("Notifications data:", data);
-        setNotifications(data);
-      } else {
-        const errorText = await response.text();
-        console.error("Notifications API error:", response.status, errorText);
-      }
-    } catch (error) {
-      console.error("Error fetching notifications:", error);
-    }
-  };
-
-  // ดึงจำนวน notifications ที่ยังไม่ได้อ่าน
-  const fetchUnreadCount = async () => {
-    if (!user?.id) {
-      console.log("No user ID available for unread count");
-      return;
-    }
-
-    console.log("Fetching unread count for user:", user.id);
-
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/notifications/user/${user.id}/unread-count`
-      );
-
-      console.log("Unread count response status:", response.status);
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log("Unread count data:", data);
-        setUnreadCount(data.unread_count);
-      } else {
-        const errorText = await response.text();
-        console.error("Unread count API error:", response.status, errorText);
-      }
-    } catch (error) {
-      console.error("Error fetching unread count:", error);
-    }
-  };
-
-  // ทำเครื่องหมาย notification ว่าอ่านแล้ว
-  const markAsRead = async (notificationId: string) => {
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/notifications/${notificationId}/read`,
-        {
-          method: "PUT",
-        }
-      );
-      if (response.ok) {
-        setNotifications((prev) =>
-          prev.map((notification) =>
-            notification.id === notificationId
-              ? { ...notification, is_read: true }
-              : notification
-          )
-        );
-        setUnreadCount((prev) => Math.max(0, prev - 1));
-      }
-    } catch (error) {
-      console.error("Error marking notification as read:", error);
-    }
-  };
-
-  // ทำเครื่องหมาย notifications ทั้งหมดว่าอ่านแล้ว
-  const markAllAsRead = async () => {
-    if (!user?.id) return;
-
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/notifications/user/${user.id}/read-all`,
-        {
-          method: "PUT",
-        }
-      );
-      if (response.ok) {
-        setNotifications((prev) =>
-          prev.map((notification) => ({ ...notification, is_read: true }))
-        );
-        setUnreadCount(0);
-      }
-    } catch (error) {
-      console.error("Error marking all notifications as read:", error);
-    }
-  };
 
   // ฟังก์ชันทดสอบสร้าง notification
   const createTestNotification = async () => {
@@ -145,51 +49,23 @@ export default function NotificationDropdown() {
         body: JSON.stringify({
           user_id: user.id,
           title: "ทดสอบการแจ้งเตือน",
-          message: "นี่คือการแจ้งเตือนทดสอบ",
+          message: "นี่คือการแจ้งเตือนทดสอบแบบ WebSocket",
           type: "test",
         }),
       });
 
       if (response.ok) {
-        console.log("Test notification created successfully");
-        fetchNotifications();
-        fetchUnreadCount();
+        console.log("✅ Test notification created successfully");
       } else {
         const errorText = await response.text();
         console.error(
-          "Create test notification error:",
+          "❌ Create test notification error:",
           response.status,
           errorText
         );
       }
     } catch (error) {
-      console.error("Error creating test notification:", error);
-    }
-  };
-
-  // ลบ notification
-  const deleteNotification = async (notificationId: string) => {
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/notifications/${notificationId}`,
-        {
-          method: "DELETE",
-        }
-      );
-      if (response.ok) {
-        setNotifications((prev) =>
-          prev.filter((notification) => notification.id !== notificationId)
-        );
-        // ลด unreadCount ถ้า notification ที่ลบยังไม่ได้อ่าน
-        const deletedNotification = notifications.find(
-          (n) => n.id === notificationId
-        );
-        if (deletedNotification && !deletedNotification.is_read) {
-          setUnreadCount((prev) => Math.max(0, prev - 1));
-        }
-      }
-    } catch (error) {
-      console.error("Error deleting notification:", error);
+      console.error("❌ Error creating test notification:", error);
     }
   };
 
@@ -215,27 +91,13 @@ export default function NotificationDropdown() {
     }
   };
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchNotifications();
-      fetchUnreadCount();
-
-      // Polling notifications ทุก 30 วินาที
-      const interval = setInterval(() => {
-        fetchNotifications();
-        fetchUnreadCount();
-      }, 30000);
-
-      return () => clearInterval(interval);
-    }
-  }, [user?.id]);
-
-  // เมื่อเปิด popup ให้ fetch ข้อมูลใหม่
-  useEffect(() => {
-    if (isOpen && user?.id) {
-      fetchNotifications();
-    }
-  }, [isOpen, user?.id]);
+  // 🚫 TEMPORARILY DISABLED: เมื่อเปิด popup ให้ fetch ข้อมูลใหม่ (fallback)  
+  // Testing WebSocket implementation - remove comments when WebSocket is confirmed working
+  // useEffect(() => {
+  //   if (isOpen && user?.id) {
+  //     fetchNotifications();
+  //   }
+  // }, [isOpen, user?.id, fetchNotifications]);
 
   if (!user) return null;
 
@@ -244,6 +106,8 @@ export default function NotificationDropdown() {
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
+          {/* แสดงสถานะการเชื่อมต่อ WebSocket */}
+          <div className={`absolute -top-0.5 -left-0.5 h-2 w-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
           {unreadCount > 0 && (
             <Badge
               variant="destructive"
@@ -257,7 +121,10 @@ export default function NotificationDropdown() {
       <PopoverContent className="w-80 p-0" align="end">
         <div className="border-b p-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold">การแจ้งเตือน</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold">การแจ้งเตือน</h3>
+              <div className={`h-2 w-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} title={isConnected ? 'เชื่อมต่อแล้ว' : 'ไม่ได้เชื่อมต่อ'} />
+            </div>
             <div className="flex gap-2">
               {unreadCount > 0 && (
                 <Button
@@ -291,20 +158,25 @@ export default function NotificationDropdown() {
                 <div
                   key={notification.id}
                   className={`p-4 hover:bg-muted/50 transition-colors ${
-                    !notification.is_read ? "bg-blue-50" : ""
+                    !notification.isRead ? "bg-blue-50" : ""
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 space-y-1">
+                      {notification.title && (
+                        <p className="text-sm font-medium leading-5">
+                          {notification.title}
+                        </p>
+                      )}
                       <p className="text-sm leading-5">
                         {notification.message}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {formatDate(notification.created_at)}
+                        {formatDate(notification.createdAt)}
                       </p>
                     </div>
                     <div className="flex items-center gap-1">
-                      {!notification.is_read && (
+                      {!notification.isRead && (
                         <Button
                           variant="ghost"
                           size="sm"

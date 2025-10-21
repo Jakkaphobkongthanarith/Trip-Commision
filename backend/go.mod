@@ -11,6 +11,7 @@ require (
 require (
 	github.com/bytedance/sonic/loader v0.2.4 // indirect
 	github.com/cloudwego/base64x v0.1.5 // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/jackc/pgx/v5 v5.7.6 // indirect
 )
 

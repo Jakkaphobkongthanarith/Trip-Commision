@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 import Layout from "./components/Layout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -31,78 +32,80 @@ const App = () => (
       <TooltipProvider>
         <BrowserRouter>
           <AuthProvider>
-            <Layout>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/packages" element={<PackageList />} />
-                <Route path="/packages/:id" element={<PackageDetails />} />
-                <Route
-                  path="/profile"
-                  element={
-                    <ProtectedRoute>
-                      <Profile />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="/payment/success" element={<PaymentSuccess />} />
-                <Route
-                  path="/payment/confirm/:bookingId"
-                  element={<PaymentConfirmation />}
-                />
-                <Route
-                  path="/advertiser"
-                  element={
-                    <ProtectedRoute>
-                      <AdvertiserDashboard />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/manager"
-                  element={
-                    <ProtectedRoute>
-                      <ManagerDashboard />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/members"
-                  element={
-                    <ProtectedRoute>
-                      <MemberManagement />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin"
-                  element={
-                    <ProtectedRoute>
-                      <AdminDashboard />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/package-management"
-                  element={
-                    <ProtectedRoute>
-                      <PackageManagement />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="/discount-codes" element={<DiscountCodes />} />
-                <Route
-                  path="/discount-management"
-                  element={
-                    <ProtectedRoute>
-                      <DiscountCodeManagement />
-                    </ProtectedRoute>
-                  }
-                />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Layout>
+            <NotificationProvider>
+              <Layout>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/packages" element={<PackageList />} />
+                  <Route path="/packages/:id" element={<PackageDetails />} />
+                  <Route
+                    path="/profile"
+                    element={
+                      <ProtectedRoute>
+                        <Profile />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="/payment/success" element={<PaymentSuccess />} />
+                  <Route
+                    path="/payment/confirm/:bookingId"
+                    element={<PaymentConfirmation />}
+                  />
+                  <Route
+                    path="/advertiser"
+                    element={
+                      <ProtectedRoute>
+                        <AdvertiserDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/manager"
+                    element={
+                      <ProtectedRoute>
+                        <ManagerDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/members"
+                    element={
+                      <ProtectedRoute>
+                        <MemberManagement />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin"
+                    element={
+                      <ProtectedRoute>
+                        <AdminDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/package-management"
+                    element={
+                      <ProtectedRoute>
+                        <PackageManagement />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="/discount-codes" element={<DiscountCodes />} />
+                  <Route
+                    path="/discount-management"
+                    element={
+                      <ProtectedRoute>
+                        <DiscountCodeManagement />
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Layout>
+            </NotificationProvider>
           </AuthProvider>
         </BrowserRouter>
         <Toaster />

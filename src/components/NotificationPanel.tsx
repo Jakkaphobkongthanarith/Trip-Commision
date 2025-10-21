@@ -239,22 +239,23 @@ export function NotificationPanel() {
     }
   }, [isOpen]);
 
-  // Listen for notification creation events
-  useEffect(() => {
-    const handleNotificationCreated = () => {
-      console.log(
-        "🔔 Notification created event received, fetching fresh data"
-      );
-      fetchNotifications();
-    };
+  // 🚫 TEMPORARILY DISABLED: Listen for notification creation events
+  // Testing WebSocket implementation - remove comments when WebSocket is confirmed working
+  // useEffect(() => {
+  //   const handleNotificationCreated = () => {
+  //     console.log(
+  //       "🔔 Notification created event received, fetching fresh data"
+  //     );
+  //     fetchNotifications();
+  //   };
 
-    window.addEventListener("notificationCreated", handleNotificationCreated);
-    return () =>
-      window.removeEventListener(
-        "notificationCreated",
-        handleNotificationCreated
-      );
-  }, []);
+  //   window.addEventListener("notificationCreated", handleNotificationCreated);
+  //   return () =>
+  //     window.removeEventListener(
+  //       "notificationCreated",
+  //       handleNotificationCreated
+  //     );
+  // }, []);
 
   // Don't render if user is not logged in
   if (!user) {

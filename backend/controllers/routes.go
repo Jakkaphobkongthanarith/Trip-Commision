@@ -3,6 +3,7 @@ package controllers
 import (
 	"fmt"
 	"net/http"
+	"trip-trader-backend/utils"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -175,8 +176,14 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	r.DELETE("/api/discount-codes/:id", discountCodeController.DeleteDiscountCode)
 	r.DELETE("/api/global-discount-codes/:id", discountCodeController.DeleteGlobalDiscountCode)
 
-	// Notification routes
-	notificationController := NewNotificationController(db)
+	// Notification routes - เริ่มต้น WebSocket Hub ก่อน
+	hub := utils.NewHub()
+	go hub.Run()  // รัน hub ใน goroutine แยก
+	
+	notificationController := NewNotificationController(db, hub)
+	
+	// WebSocket endpoint สำหรับ real-time notifications
+	r.GET("/ws", notificationController.WebSocketHandler)
 	
 	// สร้าง notification สำหรับผู้ใช้คนเดียว
 	r.POST("/api/notifications", notificationController.CreateNotification)

@@ -33,9 +33,10 @@ const NotificationBell = () => {
   useEffect(() => {
     if (user) {
       fetchNotifications();
-      // Setup polling every 30 seconds for new notifications
-      const interval = setInterval(fetchNotifications, 30000);
-      return () => clearInterval(interval);
+      // 🚫 TEMPORARILY DISABLED: Setup polling every 30 seconds for new notifications
+      // Testing WebSocket implementation - remove comments when WebSocket is confirmed working
+      // const interval = setInterval(fetchNotifications, 30000);
+      // return () => clearInterval(interval);
     }
   }, [user]);
 
