@@ -7,8 +7,18 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Navigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Command,
   CommandEmpty,
@@ -76,8 +86,6 @@ interface User {
   display_name: string;
   email: string;
 }
-
-
 
 export default function PackageManagement() {
   const { user } = useAuth();
@@ -261,8 +269,6 @@ export default function PackageManagement() {
       setExistingTags([]);
     }
   };
-
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -472,14 +478,6 @@ export default function PackageManagement() {
       throw error;
     }
   };
-
-
-
-
-
-
-
-
 
   // Image upload functions
   const handleImageUpload = async (file: File) => {
@@ -760,422 +758,417 @@ export default function PackageManagement() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 pt-24">
+    <div className="container mx-auto px-4 py-8 pt-16">
       <Navbar />
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">จัดการแพคเกจ</h1>
       </div>
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">แพคเกจท่องเที่ยว</h2>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={resetForm}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  สร้างแพคเกจใหม่
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>
-                    {editingPackage ? "แก้ไขแพคเกจ" : "สร้างแพคเกจใหม่"}
-                  </DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  {/* Package Form - ย่อสั้นลงเพื่อประหยัดพื้นที่ */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="title">ชื่อแพคเกจ *</Label>
-                      <Input
-                        id="title"
-                        value={formData.title}
-                        onChange={(e) =>
-                          setFormData({ ...formData, title: e.target.value })
-                        }
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="location">สถานที่ *</Label>
-                      <Input
-                        id="location"
-                        value={formData.location}
-                        onChange={(e) =>
-                          setFormData({ ...formData, location: e.target.value })
-                        }
-                        required
-                      />
-                    </div>
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold">แพคเกจท่องเที่ยว</h2>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={resetForm}>
+              <Plus className="w-4 h-4 mr-2" />
+              สร้างแพคเกจใหม่
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {editingPackage ? "แก้ไขแพคเกจ" : "สร้างแพคเกจใหม่"}
+              </DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Package Form - ย่อสั้นลงเพื่อประหยัดพื้นที่ */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="title">ชื่อแพคเกจ *</Label>
+                  <Input
+                    id="title"
+                    value={formData.title}
+                    onChange={(e) =>
+                      setFormData({ ...formData, title: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="location">สถานที่ *</Label>
+                  <Input
+                    id="location"
+                    value={formData.location}
+                    onChange={(e) =>
+                      setFormData({ ...formData, location: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="price">ราคา (บาท) *</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.price}
+                    onChange={(e) =>
+                      setFormData({ ...formData, price: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="discount">ส่วนลด (%)</Label>
+                  <Input
+                    id="discount"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={formData.discount_percentage}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        discount_percentage: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="available_from">วันที่เริ่ม</Label>
+                  <Input
+                    id="available_from"
+                    type="date"
+                    value={formData.available_from}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        available_from: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="available_to">วันที่สิ้นสุด</Label>
+                  <Input
+                    id="available_to"
+                    type="date"
+                    value={formData.available_to}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        available_to: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="max_guests">จำนวนผู้เข้าร่วมสูงสุด *</Label>
+                  <Input
+                    id="max_guests"
+                    type="number"
+                    min="1"
+                    value={formData.max_guests}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        max_guests: e.target.value,
+                      })
+                    }
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Auto-calculated duration display */}
+              {formData.available_from && formData.available_to && (
+                <div className="p-4 bg-muted/30 rounded-lg border">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar className="h-4 w-4 text-primary" />
+                    <Label className="text-sm font-medium">
+                      ระยะเวลาที่คำนวณได้
+                    </Label>
                   </div>
+                  <p className="text-lg font-semibold text-primary">
+                    {formData.duration} วัน
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    คำนวณจากวันที่เริ่ม - วันที่สิ้นสุด
+                  </p>
+                </div>
+              )}
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="price">ราคา (บาท) *</Label>
-                      <Input
-                        id="price"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={formData.price}
-                        onChange={(e) =>
-                          setFormData({ ...formData, price: e.target.value })
-                        }
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="discount">ส่วนลด (%)</Label>
-                      <Input
-                        id="discount"
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        value={formData.discount_percentage}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            discount_percentage: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
+              {/* Advertiser Selection */}
+              <div>
+                <Label htmlFor="advertisers">ผู้โฆษณา</Label>
+                <div className="space-y-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-between"
+                    onClick={() => setIsAdvertiserModalOpen(true)}
+                  >
+                    <span>{getSelectedAdvertiserNames()}</span>
+                    <Users className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Image Upload */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="image">รูปภาพแพคเกจ *</Label>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm">อัตราส่วน:</Label>
+                    <Select
+                      value={aspectRatio.toString()}
+                      onValueChange={(value) =>
+                        setAspectRatio(parseFloat(value))
+                      }
+                    >
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={(16 / 9).toString()}>
+                          16:9 (แนวนอน)
+                        </SelectItem>
+                        <SelectItem value={(4 / 3).toString()}>
+                          4:3 (มาตรฐาน)
+                        </SelectItem>
+                        <SelectItem value="1">
+                          1:1 (สี่เหลี่ยมจัตุรัส)
+                        </SelectItem>
+                        <SelectItem value={(3 / 4).toString()}>
+                          3:4 (แนวตั้ง)
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="available_from">วันที่เริ่ม</Label>
-                      <Input
-                        id="available_from"
-                        type="date"
-                        value={formData.available_from}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            available_from: e.target.value,
-                          })
-                        }
+                </div>
+                <div
+                  className={`relative border-2 border-dashed rounded-lg p-6 transition-colors ${
+                    isDragOver
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-300 hover:border-gray-400"
+                  }`}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                >
+                  {formData.image_url ? (
+                    <div className="space-y-4">
+                      <img
+                        src={formData.image_url}
+                        alt="Preview"
+                        className="w-full h-48 object-cover rounded-lg"
                       />
-                    </div>
-                    <div>
-                      <Label htmlFor="available_to">วันที่สิ้นสุด</Label>
-                      <Input
-                        id="available_to"
-                        type="date"
-                        value={formData.available_to}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            available_to: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="max_guests">
-                        จำนวนผู้เข้าร่วมสูงสุด *
-                      </Label>
-                      <Input
-                        id="max_guests"
-                        type="number"
-                        min="1"
-                        value={formData.max_guests}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            max_guests: e.target.value,
-                          })
-                        }
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {/* Auto-calculated duration display */}
-                  {formData.available_from && formData.available_to && (
-                    <div className="p-4 bg-muted/30 rounded-lg border">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Calendar className="h-4 w-4 text-primary" />
-                        <Label className="text-sm font-medium">
-                          ระยะเวลาที่คำนวณได้
-                        </Label>
-                      </div>
-                      <p className="text-lg font-semibold text-primary">
-                        {formData.duration} วัน
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        คำนวณจากวันที่เริ่ม - วันที่สิ้นสุด
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Advertiser Selection */}
-                  <div>
-                    <Label htmlFor="advertisers">ผู้โฆษณา</Label>
-                    <div className="space-y-3">
                       <Button
                         type="button"
                         variant="outline"
-                        className="w-full justify-between"
-                        onClick={() => setIsAdvertiserModalOpen(true)}
+                        onClick={removeImage}
+                        className="w-full"
                       >
-                        <span>{getSelectedAdvertiserNames()}</span>
-                        <Users className="w-4 h-4" />
+                        <X className="w-4 h-4 mr-2" />
+                        ลบรูปภาพ
                       </Button>
                     </div>
+                  ) : (
+                    <div className="text-center">
+                      <div className="w-12 h-12 mx-auto mb-4 text-gray-400">
+                        📷
+                      </div>
+                      <p className="text-gray-600">
+                        ลากรูปภาพมาที่นี่ หรือคลิกเพื่อเลือก
+                      </p>
+                      <p className="text-sm text-gray-400 mt-2">
+                        รองรับไฟล์ JPG, PNG (สูงสุด 5MB)
+                      </p>
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                </div>
+
+                {isUploading && (
+                  <div className="text-center text-sm text-gray-500">
+                    กำลังอัปโหลด...
                   </div>
+                )}
 
-                  {/* Image Upload */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="image">รูปภาพแพคเกจ *</Label>
-                      <div className="flex items-center gap-2">
-                        <Label className="text-sm">อัตราส่วน:</Label>
-                        <Select
-                          value={aspectRatio.toString()}
-                          onValueChange={(value) =>
-                            setAspectRatio(parseFloat(value))
-                          }
-                        >
-                          <SelectTrigger className="w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value={(16 / 9).toString()}>
-                              16:9 (แนวนอน)
-                            </SelectItem>
-                            <SelectItem value={(4 / 3).toString()}>
-                              4:3 (มาตรฐาน)
-                            </SelectItem>
-                            <SelectItem value="1">
-                              1:1 (สี่เหลี่ยมจัตุรัส)
-                            </SelectItem>
-                            <SelectItem value={(3 / 4).toString()}>
-                              3:4 (แนวตั้ง)
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div
-                      className={`relative border-2 border-dashed rounded-lg p-6 transition-colors ${
-                        isDragOver
-                          ? "border-blue-500 bg-blue-50"
-                          : "border-gray-300 hover:border-gray-400"
-                      }`}
-                      onDragOver={handleDragOver}
-                      onDragLeave={handleDragLeave}
-                      onDrop={handleDrop}
-                    >
-                      {formData.image_url ? (
-                        <div className="space-y-4">
-                          <img
-                            src={formData.image_url}
-                            alt="Preview"
-                            className="w-full h-48 object-cover rounded-lg"
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={removeImage}
-                            className="w-full"
-                          >
-                            <X className="w-4 h-4 mr-2" />
-                            ลบรูปภาพ
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="text-center">
-                          <div className="w-12 h-12 mx-auto mb-4 text-gray-400">
-                            📷
-                          </div>
-                          <p className="text-gray-600">
-                            ลากรูปภาพมาที่นี่ หรือคลิกเพื่อเลือก
-                          </p>
-                          <p className="text-sm text-gray-400 mt-2">
-                            รองรับไฟล์ JPG, PNG (สูงสุด 5MB)
-                          </p>
-                        </div>
-                      )}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileSelect}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      />
-                    </div>
-
-                    {isUploading && (
-                      <div className="text-center text-sm text-gray-500">
-                        กำลังอัปโหลด...
-                      </div>
-                    )}
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="image_url">หรือใส่ URL รูปภาพ</Label>
-                        {formData.image_url && !imagePreview && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setCropImageSrc(formData.image_url);
-                              setShowCrop(true);
-                            }}
-                          >
-                            🎨 Crop รูปภาพ
-                          </Button>
-                        )}
-                      </div>
-                      <Input
-                        type="url"
-                        id="image_url"
-                        value={formData.image_url}
-                        onChange={(e) => {
-                          setFormData({
-                            ...formData,
-                            image_url: e.target.value,
-                          });
-                          if (imagePreview) {
-                            URL.revokeObjectURL(imagePreview);
-                            setImagePreview(null);
-                          }
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="image_url">หรือใส่ URL รูปภาพ</Label>
+                    {formData.image_url && !imagePreview && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setCropImageSrc(formData.image_url);
+                          setShowCrop(true);
                         }}
-                        placeholder="https://example.com/image.jpg"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="description">รายละเอียด</Label>
-                    <Textarea
-                      id="description"
-                      value={formData.description}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          description: e.target.value,
-                        })
-                      }
-                      rows={4}
-                    />
-                  </div>
-
-                  {/* Tags Section */}
-                  <div>
-                    <Label htmlFor="tags">แท็ก</Label>
-                    <div className="space-y-3">
-                      <Popover
-                        open={tagComboOpen}
-                        onOpenChange={setTagComboOpen}
                       >
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={tagComboOpen}
-                            className="w-full justify-between"
-                          >
-                            เพิ่มแท็ก...
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[400px] p-0">
-                          <Command>
-                            <CommandInput
-                              placeholder="ค้นหาแท็ก..."
-                              value={newTag}
-                              onValueChange={setNewTag}
-                            />
-                            <CommandList>
-                              <CommandEmpty>
-                                {newTag && (
-                                  <div className="p-2">
-                                    <Button
-                                      variant="ghost"
-                                      className="w-full"
-                                      onClick={() => addTag(newTag)}
-                                    >
-                                      <Plus className="w-4 h-4 mr-2" />
-                                      เพิ่ม "{newTag}"
-                                    </Button>
-                                  </div>
-                                )}
-                              </CommandEmpty>
-                              <CommandGroup>
-                                {availableTagsForSelection.map((tag) => (
-                                  <CommandItem
-                                    key={tag}
-                                    onSelect={() => addTag(tag)}
-                                  >
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4",
-                                        formData.tags.includes(tag)
-                                          ? "opacity-100"
-                                          : "opacity-0"
-                                      )}
-                                    />
-                                    {tag}
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
+                        🎨 Crop รูปภาพ
+                      </Button>
+                    )}
+                  </div>
+                  <Input
+                    type="url"
+                    id="image_url"
+                    value={formData.image_url}
+                    onChange={(e) => {
+                      setFormData({
+                        ...formData,
+                        image_url: e.target.value,
+                      });
+                      if (imagePreview) {
+                        URL.revokeObjectURL(imagePreview);
+                        setImagePreview(null);
+                      }
+                    }}
+                    placeholder="https://example.com/image.jpg"
+                  />
+                </div>
+              </div>
 
-                      <div className="flex flex-wrap gap-2">
-                        {formData.tags.map((tag) => (
-                          <div
-                            key={tag}
-                            className="flex items-center bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full"
-                          >
-                            {tag}
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="ml-2 h-auto p-0 text-blue-600 hover:text-blue-800"
-                              onClick={() => removeTag(tag)}
-                            >
-                              <X className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        ))}
+              <div>
+                <Label htmlFor="description">รายละเอียด</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      description: e.target.value,
+                    })
+                  }
+                  rows={4}
+                />
+              </div>
+
+              {/* Tags Section */}
+              <div>
+                <Label htmlFor="tags">แท็ก</Label>
+                <div className="space-y-3">
+                  <Popover open={tagComboOpen} onOpenChange={setTagComboOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={tagComboOpen}
+                        className="w-full justify-between"
+                      >
+                        เพิ่มแท็ก...
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[400px] p-0">
+                      <Command>
+                        <CommandInput
+                          placeholder="ค้นหาแท็ก..."
+                          value={newTag}
+                          onValueChange={setNewTag}
+                        />
+                        <CommandList>
+                          <CommandEmpty>
+                            {newTag && (
+                              <div className="p-2">
+                                <Button
+                                  variant="ghost"
+                                  className="w-full"
+                                  onClick={() => addTag(newTag)}
+                                >
+                                  <Plus className="w-4 h-4 mr-2" />
+                                  เพิ่ม "{newTag}"
+                                </Button>
+                              </div>
+                            )}
+                          </CommandEmpty>
+                          <CommandGroup>
+                            {availableTagsForSelection.map((tag) => (
+                              <CommandItem
+                                key={tag}
+                                onSelect={() => addTag(tag)}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    formData.tags.includes(tag)
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                                {tag}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+
+                  <div className="flex flex-wrap gap-2">
+                    {formData.tags.map((tag) => (
+                      <div
+                        key={tag}
+                        className="flex items-center bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full"
+                      >
+                        {tag}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="ml-2 h-auto p-0 text-blue-600 hover:text-blue-800"
+                          onClick={() => removeTag(tag)}
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
                       </div>
-                    </div>
+                    ))}
                   </div>
+                </div>
+              </div>
 
-                  <div className="flex justify-end space-x-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setIsDialogOpen(false)}
-                    >
-                      ยกเลิก
-                    </Button>
-                    <Button type="submit" disabled={isLoading}>
-                      {editingPackage ? "อัปเดต" : "สร้าง"}แพคเกจ
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
+              <div className="flex justify-end space-x-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                >
+                  ยกเลิก
+                </Button>
+                <Button type="submit" disabled={isLoading}>
+                  {editingPackage ? "อัปเดต" : "สร้าง"}แพคเกจ
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
 
-          {/* Search Bar */}
-          <div className="mb-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="ค้นหาแพคเกจตามชื่อ สถานที่ หรือแท็ก..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
+      {/* Search Bar */}
+      <div className="mb-6">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="ค้นหาแพคเกจตามชื่อ สถานที่ หรือแท็ก..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </div>
 
       {/* Packages List */}
       <div className="grid gap-6">

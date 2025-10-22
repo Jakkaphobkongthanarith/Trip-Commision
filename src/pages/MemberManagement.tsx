@@ -196,7 +196,7 @@ const MemberManagement = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-sunset-start to-sunset-end">
       <Navbar />
-      <div className="container mx-auto p-6 pt-24">
+      <div className="container mx-auto p-6 pt-16">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-black mb-2">จัดการสมาชิก</h1>
           <p className="text-black/80">ดูและจัดการข้อมูลสมาชิกในระบบ</p>

@@ -26,8 +26,6 @@ interface NotificationContextType {
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   deleteNotification: (id: string) => Promise<void>;
-  fetchNotifications: () => Promise<void>;
-  fetchUnreadCount: () => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(
@@ -61,29 +59,64 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     userID: user?.id,
     onMessage: (message: NotificationMessage) => {
       console.log("📨 Received real-time notification:", message);
+      console.log("📨 Message type:", message.type);
+      console.log("📨 Message data:", message.data);
 
-      // แสดง toast notification
-      if (message.type === "notification") {
+      // Handle different message types
+      if (message.type === "existing_notification") {
+        console.log("📋 Processing existing notification:", message);
+        // ข้อมูล notifications เก่าจาก WebSocket
+        const existingNotification: NotificationData = {
+          id: message.id,
+          title: message.title,
+          message: message.message,
+          type: "notification",
+          isRead: message.data?.isRead || false, // ถ้ามีข้อมูล isRead จาก data
+          createdAt: message.timestamp,
+        };
+
+        console.log(
+          "📋 Adding existing notification to state:",
+          existingNotification
+        );
+
+        setNotifications((prev) => {
+          // ตรวจสอบไม่ให้ duplicate
+          if (!prev.find((n) => n.id === existingNotification.id)) {
+            const newList = [...prev, existingNotification];
+            console.log("📋 Updated notifications list:", newList);
+            return newList;
+          }
+          console.log("📋 Notification already exists, skipping");
+          return prev;
+        });
+      } else if (message.type === "unread_count") {
+        console.log("📊 Processing unread count:", message.data?.count);
+        // อัพเดท unread count
+        setUnreadCount(message.data?.count || 0);
+      } else if (message.type === "notification") {
+        console.log("🔔 Processing new real-time notification:", message);
+        // Notification ใหม่แบบ real-time
         toast({
           title: message.title,
           description: message.message,
           duration: 5000,
         });
-      }
 
-      // เพิ่ม notification ใหม่ลงใน list (ถ้าเป็น notification ปกติ)
-      if (message.type === "notification" && message.id) {
-        const newNotification: NotificationData = {
-          id: message.id,
-          title: message.title,
-          message: message.message,
-          type: message.type,
-          isRead: false,
-          createdAt: message.timestamp,
-        };
+        // เพิ่ม notification ใหม่ลงใน list
+        if (message.id) {
+          const newNotification: NotificationData = {
+            id: message.id,
+            title: message.title,
+            message: message.message,
+            type: message.type,
+            isRead: false,
+            createdAt: message.timestamp,
+          };
 
-        setNotifications((prev) => [newNotification, ...prev]);
-        setUnreadCount((prev) => prev + 1);
+          setNotifications((prev) => [newNotification, ...prev]);
+          setUnreadCount((prev) => prev + 1);
+        }
       }
     },
     onConnect: () => {
@@ -95,54 +128,12 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     autoConnect: !!user?.id, // เชื่อมต่ออัตโนมัติเมื่อมี user
   });
 
-  // ดึงข้อมูล notifications จาก API
-  const fetchNotifications = async () => {
-    if (!user?.id) return;
-
-    try {
-      const response = await fetch(
-        `${
-          import.meta.env.VITE_API_URL || "http://localhost:8000"
-        }/api/notifications/user/${user.id}`
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setNotifications(data || []);
-      } else {
-        console.error("❌ Error fetching notifications:", response.status);
-      }
-    } catch (error) {
-      console.error("❌ Error fetching notifications:", error);
-    }
-  };
-
-  // ดึงจำนวน notifications ที่ยังไม่ได้อ่าน
-  const fetchUnreadCount = async () => {
-    if (!user?.id) return;
-
-    try {
-      const response = await fetch(
-        `${
-          import.meta.env.VITE_API_URL || "http://localhost:8000"
-        }/api/notifications/user/${user.id}/unread-count`
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setUnreadCount(data.count || 0);
-      }
-    } catch (error) {
-      console.error("❌ Error fetching unread count:", error);
-    }
-  };
-
   // ทำเครื่องหมาย notification ว่าอ่านแล้ว
   const markAsRead = async (id: string) => {
     try {
       const response = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "http://localhost:8000"
+          import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"
         }/api/notifications/${id}/read`,
         {
           method: "PUT",
@@ -169,7 +160,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     try {
       const response = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "http://localhost:8000"
+          import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"
         }/api/notifications/user/${user.id}/read-all`,
         {
           method: "PUT",
@@ -192,7 +183,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     try {
       const response = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "http://localhost:8000"
+          import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"
         }/api/notifications/${id}`,
         {
           method: "DELETE",
@@ -212,17 +203,14 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     }
   };
 
-  // 🚫 TEMPORARILY DISABLED: โหลดข้อมูลเมื่อ user เปลี่ยน
-  // Testing WebSocket implementation - remove comments when WebSocket is confirmed working
+  // รีเซ็ต state เมื่อ user เปลี่ยนหรือ logout
   useEffect(() => {
-    if (user?.id) {
-      // fetchNotifications(); // Disabled for WebSocket testing
-      // fetchUnreadCount(); // Disabled for WebSocket testing
-    } else {
+    if (!user?.id) {
       // รีเซ็ต state เมื่อ logout
       setNotifications([]);
       setUnreadCount(0);
     }
+    // ไม่ต้อง fetch จาก API เพราะใช้ WebSocket แล้ว
   }, [user?.id]);
 
   const value: NotificationContextType = {
@@ -232,8 +220,6 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     markAsRead,
     markAllAsRead,
     deleteNotification,
-    fetchNotifications,
-    fetchUnreadCount,
   };
 
   return (

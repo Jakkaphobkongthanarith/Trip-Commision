@@ -1,10 +1,11 @@
 interface NotificationMessage {
   id: string;
-  type: "notification" | "system";
+  type: "notification" | "system" | "existing_notification" | "unread_count";
   title: string;
   message: string;
   userID?: string;
   timestamp: string;
+  data?: any; // เพิ่ม data field สำหรับข้อมูลเพิ่มเติม
 }
 
 interface WebSocketOptions {
@@ -176,12 +177,16 @@ const getWebSocketURL = (): string => {
   const host = window.location.hostname;
   const port = import.meta.env.VITE_API_PORT || "8000";
 
+  let wsUrl: string;
+
   // สำหรับ development ใช้ localhost, สำหรับ production ใช้ host เดียวกัน
   if (import.meta.env.DEV) {
-    return `${protocol}//localhost:${port}/ws`;
+    wsUrl = `${protocol}//localhost:${port}/ws`;
   } else {
-    return `${protocol}//${host}:${port}/ws`;
+    wsUrl = `${protocol}//${host}:${port}/ws`;
   }
+
+  return wsUrl;
 };
 
 // Export singleton instance

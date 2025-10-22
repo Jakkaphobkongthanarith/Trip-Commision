@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Bell,
@@ -23,27 +23,7 @@ import {
   SheetTrigger,
 } from "./ui/sheet";
 import { useAuth } from "@/contexts/AuthContext";
-
-interface Notification {
-  id: string;
-  title: string;
-  message: string;
-  category:
-    | "booking"
-    | "payment"
-    | "discount"
-    | "promotion"
-    | "commission"
-    | "system"
-    | "info";
-  priority: 1 | 2 | 3; // 1=high, 2=medium, 3=low
-  action_url?: string;
-  image_url?: string;
-  data?: any;
-  is_read: boolean;
-  created_at: string;
-  expires_at?: string;
-}
+import { useNotifications } from "@/contexts/NotificationContext";
 
 // Category icons และ colors
 const categoryConfig = {
@@ -65,132 +45,31 @@ const priorityConfig = {
 export function NotificationPanel() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+
+  // ใช้ข้อมูลจาก NotificationContext แทน API calls
+  const {
+    notifications,
+    unreadCount,
+    isConnected,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+  } = useNotifications();
+
   const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
 
-  // Fetch notifications
-  const fetchNotifications = async () => {
-    // Get user ID from AuthContext
-    const userId = user?.id;
-
-    console.log("🔔 NotificationPanel - Fetching for user:", userId);
-    console.log("🔔 User object:", user);
-
-    if (!userId) {
-      console.warn("❌ No user ID found in NotificationPanel");
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const response = await fetch(
-        `http://localhost:8000/api/notifications/user/${userId}`
-      );
-
-      console.log("🔔 Notification API response status:", response.status);
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log("🔔 Notifications fetched:", data);
-
-        setNotifications(data.notifications || data || []); // Try both formats
-
-        // Count unread notifications
-        const notificationList = data.notifications || data || [];
-        const unread = notificationList.filter(
-          (n: Notification) => !n.is_read
-        ).length;
-        setUnreadCount(unread);
-
-        console.log("🔔 Unread count:", unread);
-      } else {
-        const errorData = await response.text();
-        console.error("❌ Notification fetch failed:", errorData);
-      }
-    } catch (error) {
-      console.error("❌ Error fetching notifications:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Mark notification as read
-  const markAsRead = async (notificationId: string) => {
-    try {
-      const response = await fetch(
-        `http://localhost:8000/api/notifications/${notificationId}/read`,
-        {
-          method: "PUT",
-        }
-      );
-
-      if (response.ok) {
-        setNotifications((prev) =>
-          prev.map((n) =>
-            n.id === notificationId ? { ...n, is_read: true } : n
-          )
-        );
-        setUnreadCount((prev) => Math.max(0, prev - 1));
-      }
-    } catch (error) {
-      console.error("Error marking notification as read:", error);
-    }
-  };
-
-  // Mark all as read
-  const markAllAsRead = async () => {
-    if (!user?.id) return;
-
-    try {
-      const response = await fetch(
-        `http://localhost:8000/api/notifications/user/${user.id}/read-all`,
-        {
-          method: "PUT",
-        }
-      );
-
-      if (response.ok) {
-        setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-        setUnreadCount(0);
-      }
-    } catch (error) {
-      console.error("Error marking all as read:", error);
-    }
-  };
-
-  // Delete notification
-  const deleteNotification = async (notificationId: string) => {
-    try {
-      const response = await fetch(
-        `http://localhost:8000/api/notifications/${notificationId}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-      if (response.ok) {
-        setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
-        // Update unread count if deleted notification was unread
-        const deletedNotification = notifications.find(
-          (n) => n.id === notificationId
-        );
-        if (deletedNotification && !deletedNotification.is_read) {
-          setUnreadCount((prev) => Math.max(0, prev - 1));
-        }
-      }
-    } catch (error) {
-      console.error("Error deleting notification:", error);
-    }
-  };
+  console.log(
+    "🔔 NotificationPanel - Notifications from context:",
+    notifications
+  );
+  console.log("🔔 NotificationPanel - Unread count:", unreadCount);
+  console.log("🔔 NotificationPanel - WebSocket connected:", isConnected);
 
   // Handle notification click
-  const handleNotificationClick = (notification: Notification) => {
+  const handleNotificationClick = async (notification: any) => {
     // Mark as read if not already read
-    if (!notification.is_read) {
-      markAsRead(notification.id);
+    if (!notification.isRead) {
+      await markAsRead(notification.id);
     }
 
     // Navigate to action URL if provided
@@ -219,43 +98,6 @@ export function NotificationPanel() {
 
     return date.toLocaleDateString("th-TH");
   };
-
-  // Fetch notifications on mount and when user changes
-  useEffect(() => {
-    if (user?.id) {
-      console.log(
-        "🔔 NotificationPanel useEffect triggered for user:",
-        user.id
-      );
-      fetchNotifications();
-    }
-  }, [user?.id]); // Only watch user.id, not the entire user object
-
-  // Only fetch when panel opens (not on periodic interval)
-  useEffect(() => {
-    if (isOpen) {
-      console.log("🔔 Panel opened, fetching fresh notifications");
-      fetchNotifications();
-    }
-  }, [isOpen]);
-
-  // 🚫 TEMPORARILY DISABLED: Listen for notification creation events
-  // Testing WebSocket implementation - remove comments when WebSocket is confirmed working
-  // useEffect(() => {
-  //   const handleNotificationCreated = () => {
-  //     console.log(
-  //       "🔔 Notification created event received, fetching fresh data"
-  //     );
-  //     fetchNotifications();
-  //   };
-
-  //   window.addEventListener("notificationCreated", handleNotificationCreated);
-  //   return () =>
-  //     window.removeEventListener(
-  //       "notificationCreated",
-  //       handleNotificationCreated
-  //     );
-  // }, []);
 
   // Don't render if user is not logged in
   if (!user) {
@@ -297,9 +139,12 @@ export function NotificationPanel() {
         </SheetHeader>
 
         <ScrollArea className="h-[calc(100vh-120px)] mt-6">
-          {loading ? (
+          {!isConnected ? (
             <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+              <div className="text-center text-red-500">
+                <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                <p className="text-sm">เชื่อมต่อ WebSocket ไม่ได้</p>
+              </div>
             </div>
           ) : notifications.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
@@ -309,17 +154,32 @@ export function NotificationPanel() {
           ) : (
             <div className="space-y-3">
               {notifications.map((notification) => {
+                // Mapping ข้อมูลจาก NotificationContext format
+                const notificationData = {
+                  id: notification.id,
+                  title: notification.title,
+                  message: notification.message,
+                  category: "info" as const, // Default category
+                  priority: 2 as const, // Default priority
+                  is_read: notification.isRead,
+                  created_at: notification.createdAt,
+                  action_url: undefined,
+                  image_url: undefined,
+                };
+
                 const config =
-                  categoryConfig[notification.category] || categoryConfig.info;
+                  categoryConfig[notificationData.category] ||
+                  categoryConfig.info;
                 const priorityStyle =
-                  priorityConfig[notification.priority] || priorityConfig[2];
+                  priorityConfig[notificationData.priority] ||
+                  priorityConfig[2];
                 const IconComponent = config.icon;
 
                 return (
                   <div
-                    key={notification.id}
+                    key={notificationData.id}
                     className={`p-4 rounded-lg border-l-4 cursor-pointer transition-all hover:shadow-md ${
-                      !notification.is_read
+                      !notificationData.is_read
                         ? priorityStyle.color
                         : "bg-gray-50 border-gray-300"
                     }`}
@@ -338,23 +198,23 @@ export function NotificationPanel() {
                         <div className="flex items-start justify-between gap-2">
                           <h4
                             className={`font-medium ${
-                              !notification.is_read
+                              !notificationData.is_read
                                 ? priorityStyle.textColor
                                 : "text-gray-600"
                             }`}
                           >
-                            {notification.title}
+                            {notificationData.title}
                           </h4>
 
                           {/* Actions */}
                           <div className="flex items-center gap-1 flex-shrink-0">
-                            {!notification.is_read && (
+                            {!notificationData.is_read && (
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  markAsRead(notification.id);
+                                  markAsRead(notificationData.id);
                                 }}
                                 className="h-6 w-6 p-0"
                               >
@@ -366,7 +226,7 @@ export function NotificationPanel() {
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                deleteNotification(notification.id);
+                                deleteNotification(notificationData.id);
                               }}
                               className="h-6 w-6 p-0 text-gray-400 hover:text-red-500"
                             >
@@ -376,7 +236,7 @@ export function NotificationPanel() {
                         </div>
 
                         <p className="text-sm text-gray-600 mt-1">
-                          {notification.message}
+                          {notificationData.message}
                         </p>
 
                         {/* Metadata */}
@@ -385,21 +245,28 @@ export function NotificationPanel() {
                             {config.label}
                           </Badge>
                           <span className="text-xs text-gray-400">
-                            {formatRelativeTime(notification.created_at)}
+                            {formatRelativeTime(notificationData.created_at)}
                           </span>
+                          {/* WebSocket Status */}
+                          <Badge
+                            variant="outline"
+                            className="text-xs bg-green-50"
+                          >
+                            🔗 WebSocket
+                          </Badge>
                         </div>
 
                         {/* Image if available */}
-                        {notification.image_url && (
+                        {notificationData.image_url && (
                           <img
-                            src={notification.image_url}
+                            src={notificationData.image_url}
                             alt=""
                             className="mt-2 w-full max-w-[200px] h-20 object-cover rounded"
                           />
                         )}
 
                         {/* Action URL indicator */}
-                        {notification.action_url && (
+                        {notificationData.action_url && (
                           <div className="mt-2">
                             <Badge variant="outline" className="text-xs">
                               <MapPin className="h-3 w-3 mr-1" />

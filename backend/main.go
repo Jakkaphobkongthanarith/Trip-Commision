@@ -9,6 +9,7 @@ import (
 	"trip-trader-backend/controllers"
 	"trip-trader-backend/models"
 	"trip-trader-backend/services"
+	"trip-trader-backend/utils"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -95,7 +96,12 @@ func main() {
 	}
 
 	// Setup routes ผ่าน controllers package
-	controllers.SetupRoutes(r, db)
+	
+	// สร้าง WebSocket Hub
+	hub := utils.NewHub(db)
+	go hub.Run() // เริ่ม Hub ใน goroutine
+	
+	controllers.SetupRoutes(r, db, hub)
 
 	// เริ่ม Auto-Cancel Scheduler สำหรับยกเลิกการจองที่หมดเวลา
 	services.StartAutoCancelScheduler(db)

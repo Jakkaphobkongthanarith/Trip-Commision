@@ -5,10 +5,12 @@ import (
 	"net/http"
 	"sync"
 	"time"
+	"trip-trader-backend/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"gorm.io/gorm"
 )
 
 var upgrader = websocket.Upgrader{
@@ -40,6 +42,9 @@ type Client struct {
 }
 
 type Hub struct {
+	// Database instance
+	db *gorm.DB
+
 	// Registered clients
 	clients map[*Client]bool
 
@@ -58,8 +63,9 @@ type Hub struct {
 	mu sync.RWMutex
 }
 
-func NewHub() *Hub {
+func NewHub(db *gorm.DB) *Hub {
 	return &Hub{
+		db:          db,
 		broadcast:   make(chan NotificationMessage),
 		register:    make(chan *Client),
 		unregister:  make(chan *Client),
@@ -77,6 +83,12 @@ func (h *Hub) Run() {
 			h.userClients[client.UserID] = append(h.userClients[client.UserID], client)
 			h.mu.Unlock()
 			log.Printf("🔌 Client %s connected for user %s", client.ID, client.UserID)
+			
+			// เพิ่ม delay เล็กน้อยเพื่อให้ client connection พร้อม
+			time.Sleep(100 * time.Millisecond)
+			
+			// ส่ง notifications เก่าให้ client ที่เพิ่งเชื่อมต่อ
+			go h.sendExistingNotifications(client)
 
 		case client := <-h.unregister:
 			h.mu.Lock()
@@ -155,6 +167,88 @@ func (h *Hub) GetConnectedUsers() []string {
 		users = append(users, userID)
 	}
 	return users
+}
+
+// sendExistingNotifications - ส่งข้อมูล notifications เก่าให้ client ที่เพิ่งเชื่อมต่อ
+func (h *Hub) sendExistingNotifications(client *Client) {
+	if h.db == nil {
+		log.Println("⚠️ Database not available, skipping existing notifications")
+		return
+	}
+
+	userUUID, err := uuid.Parse(client.UserID)
+	if err != nil {
+		log.Printf("❌ Invalid user UUID: %s", client.UserID)
+		return
+	}
+
+	var notifications []models.Notification
+	if err := h.db.Where("user_id = ?", userUUID).Order("created_at DESC").Limit(50).Find(&notifications).Error; err != nil {
+		log.Printf("❌ Error fetching existing notifications for user %s: %v", client.UserID, err)
+		return
+	}
+
+	log.Printf("📋 Sending %d existing notifications to user %s", len(notifications), client.UserID)
+
+	// ส่ง notifications แต่ละตัวผ่าน WebSocket
+	for _, notif := range notifications {
+		message := NotificationMessage{
+			ID:        notif.ID.String(),
+			UserID:    client.UserID,
+			Type:      "existing_notification", // ใช้ type พิเศษเพื่อบอกว่าเป็นข้อมูลเก่า
+			Title:     notif.Title,
+			Message:   notif.Message,
+			Priority:  notif.Priority,
+			Timestamp: notif.CreatedAt,
+			Data: map[string]interface{}{
+				"isRead": notif.IsRead,
+			},
+		}
+
+		select {
+		case client.Send <- message:
+			// ส่งสำเร็จ
+		default:
+			log.Printf("⚠️ Failed to send existing notification to client %s", client.ID)
+		}
+	}
+
+	// ส่ง unread count
+	var unreadCount int64
+	if err := h.db.Model(&models.Notification{}).Where("user_id = ? AND is_read = ?", userUUID, false).Count(&unreadCount).Error; err == nil {
+		countMessage := NotificationMessage{
+			ID:        uuid.New().String(),
+			UserID:    client.UserID,
+			Type:      "unread_count",
+			Title:     "Unread Count",
+			Message:   "",
+			Priority:  1,
+			Timestamp: time.Now(),
+			Data: map[string]interface{}{
+				"count": unreadCount,
+			},
+		}
+
+		select {
+		case client.Send <- countMessage:
+			log.Printf("📊 Sent unread count (%d) to user %s", unreadCount, client.UserID)
+		default:
+			log.Printf("⚠️ Failed to send unread count to client %s", client.ID)
+		}
+	}
+}
+
+// HandleWebSocket - standalone function สำหรับ global hub instance
+var globalHub *Hub
+
+func init() {
+	// globalHub จะถูกตั้งค่าใน main.go แทน
+	// globalHub = NewHub(nil)
+	// go globalHub.Run()
+}
+
+func HandleWebSocket(c *gin.Context) {
+	globalHub.HandleWebSocket(c)
 }
 
 // HandleWebSocket - handle WebSocket connection

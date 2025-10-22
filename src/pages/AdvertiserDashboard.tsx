@@ -31,13 +31,6 @@ interface PackageCommissionData {
   total_revenue: number;
   commission_amount: number;
 }
-
-interface MonthlyCommissionResponse {
-  month: number;
-  year: number;
-  total_commission: number;
-  packages: PackageCommissionData[];
-}
 import { Navigate, useNavigate } from "react-router-dom";
 import {
   Card,
@@ -178,11 +171,6 @@ const AdvertiserDashboard = () => {
     location: string;
   } | null>(null);
 
-  // Commission month/year selection
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [monthlyCommissionData, setMonthlyCommissionData] = useState<any>(null);
-
   // Discount commission month/year selection
   const [discountSelectedMonth, setDiscountSelectedMonth] = useState(
     new Date().getMonth() + 1
@@ -219,7 +207,6 @@ const AdvertiserDashboard = () => {
       await Promise.allSettled([
         fetchDiscountCodes(),
         fetchDiscountCommissions(),
-        fetchMonthlyCommissions(),
       ]);
     };
 
@@ -227,8 +214,6 @@ const AdvertiserDashboard = () => {
   }, [
     user,
     userRole,
-    selectedMonth,
-    selectedYear,
     discountSelectedMonth,
     discountSelectedYear,
   ]);
@@ -493,33 +478,6 @@ const AdvertiserDashboard = () => {
     }
   };
 
-  const fetchMonthlyCommissions = async () => {
-    if (!user || userRole !== "advertiser") return;
-
-    try {
-      console.log(
-        "🔍 Fetching monthly commissions for:",
-        user.id,
-        selectedMonth,
-        selectedYear
-      );
-
-      const data = await apiRequest(
-        `/api/advertiser/${user.id}/commissions/monthly?month=${selectedMonth}&year=${selectedYear}`
-      );
-
-      console.log("🔍 Monthly commission data:", data);
-      setMonthlyCommissionData(data);
-
-      // อัปเดต monthlyCommission สำหรับ stats card
-      setMonthlyCommission(data.total_commission || 0);
-    } catch (error) {
-      console.error("Error fetching monthly commissions:", error);
-      setMonthlyCommissionData(null);
-      setMonthlyCommission(0);
-    }
-  };
-
   // Group bookings by package
   const groupedPackages = upcomingTrips.reduce((acc: any, trip) => {
     const packageTitle = trip.travel_packages?.title || "ไม่ระบุ";
@@ -591,7 +549,7 @@ const AdvertiserDashboard = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-sunset-start to-sunset-end">
       <Navbar />
-      <div className="container mx-auto p-6 pt-24">
+      <div className="container mx-auto p-6 pt-16">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-black mb-2">
             {userRole === "customer"
@@ -1114,9 +1072,6 @@ const AdvertiserDashboard = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button onClick={fetchDiscountCommissions} variant="outline">
-                    ดูข้อมูล
-                  </Button>
                 </div>
               </CardContent>
               <CardHeader>

@@ -6,10 +6,14 @@ import { packageAPI } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useNotifications } from "@/contexts/NotificationContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { isConnected } = useNotifications();
+  const { user } = useAuth();
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -47,6 +51,7 @@ const Index = () => {
     };
     fetchPackages();
   }, []);
+
   const [meow, setMeow] = useState("");
 
   const filteredPackages = selectedTag
@@ -96,7 +101,7 @@ const Index = () => {
   return (
     <>
       {/* Hero Section */}
-      <section className="relative pt-24 pb-16 px-6">
+      <section className="relative pt-16 pb-16 px-6">
         <div className="container mx-auto text-center">
           <div className="max-w-4xl mx-auto mb-12">
             <h1 className="text-5xl md:text-6xl font-bold mb-6">
@@ -117,6 +122,61 @@ const Index = () => {
             <div>
               <h1>Meow API Response:</h1>
               <p>{meow}</p>
+              <h1>WS Status:</h1>
+              <p
+                style={{
+                  color: isConnected ? "green" : "red",
+                  fontWeight: "bold",
+                  fontSize: "18px",
+                }}
+              >
+                {isConnected ? "Connected" : "Disconnected"}
+              </p>
+
+              {/* Test WebSocket Button */}
+              {user?.id && isConnected && (
+                <button
+                  onClick={async () => {
+                    try {
+                      const response = await fetch(
+                        `${
+                          import.meta.env.VITE_API_BASE_URL ||
+                          "http://localhost:8000"
+                        }/api/test-notification`,
+                        {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            user_id: user.id,
+                            title: "Test WebSocket",
+                            message:
+                              "This is a test notification via WebSocket!",
+                          }),
+                        }
+                      );
+
+                      if (response.ok) {
+                        console.log("✅ Test notification sent");
+                      } else {
+                        console.error("❌ Failed to send test notification");
+                      }
+                    } catch (error) {
+                      console.error("❌ Error:", error);
+                    }
+                  }}
+                  style={{
+                    marginTop: "10px",
+                    padding: "8px 16px",
+                    backgroundColor: "#007bff",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                  }}
+                >
+                  🧪 Test WebSocket Notification
+                </button>
+              )}
             </div>
           </div>
 
@@ -169,7 +229,9 @@ const Index = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {loading ? (
-              <div className="col-span-full text-center">{t("packages.loading")}</div>
+              <div className="col-span-full text-center">
+                {t("packages.loading")}
+              </div>
             ) : (
               displayedPackages.map((pkg) => (
                 <TravelPackageCard

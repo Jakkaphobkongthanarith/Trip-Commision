@@ -121,7 +121,7 @@ const PaymentSuccess = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      <div className="container mx-auto px-4 py-24">
+      <div className="container mx-auto px-4 py-16">
         <div className="max-w-md mx-auto">
           <Card className="text-center">
             <CardHeader>

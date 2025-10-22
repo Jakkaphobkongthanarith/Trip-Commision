@@ -30,39 +30,6 @@ const NotificationBell = () => {
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
-  useEffect(() => {
-    if (user) {
-      fetchNotifications();
-      // 🚫 TEMPORARILY DISABLED: Setup polling every 30 seconds for new notifications
-      // Testing WebSocket implementation - remove comments when WebSocket is confirmed working
-      // const interval = setInterval(fetchNotifications, 30000);
-      // return () => clearInterval(interval);
-    }
-  }, [user]);
-
-  const fetchNotifications = async () => {
-    if (!user) return;
-
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/notifications/user/${user.id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setNotifications(data.slice(0, 10)); // Limit to 10 most recent
-        setUnreadCount(data.filter((n: Notification) => !n.is_read).length);
-      }
-    } catch (error) {
-      console.error("Error fetching notifications:", error);
-    }
-  };
-
   const markAsRead = async (notificationId: string) => {
     try {
       const response = await fetch(

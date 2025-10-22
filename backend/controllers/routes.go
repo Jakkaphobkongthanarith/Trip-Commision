@@ -9,7 +9,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func SetupRoutes(r *gin.Engine, db *gorm.DB) {
+func SetupRoutes(r *gin.Engine, db *gorm.DB, hub *utils.Hub) {
 	// Middleware เพื่อใส่ db instance ใน context
 	r.Use(func(c *gin.Context) {
 		c.Set("db", db)
@@ -176,10 +176,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	r.DELETE("/api/discount-codes/:id", discountCodeController.DeleteDiscountCode)
 	r.DELETE("/api/global-discount-codes/:id", discountCodeController.DeleteGlobalDiscountCode)
 
-	// Notification routes - เริ่มต้น WebSocket Hub ก่อน
-	hub := utils.NewHub()
-	go hub.Run()  // รัน hub ใน goroutine แยก
-	
+	// Notification routes - ใช้ Hub ที่ส่งมาจาก main.go
 	notificationController := NewNotificationController(db, hub)
 	
 	// WebSocket endpoint สำหรับ real-time notifications
@@ -191,9 +188,6 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	// ส่ง notification ให้ผู้ใช้ทั้งหมด (broadcast)
 	r.POST("/api/notifications/broadcast", notificationController.BroadcastNotification)
 	
-	// ดึง notifications ของผู้ใช้
-	r.GET("/api/notifications/user/:user_id", notificationController.GetUserNotifications)
-	
 	// ทำเครื่องหมาย notification ว่าอ่านแล้ว
 	r.PUT("/api/notifications/:id/read", notificationController.MarkAsRead)
 	
@@ -203,8 +197,8 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	// ลบ notification
 	r.DELETE("/api/notifications/:id", notificationController.DeleteNotification)
 	
-	// นับจำนวน notifications ที่ยังไม่ได้อ่าน
-	r.GET("/api/notifications/user/:user_id/unread-count", notificationController.GetUnreadCount)
+	// Test endpoint สำหรับทดสอบ WebSocket notification
+	r.POST("/api/test-notification", notificationController.TestNotification)
 
 	r.GET("/greet", func(c *gin.Context) {
 		greeting := "Hello from Supabase!"

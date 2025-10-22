@@ -20,10 +20,11 @@ interface Notification {
   createdAt: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 export default function NotificationDropdown() {
   const { user } = useAuth();
+
   const {
     notifications,
     unreadCount,
@@ -31,8 +32,8 @@ export default function NotificationDropdown() {
     markAsRead,
     markAllAsRead,
     deleteNotification,
-    fetchNotifications,
   } = useNotifications();
+
   const [isOpen, setIsOpen] = useState(false);
 
   // ฟังก์ชันทดสอบสร้าง notification
@@ -89,14 +90,6 @@ export default function NotificationDropdown() {
       return date.toLocaleDateString("th-TH");
     }
   };
-
-  // 🚫 TEMPORARILY DISABLED: เมื่อเปิด popup ให้ fetch ข้อมูลใหม่ (fallback)
-  // Testing WebSocket implementation - remove comments when WebSocket is confirmed working
-  // useEffect(() => {
-  //   if (isOpen && user?.id) {
-  //     fetchNotifications();
-  //   }
-  // }, [isOpen, user?.id, fetchNotifications]);
 
   if (!user) return null;
 

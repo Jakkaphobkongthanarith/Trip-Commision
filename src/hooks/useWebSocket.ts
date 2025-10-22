@@ -146,6 +146,9 @@ export const useWebSocket = (
     if (options.userID && isConnected) {
       // Reconnect with new userID
       reconnect();
+    } else if (options.userID && !isConnected) {
+      // Try to connect if we have userID but not connected
+      connect(options.userID);
     }
   }, [options.userID]); // Only when userID changes
 

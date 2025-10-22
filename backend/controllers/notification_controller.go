@@ -3,6 +3,7 @@ package controllers
 import (
 	"fmt"
 	"net/http"
+	"time"
 	"trip-trader-backend/models"
 	"trip-trader-backend/utils"
 
@@ -260,28 +261,6 @@ func (nc *NotificationController) DeleteNotification(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Notification deleted successfully"})
 }
 
-// นับจำนวน notifications ที่ยังไม่ได้อ่าน
-func (nc *NotificationController) GetUnreadCount(c *gin.Context) {
-	userID := c.Param("user_id")
-
-	// Convert user_id string to UUID
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
-		return
-	}
-
-	var count int64
-	if err := nc.db.Model(&models.Notification{}).
-		Where("user_id = ? AND is_read = ?", userUUID, false).
-		Count(&count).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to count unread notifications"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"unread_count": count})
-}
-
 // WebSocketHandler - endpoint สำหรับ WebSocket connection
 func (nc *NotificationController) WebSocketHandler(c *gin.Context) {
 	if nc.hub == nil {
@@ -302,5 +281,45 @@ func (nc *NotificationController) GetConnectedUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"connected_users": users,
 		"total": len(users),
+	})
+}
+
+// Test endpoint สำหรับทดสอบ WebSocket notification
+func (nc *NotificationController) TestNotification(c *gin.Context) {
+	type TestNotificationRequest struct {
+		UserID  string `json:"user_id" binding:"required"`
+		Title   string `json:"title"`
+		Message string `json:"message"`
+	}
+
+	var req TestNotificationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
+		return
+	}
+
+	// Set default values if not provided
+	if req.Title == "" {
+		req.Title = "Test WebSocket Notification"
+	}
+	if req.Message == "" {
+		req.Message = "This is a test notification sent via WebSocket!"
+	}
+
+	// ส่งผ่าน WebSocket Hub โดยไม่บันทึกลงฐานข้อมูล
+	nc.hub.SendToUser(req.UserID, utils.NotificationMessage{
+		ID:        uuid.New().String(),
+		UserID:    req.UserID,
+		Type:      "notification",
+		Title:     req.Title,
+		Message:   req.Message,
+		Priority:  2,
+		Timestamp: time.Now(),
+	})
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Test notification sent via WebSocket",
+		"user_id": req.UserID,
+		"title":   req.Title,
 	})
 }
