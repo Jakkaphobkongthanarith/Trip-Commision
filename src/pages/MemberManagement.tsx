@@ -47,6 +47,7 @@ import { userAPI } from "@/lib/api";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Search, Users, UserCheck, UserX, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 import Navbar from "@/components/Navbar";
 
 interface Member {
@@ -67,6 +68,7 @@ const MemberManagement = () => {
   const { user } = useAuth();
   const userRole = user?.role || "";
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   // Early returns ต้องอยู่ก่อน hooks ทั้งหมด
   if (!user) {
@@ -103,8 +105,8 @@ const MemberManagement = () => {
     } catch (error) {
       console.error("Error fetching members:", error);
       toast({
-        title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถโหลดข้อมูลสมาชิกได้",
+        title: t("admin.error"),
+        description: t("member.cannotLoadMembers"),
         variant: "destructive",
       });
     } finally {
@@ -118,8 +120,8 @@ const MemberManagement = () => {
       const memberToDelete = members.find((m) => m.id === userId);
       if (memberToDelete?.role?.role !== "advertiser") {
         toast({
-          title: "ข้อผิดพลาด",
-          description: "สามารถลบเฉพาะบัญชี 'คนกลาง' เท่านั้น",
+          title: t("admin.error"),
+          description: t("member.canDeleteAdvertiserOnly"),
           variant: "destructive",
         });
         return;
@@ -127,8 +129,8 @@ const MemberManagement = () => {
 
       // TODO: Add delete user API endpoint in backend
       toast({
-        title: "ข้อผิดพลาด",
-        description: "ฟีเจอร์การลบสมาชิกยังไม่พร้อมใช้งาน",
+        title: t("admin.error"),
+        description: t("member.deleteFeatureNotReady"),
         variant: "destructive",
       });
 
@@ -137,8 +139,8 @@ const MemberManagement = () => {
     } catch (error) {
       console.error("Error deleting member:", error);
       toast({
-        title: "ข้อผิดพลาด",
-        description: "เกิดข้อผิดพลาดในระบบ",
+        title: t("admin.error"),
+        description: t("member.systemError"),
         variant: "destructive",
       });
     }
@@ -174,11 +176,11 @@ const MemberManagement = () => {
   const getRoleLabel = (role: string) => {
     switch (role) {
       case "manager":
-        return "แอดมิน";
+        return t("admin.manager");
       case "advertiser":
-        return "คนกลาง";
+        return t("admin.advertiser");
       case "customer":
-        return "นักท่องเที่ยว";
+        return t("admin.customer");
       default:
         return role;
     }

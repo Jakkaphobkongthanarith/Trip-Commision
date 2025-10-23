@@ -23,6 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Search, Users, Trash2, Shield, UserCheck, UserX } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 import Navbar from "@/components/Navbar";
 import {
   AlertDialog,
@@ -51,6 +52,7 @@ const AdminDashboard = () => {
   const { user } = useAuth();
   const { userRole } = useUserRole();
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   // Early returns ต้องอยู่ก่อน hooks ทั้งหมด
   if (!user) {
@@ -104,8 +106,8 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error("Error fetching users:", error);
       toast({
-        title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถโหลดข้อมูลผู้ใช้ได้",
+        title: t("admin.error"),
+        description: t("admin.cannotLoadUsers"),
         variant: "destructive",
       });
     } finally {
@@ -135,14 +137,14 @@ const AdminDashboard = () => {
       setUsers(users.filter((u) => u.user_id !== userId));
 
       toast({
-        title: "ลบผู้ใช้สำเร็จ",
+        title: t("admin.deleteUserSuccess"),
         description: `ได้ลบบัญชีของ ${displayName} เรียบร้อยแล้ว`,
       });
     } catch (error) {
       console.error("Error deleting user:", error);
       toast({
-        title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถลบผู้ใช้ได้",
+        title: t("admin.error"),
+        description: t("admin.cannotDeleteUser"),
         variant: "destructive",
       });
     }
@@ -170,11 +172,11 @@ const AdminDashboard = () => {
   const getRoleLabel = (role: string) => {
     switch (role) {
       case "manager":
-        return "แอดมิน";
+        return t("admin.manager");
       case "advertiser":
-        return "คนกลาง";
+        return t("admin.advertiser");
       case "customer":
-        return "นักท่องเที่ยว";
+        return t("admin.customer");
       default:
         return role;
     }
@@ -266,7 +268,7 @@ const AdminDashboard = () => {
             <div className="flex items-center space-x-2">
               <Search className="h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="ค้นหาด้วยชื่อหรืออีเมล..."
+                placeholder={t("admin.searchPlaceholder")}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="max-w-sm"
@@ -294,7 +296,7 @@ const AdminDashboard = () => {
                   {filteredUsers.map((userItem) => (
                     <TableRow key={userItem.id}>
                       <TableCell className="font-medium">
-                        {userItem.display_name || "ไม่ระบุชื่อ"}
+                        {userItem.display_name || t("admin.nameNotSpecified")}
                       </TableCell>
                       <TableCell>{userItem.email}</TableCell>
                       <TableCell>
@@ -302,7 +304,9 @@ const AdminDashboard = () => {
                           {getRoleLabel(userItem.role)}
                         </Badge>
                       </TableCell>
-                      <TableCell>{userItem.phone || "ไม่ระบุ"}</TableCell>
+                      <TableCell>
+                        {userItem.phone || t("admin.notSpecified")}
+                      </TableCell>
                       <TableCell>
                         {new Date(userItem.created_at).toLocaleDateString(
                           "th-TH"

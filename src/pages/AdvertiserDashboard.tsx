@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface DiscountCode {
   id: string;
@@ -146,6 +147,7 @@ interface UpcomingTrip {
 
 const AdvertiserDashboard = () => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   console.log("Current user in AdvertiserDashboard:", user);
 
   // Early returns ต้องอยู่ก่อน hooks ทั้งหมด
@@ -211,12 +213,7 @@ const AdvertiserDashboard = () => {
     };
 
     fetchRoleData();
-  }, [
-    user,
-    userRole,
-    discountSelectedMonth,
-    discountSelectedYear,
-  ]);
+  }, [user, userRole, discountSelectedMonth, discountSelectedYear]);
 
   const fetchUserRole = async () => {
     if (!user) return;
@@ -308,7 +305,7 @@ const AdvertiserDashboard = () => {
 
         // คำนวณ commission rate ตาม business rules
         let commissionRate = 0;
-        let tier = "ไม่มีค่าคอมมิชชั่น";
+        let tier = t("commission.noCommission");
 
         if (usagePercentage > 50 && usagePercentage < 75) {
           commissionRate = 3;
@@ -326,7 +323,7 @@ const AdvertiserDashboard = () => {
           usage_percentage: usagePercentage,
           commission_rate: commissionRate,
           tier: tier,
-          package_name: code.package?.title || "ไม่พบแพ็กเกจ",
+          package_name: code.package?.title || t("common.packageNotFound"),
           package_id: code.package_id,
         };
       });
@@ -420,7 +417,7 @@ const AdvertiserDashboard = () => {
             package_name:
               discountCode.package?.title ||
               discountCode.package_name ||
-              "ไม่พบแพ็กเกจ",
+              t("common.packageNotFound"),
             total_revenue: 0,
             discount_code_id: discountCode.id,
             discount_code: discountCode.code,
@@ -459,17 +456,35 @@ const AdvertiserDashboard = () => {
         return;
       }
 
-      // ใช้ข้อมูลจาก /api/bookings โดยตรง เพราะเราจะดึงรายละเอียดครบใน Modal แล้ว
-      const processedTrips = bookingsArray.map((trip: any) => ({
-        ...trip,
-        travel_packages: {
-          title: "แพคเกจ ID: " + trip.package_id?.substring(0, 8) + "...",
-          location: "คลิกเพื่อดูรายละเอียด",
-        },
-        profiles: {
-          display_name: "ผู้จอง",
-        },
-      }));
+      // ดึงข้อมูลแพคเกจทั้งหมด
+      const packagesData = await apiRequest(`/api/packages`);
+      const packagesArray = Array.isArray(packagesData)
+        ? packagesData
+        : packagesData?.packages || [];
+
+      // สร้าง map ของ package_id -> package info เพื่อใช้ lookup
+      const packageMap = new Map();
+      packagesArray.forEach((pkg: any) => {
+        packageMap.set(pkg.id, {
+          title: pkg.title || t("common.packageTitle"),
+          location: pkg.location || t("common.packageLocation"),
+        });
+      });
+
+      // ใช้ข้อมูลจาก /api/bookings และเชื่อมกับข้อมูลแพคเกจจริง
+      const processedTrips = bookingsArray.map((trip: any) => {
+        const packageInfo = packageMap.get(trip.package_id);
+        return {
+          ...trip,
+          travel_packages: packageInfo || {
+            title: `แพคเกจ ID: ${trip.package_id?.substring(0, 8)}...`,
+            location: t("common.noPackageData"),
+          },
+          profiles: {
+            display_name: t("common.booker"),
+          },
+        };
+      });
 
       setUpcomingTrips(processedTrips);
     } catch (error) {
@@ -480,8 +495,10 @@ const AdvertiserDashboard = () => {
 
   // Group bookings by package
   const groupedPackages = upcomingTrips.reduce((acc: any, trip) => {
-    const packageTitle = trip.travel_packages?.title || "ไม่ระบุ";
-    const packageLocation = trip.travel_packages?.location || "ไม่ระบุ";
+    const packageTitle =
+      trip.travel_packages?.title || t("common.notSpecified");
+    const packageLocation =
+      trip.travel_packages?.location || t("common.notSpecified");
 
     if (!acc[packageTitle]) {
       acc[packageTitle] = {
@@ -553,13 +570,13 @@ const AdvertiserDashboard = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-black mb-2">
             {userRole === "customer"
-              ? "แดชบอร์ดนักท่องเที่ยว"
-              : "แดชบอร์ดคนกลาง"}
+              ? t("dashboard.customer")
+              : t("dashboard.advertiser")}
           </h1>
           <p className="text-black/80">
             {userRole === "customer"
-              ? "ข้อมูลการเดินทางและรีวิวของคุณ"
-              : "ภาพรวมและสถิติของคุณ"}
+              ? t("dashboard.travelData")
+              : t("dashboard.overviewStats")}
           </p>
         </div>
 
@@ -569,7 +586,7 @@ const AdvertiserDashboard = () => {
             <Card className="bg-white/95 backdrop-blur-sm">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  ค่าคอมมิชชั่นเดือนที่เลือก
+                  {t("dashboard.monthlyCommission")}
                 </CardTitle>
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
@@ -585,7 +602,7 @@ const AdvertiserDashboard = () => {
                     .toLocaleString()}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  จากการใช้โค้ดส่วนลด
+                  {t("dashboard.fromDiscountCode")}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {discountSelectedMonth}/{discountSelectedYear}
@@ -598,7 +615,7 @@ const AdvertiserDashboard = () => {
             <Card className="bg-white/95 backdrop-blur-sm">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  การจองทั้งหมด
+                  {t("dashboard.totalBookings")}
                 </CardTitle>
                 <Calendar className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
@@ -611,7 +628,7 @@ const AdvertiserDashboard = () => {
           <Card className="bg-white/95 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                {userRole === "customer" ? "ทริปที่จะมาถึง" : "ทริปที่จะมาถึง"}
+                {t("dashboard.upcomingTrips")}
               </CardTitle>
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
@@ -624,25 +641,25 @@ const AdvertiserDashboard = () => {
         {/* Upcoming Trips */}
         <Card className="mb-6 bg-white/95 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle>แพคเกจที่มีการจอง</CardTitle>
+            <CardTitle>{t("dashboard.bookedPackages")}</CardTitle>
             <CardDescription>
-              คลิกเพื่อดูรายชื่อผู้จองและข้อมูลติดต่อ
+              {t("dashboard.clickToViewBookers")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             {packageList.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">
-                ไม่มีแพคเกจที่มีการจอง
+                {t("dashboard.noBookedPackages")}
               </p>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>ชื่อแพคเกจ</TableHead>
-                    <TableHead>สถานที่</TableHead>
-                    <TableHead>จำนวนการจอง</TableHead>
-                    <TableHead>รวมผู้เข้าร่วม</TableHead>
-                    <TableHead>การดำเนินการ</TableHead>
+                    <TableHead>{t("dashboard.packageName")}</TableHead>
+                    <TableHead>{t("dashboard.location")}</TableHead>
+                    <TableHead>{t("dashboard.bookingCount")}</TableHead>
+                    <TableHead>{t("dashboard.totalGuests")}</TableHead>
+                    <TableHead>{t("dashboard.actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -660,16 +677,25 @@ const AdvertiserDashboard = () => {
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary">
-                          {packageInfo.bookings.length} รายการ
+                          {
+                            packageInfo.bookings.filter(
+                              (booking: any) => booking.status === "confirmed"
+                            ).length
+                          }{" "}
+                          {t("dashboard.bookings")}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {packageInfo.bookings.reduce(
-                          (total: number, booking: any) =>
-                            total + booking.guest_count,
-                          0
-                        )}{" "}
-                        คน
+                        {packageInfo.bookings
+                          .filter(
+                            (booking: any) => booking.status === "confirmed"
+                          )
+                          .reduce(
+                            (total: number, booking: any) =>
+                              total + booking.guest_count,
+                            0
+                          )}{" "}
+                        {t("dashboard.people")}
                       </TableCell>
                       <TableCell>
                         <Button
@@ -677,7 +703,7 @@ const AdvertiserDashboard = () => {
                           size="sm"
                           onClick={() => handlePackageClick(packageInfo)}
                         >
-                          ดูรายชื่อผู้จอง
+                          {t("dashboard.viewBookerList")}
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -699,10 +725,10 @@ const AdvertiserDashboard = () => {
           <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-xl">
-                รายชื่อผู้จอง: {selectedPackageInfo?.title}
+                {t("dashboard.bookingList")} {selectedPackageInfo?.title}
               </DialogTitle>
               <DialogDescription>
-                สถานที่: {selectedPackageInfo?.location}
+                {t("dashboard.location")}: {selectedPackageInfo?.location}
               </DialogDescription>
             </DialogHeader>
 
@@ -711,28 +737,39 @@ const AdvertiserDashboard = () => {
                 {/* Summary */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="bg-blue-50 p-4 rounded-lg border">
-                    <p className="text-sm text-blue-600 mb-1">จำนวนการจอง</p>
+                    <p className="text-sm text-blue-600 mb-1">
+                      {t("bookingModal.bookingSummary")}
+                    </p>
                     <p className="text-2xl font-bold text-blue-700">
-                      {selectedPackageBookings.length}
+                      {
+                        selectedPackageBookings.filter(
+                          (booking) => booking.status === "confirmed"
+                        ).length
+                      }
                     </p>
                   </div>
                   <div className="bg-green-50 p-4 rounded-lg border">
                     <p className="text-sm text-green-600 mb-1">
-                      รวมผู้เข้าร่วม
+                      {t("bookingModal.totalGuests")}
                     </p>
                     <p className="text-2xl font-bold text-green-700">
-                      {selectedPackageBookings.reduce(
-                        (total, booking) => total + booking.guest_count,
-                        0
-                      )}{" "}
-                      คน
+                      {selectedPackageBookings
+                        .filter((booking) => booking.status === "confirmed")
+                        .reduce(
+                          (total, booking) => total + booking.guest_count,
+                          0
+                        )}{" "}
+                      {t("common.people")}
                     </p>
                   </div>
                   <div className="bg-amber-50 p-4 rounded-lg border">
-                    <p className="text-sm text-amber-600 mb-1">รายได้รวม</p>
+                    <p className="text-sm text-amber-600 mb-1">
+                      {t("bookingModal.totalRevenue")}
+                    </p>
                     <p className="text-2xl font-bold text-amber-700">
                       ฿
                       {selectedPackageBookings
+                        .filter((booking) => booking.status === "confirmed")
                         .reduce(
                           (total, booking) =>
                             total + (booking.final_amount || 0),
@@ -742,9 +779,15 @@ const AdvertiserDashboard = () => {
                     </p>
                   </div>
                   <div className="bg-purple-50 p-4 rounded-lg border">
-                    <p className="text-sm text-purple-600 mb-1">การจองยืนยัน</p>
+                    <p className="text-sm text-purple-600 mb-1">
+                      {t("bookingModal.confirmedBookings")}
+                    </p>
                     <p className="text-2xl font-bold text-purple-700">
-                      {selectedPackageBookings.length}
+                      {
+                        selectedPackageBookings.filter(
+                          (booking) => booking.status === "confirmed"
+                        ).length
+                      }
                     </p>
                   </div>
                 </div>
@@ -754,13 +797,13 @@ const AdvertiserDashboard = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>ชื่อผู้จอง</TableHead>
-                        <TableHead>วันที่เดินทาง</TableHead>
-                        <TableHead>จำนวนคน</TableHead>
-                        <TableHead>เบอร์โทร</TableHead>
-                        <TableHead>อีเมล</TableHead>
-                        <TableHead>ยอดชำระ</TableHead>
-                        <TableHead>สถานะ</TableHead>
+                        <TableHead>{t("bookingModal.bookerName")}</TableHead>
+                        <TableHead>{t("bookingModal.travelDate")}</TableHead>
+                        <TableHead>{t("bookingModal.guestCount")}</TableHead>
+                        <TableHead>{t("bookingModal.phoneNumber")}</TableHead>
+                        <TableHead>{t("bookingModal.email")}</TableHead>
+                        <TableHead>{t("bookingModal.totalAmount")}</TableHead>
+                        <TableHead>{t("bookingModal.status")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -791,7 +834,9 @@ const AdvertiserDashboard = () => {
                               }
                             )}
                           </TableCell>
-                          <TableCell>{booking.guest_count} คน</TableCell>
+                          <TableCell>
+                            {booking.guest_count} {t("common.people")}
+                          </TableCell>
                           <TableCell>
                             <a
                               href={`tel:${booking.contact_phone}`}
@@ -822,10 +867,10 @@ const AdvertiserDashboard = () => {
                               }
                             >
                               {booking.status === "confirmed"
-                                ? "ยืนยันแล้ว"
+                                ? t("bookingModal.confirmed")
                                 : booking.status === "pending"
-                                ? "รอยืนยัน"
-                                : "ยกเลิก"}
+                                ? t("bookingModal.pending")
+                                : t("bookingModal.cancelled")}
                             </Badge>
                           </TableCell>
                         </TableRow>
@@ -913,14 +958,14 @@ const AdvertiserDashboard = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>โค้ด</TableHead>
-                        <TableHead>แพ็กเกจ</TableHead>
-                        <TableHead>ส่วนลด</TableHead>
-                        <TableHead>การใช้งาน</TableHead>
-                        <TableHead>เปอร์เซ็นต์การใช้</TableHead>
-                        <TableHead>ค่าคอมมิชชั่น</TableHead>
-                        <TableHead>สถานะ</TableHead>
-                        <TableHead>หมดอายุ</TableHead>
+                        <TableHead>{t("discountCodes.code")}</TableHead>
+                        <TableHead>{t("discountCodes.package")}</TableHead>
+                        <TableHead>{t("discountCodes.discount")}</TableHead>
+                        <TableHead>{t("discountCodes.usage")}</TableHead>
+                        <TableHead>{t("discountCodes.usagePercent")}</TableHead>
+                        <TableHead>{t("discountCodes.commission")}</TableHead>
+                        <TableHead>{t("bookingModal.status")}</TableHead>
+                        <TableHead>{t("discountCodes.expiry")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -944,7 +989,7 @@ const AdvertiserDashboard = () => {
                               </Button>
                             ) : (
                               <span className="text-gray-400">
-                                ไม่พบแพ็กเกจ
+                                {t("common.packageNotFound")}
                               </span>
                             )}
                           </TableCell>
@@ -957,7 +1002,8 @@ const AdvertiserDashboard = () => {
                             <div className="space-y-1">
                               <div className="text-sm">
                                 {discountCode.current_uses}/
-                                {discountCode.package?.max_guests || "ไม่ระบุ"}
+                                {discountCode.package?.max_guests ||
+                                  t("common.notSpecified")}
                               </div>
                               <div className="w-full bg-gray-200 rounded-full h-2">
                                 <div
@@ -982,8 +1028,7 @@ const AdvertiserDashboard = () => {
                                   : "secondary"
                               }
                             >
-                              {discountCode.commission_rate}% (
-                              {discountCode.tier})
+                              {discountCode.commission_rate}%
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -995,8 +1040,8 @@ const AdvertiserDashboard = () => {
                               }
                             >
                               {discountCode.is_active
-                                ? "ใช้งานได้"
-                                : "ปิดใช้งาน"}
+                                ? t("discountCodes.active")
+                                : t("discountCodes.inactive")}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -1004,7 +1049,7 @@ const AdvertiserDashboard = () => {
                               ? new Date(
                                   discountCode.expires_at
                                 ).toLocaleDateString("th-TH")
-                              : "ไม่หมดอายุ"}
+                              : t("discountCodes.noExpiry")}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -1075,16 +1120,17 @@ const AdvertiserDashboard = () => {
                 </div>
               </CardContent>
               <CardHeader>
-                <CardTitle>ค่าคอมมิชชั่นจากโค้ดส่วนลด</CardTitle>
+                <CardTitle>{t("commission.fromDiscountCodes")}</CardTitle>
                 <CardDescription>
-                  เดือน {discountSelectedMonth}/{discountSelectedYear} -
-                  รายการค่าคอมมิชชั่นจากการใช้โค้ดส่วนลด
+                  {t("common.month")} {discountSelectedMonth}/
+                  {discountSelectedYear} -
+                  {t("commission.listFromDiscountCodes")}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {discountCommissions.length === 0 ? (
                   <p className="text-muted-foreground text-center py-4">
-                    ไม่มีค่าคอมมิชชั่นจากโค้ดส่วนลดในเดือนนี้
+                    {t("commission.noCommissionThisMonth")}
                   </p>
                 ) : (
                   <>

@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { apiRequest } from "@/lib/api";
 import { Plane, Mail, Lock, User, UserCheck } from "lucide-react";
 
@@ -34,12 +35,13 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { signIn, signUp, user } = useAuth();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   // Check URL parameter for signup mode
   useEffect(() => {
-    const signupParam = searchParams.get('signup');
-    if (signupParam === 'true') {
+    const signupParam = searchParams.get("signup");
+    if (signupParam === "true") {
       setIsSignUp(true);
     }
   }, [searchParams]);
@@ -58,17 +60,17 @@ const Auth = () => {
 
     if (error) {
       toast({
-        title: "เข้าสู่ระบบไม่สำเร็จ",
+        title: t("auth.loginFailed"),
         description:
           error.message === "Invalid login credentials"
-            ? "อีเมลหรือรหัสผ่านไม่ถูกต้อง"
+            ? t("auth.invalidCredentials")
             : error.message,
         variant: "destructive",
       });
     } else {
       toast({
-        title: "เข้าสู่ระบบสำเร็จ",
-        description: "ยินดีต้อนรับกลับมา!",
+        title: t("auth.loginSuccess"),
+        description: t("auth.welcomeBack"),
       });
     }
 
@@ -93,17 +95,17 @@ const Auth = () => {
       }
 
       toast({
-        title: "สมัครสมาชิกสำเร็จ",
+        title: t("auth.signupSuccess"),
         description: `ยินดีต้อนรับเข้าสู่ระบบ TravelCommission ในฐานะ${getRoleText(
           role
         )}!`,
       });
     } catch (error: any) {
       toast({
-        title: "สมัครสมาชิกไม่สำเร็จ",
+        title: t("auth.signupFailed"),
         description:
           error.message === "User already registered"
-            ? "อีเมลนี้ถูกใช้งานแล้ว"
+            ? t("auth.emailAlreadyUsed")
             : error.message,
         variant: "destructive",
       });
@@ -115,11 +117,11 @@ const Auth = () => {
   const getRoleText = (roleValue: string) => {
     switch (roleValue) {
       case "customer":
-        return "นักท่องเที่ยว";
+        return t("auth.tourist");
       case "advertiser":
-        return "คนกลาง";
+        return t("auth.advertiser");
       case "manager":
-        return "แอดมิน";
+        return t("auth.manager");
       default:
         return roleValue;
     }
@@ -139,10 +141,12 @@ const Auth = () => {
         <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-xl">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl text-foreground">
-              {isSignUp ? "สมัครสมาชิก" : "เข้าสู่ระบบ"}
+              {isSignUp ? t("auth.signup") : t("auth.login")}
             </CardTitle>
             <CardDescription>
-              {isSignUp ? "สร้างบัญชีใหม่" : "เข้าสู่ระบบด้วยบัญชีของคุณ"}
+              {isSignUp
+                ? t("auth.createNewAccount")
+                : t("auth.loginWithAccount")}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -180,7 +184,7 @@ const Auth = () => {
                   </div>
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
+                  {isLoading ? t("auth.loggingIn") : t("auth.login")}
                 </Button>
 
                 <div className="text-center">
@@ -204,7 +208,7 @@ const Auth = () => {
                     <Input
                       id="displayName"
                       type="text"
-                      placeholder="ชื่อของคุณ"
+                      placeholder={t("auth.yourName")}
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
                       className="pl-10"
@@ -224,12 +228,18 @@ const Auth = () => {
                       ) => setRole(value)}
                     >
                       <SelectTrigger className="pl-10">
-                        <SelectValue placeholder="เลือกประเภทผู้ใช้" />
+                        <SelectValue placeholder={t("auth.selectUserType")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="customer">นักท่องเที่ยว</SelectItem>
-                        <SelectItem value="advertiser">คนกลาง</SelectItem>
-                        <SelectItem value="manager">แอดมิน</SelectItem>
+                        <SelectItem value="customer">
+                          {t("auth.tourist")}
+                        </SelectItem>
+                        <SelectItem value="advertiser">
+                          {t("auth.advertiser")}
+                        </SelectItem>
+                        <SelectItem value="manager">
+                          {t("auth.manager")}
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -268,7 +278,7 @@ const Auth = () => {
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading
-                    ? "กำลังสมัครสมาชิก..."
+                    ? t("auth.signingUp")
                     : `สมัครในฐานะ${getRoleText(role)}`}
                 </Button>
 

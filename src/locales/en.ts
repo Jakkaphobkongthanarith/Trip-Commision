@@ -6,17 +6,19 @@ export default {
   "nav.logout": "Logout",
   "nav.profile": "Profile",
   "nav.dashboard": "Dashboard",
-  
+
   // Hero Section
   "hero.discover": "Discover",
   "hero.journey": "Your Unique",
   "hero.unique": "Journey",
-  "hero.description": "Travel platform featuring exclusive packages from across Thailand",
+  "hero.description":
+    "Travel platform featuring exclusive packages from across Thailand",
   "hero.description2": "With discount system and commission for advertisers",
-  
+
   // Packages
   "packages.title": "Popular Travel Packages",
-  "packages.description": "Choose from premium travel packages carefully curated for you",
+  "packages.description":
+    "Choose from premium travel packages carefully curated for you",
   "packages.description2": "With special discounts and exclusive promotions",
   "packages.viewAll": "View All Packages",
   "packages.loading": "Loading...",
@@ -32,11 +34,11 @@ export default {
   "packages.showing": "Showing",
   "packages.from": "of",
   "packages.items2": "items",
-  
+
   // Search
   "search.placeholder": "Search travel packages...",
   "search.button": "Search",
-  
+
   // Package Details
   "details.backToHome": "Back to Home",
   "details.discount": "OFF",
@@ -58,22 +60,24 @@ export default {
   "details.phone": "Phone Number",
   "details.email": "Email",
   "details.specialRequests": "Special Requests",
-  "details.specialRequestsPlaceholder": "Enter special requests (leave blank if none)",
+  "details.specialRequestsPlaceholder":
+    "Enter special requests (leave blank if none)",
   "details.guests": "Number of Guests",
   "details.total": "Total",
   "details.discount2": "Discount",
   "details.finalTotal": "Final Total",
   "details.bookNow": "Book Now",
   "details.processing": "Processing...",
-  
+
   // Footer CTA
   "cta.title": "Ready to start your journey?",
-  "cta.description": "Sign up today to get special discounts and exclusive offers from us",
-  
+  "cta.description":
+    "Sign up today to get special discounts and exclusive offers from us",
+
   // Common
   "common.baht": "฿",
   "common.required": "*",
-  
+
   // Tags Sidebar
   "tags.title": "Categories",
   "tags.search": "Search categories...",
@@ -90,7 +94,7 @@ export default {
   "nav.role.advertiser": "Advertiser",
   "nav.role.manager": "Manager",
   "nav.role.loggedInAs": "Logged in as",
-  
+
   // Profile Page
   "profile.title": "My Profile",
   "profile.backToHome": "Back to Home",
@@ -127,10 +131,223 @@ export default {
   "profile.saveSuccessDesc": "Your profile has been successfully updated",
   "profile.saveError": "Error Occurred",
   "profile.saveErrorDesc": "Unable to save profile",
-  
+
   // Toast Messages
   "toast.signOutError": "Error Occurred",
   "toast.signOutErrorDesc": "Unable to sign out",
   "toast.signOutSuccess": "Signed Out Successfully",
   "toast.signOutSuccessDesc": "Thank you for using our service",
+
+  // Dashboard
+  "dashboard.advertiser": "Advertiser Dashboard",
+  "dashboard.customer": "Tourist Dashboard",
+  "dashboard.overviewStats": "Overview and Statistics",
+  "dashboard.travelData": "Your Travel Data and Reviews",
+  "dashboard.monthlyCommission": "Commission for Selected Month",
+  "dashboard.fromDiscountCode": "From Discount Code Usage",
+  "dashboard.totalBookings": "Total Bookings",
+  "dashboard.upcomingTrips": "Upcoming Trips",
+  "dashboard.bookedPackages": "Packages with Bookings",
+  "dashboard.clickToViewBookers":
+    "Click to view booker list and contact information",
+  "dashboard.noBookedPackages": "No packages with bookings",
+  "dashboard.packageName": "Package Name",
+  "dashboard.location": "Location",
+  "dashboard.bookingCount": "Booking Count",
+  "dashboard.totalGuests": "Total Guests",
+  "dashboard.actions": "Actions",
+  "dashboard.viewBookerList": "View Booker List",
+  "dashboard.bookings": "bookings",
+  "dashboard.people": "people",
+  "dashboard.bookingList": "Booker List:",
+  "dashboard.bookingSummary": "Booking Summary",
+  "dashboard.totalRevenue": "Total Revenue",
+  "dashboard.confirmedBookings": "Confirmed Bookings",
+  "dashboard.close": "Close",
+  "dashboard.viewPackageDetails": "View Package Details",
+
+  // Discount Codes
+  "discountCodes.title": "Your Discount Codes",
+  "discountCodes.description": "Discount codes created for your packages",
+  "discountCodes.noDiscountCodes": "No discount codes yet",
+  "discountCodes.code": "Code",
+  "discountCodes.package": "Package",
+  "discountCodes.discount": "Discount",
+  "discountCodes.usage": "Usage",
+  "discountCodes.usagePercentage": "Usage Percentage",
+  "discountCodes.commission": "Commission",
+  "discountCodes.status": "Status",
+  "discountCodes.expires": "Expires",
+  "discountCodes.active": "Active",
+  "discountCodes.inactive": "Inactive",
+  "discountCodes.noExpiry": "No Expiry",
+  "discountCodes.noCommission": "No Commission",
+  "discountCodes.packageNotFound": "Package Not Found",
+
+  // Commission Reports
+  "commission.selectMonth": "Select Month/Year for Discount Code Commission",
+  "commission.month": "Month",
+  "commission.year": "Year",
+  "commission.viewData": "View Data",
+  "commission.fromDiscountCodes": "Commission from Discount Codes",
+  "commission.monthlyReport": "Monthly Report",
+  "commission.noCommissionData": "No commission from discount codes this month",
+  "commission.totalMonthly": "Total Commission This Month",
+  "commission.usageRate": "Usage Rate",
+  "commission.totalRevenue": "Total Revenue",
+  "commission.commissionRate": "Commission Rate",
+  "commission.amount": "Amount",
+
+  // Months
+  "month.january": "January",
+  "month.february": "February",
+  "month.march": "March",
+  "month.april": "April",
+  "month.may": "May",
+  "month.june": "June",
+  "month.july": "July",
+  "month.august": "August",
+  "month.september": "September",
+  "month.october": "October",
+  "month.november": "November",
+  "month.december": "December",
+
+  // Booking Details Modal
+  "bookingModal.bookerName": "Booker Name",
+  "bookingModal.travelDate": "Travel Date",
+  "bookingModal.guestCount": "Guest Count",
+  "bookingModal.phone": "Phone",
+  "bookingModal.email": "Email",
+  "bookingModal.paymentAmount": "Payment Amount",
+  "bookingModal.status": "Status",
+  "bookingModal.confirmed": "Confirmed",
+  "bookingModal.pending": "Pending",
+  "bookingModal.cancelled": "Cancelled",
+  "bookingModal.specialRequests": "Special Requests",
+  "bookingModal.bookingSummary": "Booking Count",
+  "bookingModal.totalGuests": "Total Guests",
+  "bookingModal.totalRevenue": "Total Revenue",
+  "bookingModal.confirmedBookings": "Confirmed Bookings",
+  "bookingModal.viewPackageDetails": "View Package Details",
+  "bookingModal.close": "Close",
+
+  // Common Terms
+  "common.people": "people",
+  "common.notSpecified": "Not specified",
+  "common.packageNotFound": "Package not found",
+  "common.month": "Month",
+  "common.noCommission": "No Commission",
+  "common.packageIdPrefix": "Package ID:",
+  "common.noPackageData": "Package data not found",
+  "common.booker": "Booker",
+  "common.packageTitle": "Package title not specified",
+  "common.packageLocation": "Location not specified",
+
+  // Package Details
+  "packageDetails.discountCodeValid": "Discount Code Valid",
+  "packageDetails.codeForEveryone": "Code for Everyone",
+  "packageDetails.invalidDiscountCode": "Invalid Discount Code",
+  "packageDetails.cannotVerifyCode": "Cannot Verify Discount Code",
+  "packageDetails.packageNotFound": "Package Not Found",
+  "packageDetails.loginRequired": "You must login before booking",
+  "packageDetails.fillContactInfo": "Please Fill Contact Information",
+  "packageDetails.fillContactDesc": "Please fill in all contact information",
+  "packageDetails.guestLimitExceeded": "Guest count exceeds available spots",
+  "packageDetails.bookingComplete": "Booking Complete, Redirecting...",
+  "packageDetails.bookingFailed": "Cannot create booking, please try again",
+  "packageDetails.discountCode": "Discount Code (if any)",
+  "packageDetails.enterDiscountCode": "Enter discount code",
+  "packageDetails.applyDiscountCode": "Apply Discount Code",
+  "packageDetails.pricePerPerson": "Price per person:",
+  "packageDetails.testBookingNote":
+    "This is a test booking with no real charges",
+  "packageDetails.pleaseCheckCode": "Please check the code again",
+  "packageDetails.error": "Error occurred",
+  "packageDetails.loginTitle": "Please login",
+  "packageDetails.invalidEmail": "Invalid email",
+  "packageDetails.pleaseEnterValidEmail": "Please enter a valid email",
+  "packageDetails.paymentSuccess": "Payment successful (test mode)",
+  "packageDetails.openingPayment": "Opening payment page",
+  "packageDetails.openNewWindow": "A new window will open for payment",
+
+  // Auth
+  "auth.loginFailed": "Login Failed",
+  "auth.invalidCredentials": "Invalid email or password",
+  "auth.loginSuccess": "Login Successful",
+  "auth.welcomeBack": "Welcome back!",
+  "auth.signupSuccess": "Registration Successful",
+  "auth.signupFailed": "Registration Failed",
+  "auth.emailAlreadyUsed": "This email is already in use",
+  "auth.tourist": "Tourist",
+  "auth.advertiser": "Advertiser",
+  "auth.manager": "Manager",
+  "auth.signup": "Sign Up",
+  "auth.login": "Login",
+  "auth.createNewAccount": "Create new account",
+  "auth.loginWithAccount": "Login with your account",
+  "auth.loggingIn": "Logging in...",
+  "auth.yourName": "Your name",
+  "auth.selectUserType": "Select user type",
+  "auth.signingUp": "Signing up...",
+
+  // Package Details - Additional
+  "details.accommodation": "Accommodation as per program",
+  "details.meals": "Meals as per program",
+  "details.transport": "Air-conditioned coach",
+  "details.guide": "Local guide",
+  "details.insurance": "Travel insurance",
+  "details.entrance": "Entrance fees to attractions",
+  "details.fullName": "Enter full name",
+  "details.phone": "Enter phone number",
+  "details.email": "Enter email",
+  "details.specialRequests": "Special requests (if any)",
+  "packageDetails.enterDiscountCode": "Enter discount code",
+  "packageDetails.validating": "Validating...",
+  "packageDetails.useCode": "Use Code",
+  "packageDetails.fixedDiscount": "Fixed discount",
+  "packageDetails.processing": "Processing...",
+  "packageDetails.fullyBooked": "Fully booked",
+  "packageDetails.bookNowTest": "Book Now (Test Mode)",
+
+  // TravelPackageCard
+  "travelCard.viewDetails": "View Details",
+  "travelCard.fullyBooked": "Fully Booked",
+
+  // Profile
+  "profile.minute": "min",
+  "profile.second": "sec",
+  "profile.packageNotSpecified": "Package not specified",
+
+  // AdminDashboard
+  "admin.error": "Error occurred",
+  "admin.cannotLoadUsers": "Cannot load user data",
+  "admin.deleteUserSuccess": "User deleted successfully",
+  "admin.cannotDeleteUser": "Cannot delete user",
+  "admin.manager": "Manager",
+  "admin.advertiser": "Advertiser",
+  "admin.customer": "Customer",
+  "admin.searchPlaceholder": "Search by name or email...",
+  "admin.nameNotSpecified": "Name not specified",
+  "admin.notSpecified": "Not specified",
+
+  // MemberManagement
+  "member.cannotLoadMembers": "Cannot load member data",
+  "member.canDeleteAdvertiserOnly": "Can only delete 'Advertiser' accounts",
+  "member.deleteFeatureNotReady": "Member deletion feature is not ready yet",
+  "member.systemError": "System error occurred",
+
+  // SearchBar
+  "search.searchPackages": "Search Packages",
+  "search.packagePlaceholder": "Package name, location, province...",
+  "search.travelDate": "Travel Date",
+  "search.selectDateRange": "Select date range",
+  "search.priceRange": "Price Range",
+  "packageDetails.codeFromAdvertiser": "Code from Advertiser",
+  // Commission and tiers
+  commission: {
+    noCommission: "No Commission",
+    noCommissionThisMonth: "No commission from discount codes this month",
+    fromDiscountCodes: "Commission from Discount Codes",
+    listFromDiscountCodes: "List of commission from discount code usage",
+  },
 };

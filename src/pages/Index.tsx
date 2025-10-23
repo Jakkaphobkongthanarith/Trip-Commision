@@ -134,7 +134,7 @@ const Index = () => {
               </p>
 
               {/* Test WebSocket Button */}
-              {user?.id && isConnected && (
+              {/* {user?.id && isConnected && (
                 <button
                   onClick={async () => {
                     try {
@@ -176,7 +176,7 @@ const Index = () => {
                 >
                   🧪 Test WebSocket Notification
                 </button>
-              )}
+              )} */}
             </div>
           </div>
 

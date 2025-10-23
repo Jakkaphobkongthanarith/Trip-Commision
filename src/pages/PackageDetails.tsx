@@ -24,12 +24,14 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const PackageDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [packageData, setPackageData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [bookingLoading, setBookingLoading] = useState(false);
@@ -84,22 +86,22 @@ const PackageDetails = () => {
       if (response.ok && data.valid) {
         setAppliedDiscount(data);
         toast({
-          title: "ใช้โค้ดส่วนลดได้",
+          title: t("packageDetails.discountCodeValid"),
           description: `ลด ${
             data.discount_type === "percentage"
               ? `${data.discount_value}%`
               : `฿${data.discount_value}`
           } - ${
             data.type === "advertiser"
-              ? "โค้ดจาก Advertiser"
-              : "โค้ดสำหรับทุกคน"
+              ? t("packageDetails.codeFromAdvertiser")
+              : t("packageDetails.codeForEveryone")
           }`,
         });
       } else {
         setAppliedDiscount(null);
         toast({
-          title: "โค้ดส่วนลดไม่ถูกต้อง",
-          description: data.error || "กรุณาตรวจสอบโค้ดอีกครั้ง",
+          title: t("packageDetails.invalidDiscountCode"),
+          description: data.error || t("packageDetails.pleaseCheckCode"),
           variant: "destructive",
         });
       }
@@ -107,8 +109,8 @@ const PackageDetails = () => {
       console.error("Error validating discount code:", error);
       setAppliedDiscount(null);
       toast({
-        title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถตรวจสอบโค้ดส่วนลดได้",
+        title: t("packageDetails.error"),
+        description: t("packageDetails.cannotVerifyCode"),
         variant: "destructive",
       });
     } finally {
@@ -226,8 +228,8 @@ const PackageDetails = () => {
   const handleBooking = async () => {
     if (!user) {
       toast({
-        title: "กรุณาเข้าสู่ระบบ",
-        description: "คุณต้องเข้าสู่ระบบก่อนทำการจอง",
+        title: t("packageDetails.loginTitle"),
+        description: t("packageDetails.loginRequired"),
         variant: "destructive",
       });
       navigate("/auth");
@@ -237,8 +239,8 @@ const PackageDetails = () => {
     // Validate contact information
     if (!contactName.trim() || !contactPhone.trim() || !contactEmail.trim()) {
       toast({
-        title: "กรุณากรอกข้อมูลติดต่อ",
-        description: "โปรดกรอกข้อมูลติดต่อให้ครบถ้วน",
+        title: t("packageDetails.fillContactInfo"),
+        description: t("packageDetails.fillContactDesc"),
         variant: "destructive",
       });
       return;
@@ -248,8 +250,8 @@ const PackageDetails = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(contactEmail)) {
       toast({
-        title: "อีเมลไม่ถูกต้อง",
-        description: "โปรดกรอกอีเมลที่ถูกต้อง",
+        title: t("packageDetails.invalidEmail"),
+        description: t("packageDetails.pleaseEnterValidEmail"),
         variant: "destructive",
       });
       return;
@@ -257,7 +259,7 @@ const PackageDetails = () => {
 
     if (guestCount > availableSpots) {
       toast({
-        title: "จำนวนคนเกินที่สามารถจองได้",
+        title: t("packageDetails.guestLimitExceeded"),
         description: `สามารถจองได้สูงสุด ${availableSpots} ท่าน`,
         variant: "destructive",
       });
@@ -324,8 +326,8 @@ const PackageDetails = () => {
         if (data.mock_mode) {
           // Mock payment mode - redirect directly to success page
           toast({
-            title: "การชำระเงินสำเร็จ (โหมดทดสอบ)",
-            description: "การจองเสร็จสมบูรณ์ กำลังเปลี่ยนหน้า...",
+            title: t("packageDetails.paymentSuccess"),
+            description: t("packageDetails.bookingComplete"),
           });
 
           // เตรียมข้อมูลที่จะส่งไปหน้า PaymentSuccess
@@ -353,16 +355,16 @@ const PackageDetails = () => {
           window.open(data.url, "_blank");
 
           toast({
-            title: "กำลังเปิดหน้าชำระเงิน",
-            description: "จะเปิดหน้าต่างใหม่สำหรับชำระเงิน",
+            title: t("packageDetails.openingPayment"),
+            description: t("packageDetails.openNewWindow"),
           });
         }
       }
     } catch (error) {
       console.error("Booking error:", error);
       toast({
-        title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถสร้างการจองได้ กรุณาลองใหม่อีกครั้ง",
+        title: t("packageDetails.error"),
+        description: t("packageDetails.bookingFailed"),
         variant: "destructive",
       });
     } finally {
@@ -486,12 +488,12 @@ const PackageDetails = () => {
                 </h2>
                 <div className="grid md:grid-cols-2 gap-3">
                   {[
-                    "ที่พักตามโปรแกรม",
-                    "อาหารตามโปรแกรม",
-                    "รถโค้ชปรับอากาศ",
-                    "ไกด์ท้องถิ่น",
-                    "ประกันการเดินทาง",
-                    "ค่าเข้าสถานที่ท่องเที่ยว",
+                    t("details.accommodation"),
+                    t("details.meals"),
+                    t("details.transport"),
+                    t("details.guide"),
+                    t("details.insurance"),
+                    t("details.entrance"),
                   ].map((item, index) => (
                     <div key={index} className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-600" />
@@ -555,7 +557,7 @@ const PackageDetails = () => {
                       id="contactName"
                       value={contactName}
                       onChange={(e) => setContactName(e.target.value)}
-                      placeholder="กรอกชื่อ-นามสกุล"
+                      placeholder={t("details.fullName")}
                       required
                     />
                   </div>
@@ -566,7 +568,7 @@ const PackageDetails = () => {
                       id="contactPhone"
                       value={contactPhone}
                       onChange={(e) => setContactPhone(e.target.value)}
-                      placeholder="กรอกเบอร์โทรศัพท์"
+                      placeholder={t("details.phone")}
                       required
                     />
                   </div>
@@ -578,7 +580,7 @@ const PackageDetails = () => {
                       type="email"
                       value={contactEmail}
                       onChange={(e) => setContactEmail(e.target.value)}
-                      placeholder="กรอกอีเมล"
+                      placeholder={t("details.email")}
                       required
                     />
                   </div>
@@ -589,7 +591,7 @@ const PackageDetails = () => {
                       id="specialRequests"
                       value={specialRequests}
                       onChange={(e) => setSpecialRequests(e.target.value)}
-                      placeholder="ความต้องการพิเศษ (ถ้ามี)"
+                      placeholder={t("details.specialRequests")}
                       className="resize-none"
                       rows={3}
                     />
@@ -605,7 +607,7 @@ const PackageDetails = () => {
                         onChange={(e) =>
                           setDiscountCode(e.target.value.toUpperCase())
                         }
-                        placeholder="กรอกโค้ดส่วนลด"
+                        placeholder={t("packageDetails.enterDiscountCode")}
                         className="flex-1"
                       />
                       <Button
@@ -614,7 +616,9 @@ const PackageDetails = () => {
                         onClick={validateDiscountCode}
                         disabled={discountValidating || !discountCode.trim()}
                       >
-                        {discountValidating ? "ตรวจสอบ..." : "ใช้โค้ด"}
+                        {discountValidating
+                          ? t("packageDetails.validating")
+                          : t("packageDetails.useCode")}
                       </Button>
                     </div>
                     {appliedDiscount && (
@@ -721,7 +725,7 @@ const PackageDetails = () => {
                         ส่วนลดจากโค้ด (
                         {appliedDiscount.discount_type === "percentage"
                           ? `${appliedDiscount.discount_value}%`
-                          : "ส่วนลดคงที่"}
+                          : t("packageDetails.fixedDiscount")}
                         ):
                       </span>
                       <span>-฿{discountAmount.toLocaleString()}</span>
@@ -765,10 +769,10 @@ const PackageDetails = () => {
                   // }
                 >
                   {bookingLoading
-                    ? "กำลังดำเนินการ..."
+                    ? t("packageDetails.processing")
                     : availableSpots === 0
-                    ? "จองเต็มแล้ว"
-                    : "จองเลย (โหมดทดสอบ)"}
+                    ? t("packageDetails.fullyBooked")
+                    : t("packageDetails.bookNowTest")}
                 </Button>
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">

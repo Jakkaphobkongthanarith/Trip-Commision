@@ -193,20 +193,18 @@ const Profile = () => {
     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
     if (minutes > 0) {
-      return `${t("profile.timeRemaining")} ${minutes} ${
-        language === "th" ? "นาที" : "min"
-      } ${seconds} ${language === "th" ? "วินาที" : "sec"}`;
+      return `${t("profile.timeRemaining")} ${minutes} ${t(
+        "profile.minute"
+      )} ${seconds} ${t("profile.second")}`;
     } else {
-      return `${t("profile.timeRemaining")} ${seconds} ${
-        language === "th" ? "วินาที" : "sec"
-      }`;
+      return `${t("profile.timeRemaining")} ${seconds} ${t("profile.second")}`;
     }
   };
 
   // ฟังก์ชันสำหรับยืนยันการจอง (ไปหน้าชำระเงิน)
   const handleConfirmBooking = (booking: any) => {
     const params = new URLSearchParams({
-      title: booking.travel_packages?.title || "ไม่ระบุแพ็คเกจ",
+      title: booking.travel_packages?.title || t("profile.packageNotSpecified"),
       guests: booking.guest_count.toString(),
       amount: booking.final_amount.toString(),
       contact_name: booking.contact_name || "",

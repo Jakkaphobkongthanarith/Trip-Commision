@@ -14,9 +14,11 @@ import { format } from "date-fns";
 import { th } from "date-fns/locale";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const SearchBar = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
   const [location, setLocation] = useState("");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
@@ -47,10 +49,10 @@ const SearchBar = () => {
         <div className="space-y-3 lg:col-span-2">
           <label className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Search className="h-4 w-4 text-primary" />
-            ค้นหาแพคเกจ
+            {t("search.searchPackages")}
           </label>
           <Input
-            placeholder="ชื่อแพคเกจ, สถานที่, จังหวัด..."
+            placeholder={t("search.packagePlaceholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="h-12 border-muted/50 focus:border-primary bg-background/50 backdrop-blur-sm transition-all"
@@ -60,7 +62,7 @@ const SearchBar = () => {
         <div className="space-y-3">
           <label className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Calendar className="h-4 w-4 text-primary" />
-            วันเดินทาง
+            {t("search.travelDate")}
           </label>
           <Popover>
             <PopoverTrigger asChild>
@@ -82,7 +84,7 @@ const SearchBar = () => {
                     format(dateRange.from, "dd MMM yyyy", { locale: th })
                   )
                 ) : (
-                  <span>เลือกช่วงวันที่</span>
+                  <span>{t("search.selectDateRange")}</span>
                 )}
               </Button>
             </PopoverTrigger>
@@ -107,7 +109,7 @@ const SearchBar = () => {
         <div className="space-y-3 lg:col-span-2">
           <label className="text-sm font-semibold text-foreground flex items-center gap-2">
             <DollarSign className="h-4 w-4 text-primary" />
-            ช่วงราคา: ฿{priceRange[0].toLocaleString()} - ฿
+            {t("search.priceRange")}: ฿{priceRange[0].toLocaleString()} - ฿
             {priceRange[1].toLocaleString()}
           </label>
           <div className="px-4 py-6 rounded-lg border border-muted/50 bg-background/50 backdrop-blur-sm space-y-4">
@@ -134,7 +136,7 @@ const SearchBar = () => {
           onClick={handleSearch}
         >
           <Search className="h-5 w-5 mr-2" />
-          ค้นหาแพคเกจ
+          {t("search.searchPackages")}
         </Button>
       </div>
     </div>

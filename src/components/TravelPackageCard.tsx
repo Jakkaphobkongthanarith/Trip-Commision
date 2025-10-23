@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { MapPin, Clock, Users, Calendar } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface TravelPackage {
   id: string;
@@ -39,6 +40,7 @@ const TravelPackageCard: React.FC<TravelPackageCardProps> = ({
   onTagClick,
 }) => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   // คำนวณราคาส่วนลดอย่างถูกต้อง
   const discountPercentage = pkg.discount_percentage || 0;
@@ -172,7 +174,9 @@ const TravelPackageCard: React.FC<TravelPackageCardProps> = ({
           disabled={availableSpots === 0}
           onClick={() => navigate(`/packages/${pkg.id}`)}
         >
-          {availableSpots > 0 ? "ดูรายละเอียด" : "เต็มแล้ว"}
+          {availableSpots > 0
+            ? t("travelCard.viewDetails")
+            : t("travelCard.fullyBooked")}
         </Button>
       </CardFooter>
     </Card>
