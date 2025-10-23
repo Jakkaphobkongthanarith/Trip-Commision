@@ -289,34 +289,6 @@ export default {
   "auth.selectUserType": "เลือกประเภทผู้ใช้",
   "auth.signingUp": "กำลังสมัครสมาชิก...",
 
-  // Package Details - Additional
-  "details.accommodation": "ที่พักตามโปรแกรม",
-  "details.meals": "อาหารตามโปรแกรม",
-  "details.transport": "รถโค้ชปรับอากาศ",
-  "details.guide": "ไกด์ท้องถิ่น",
-  "details.insurance": "ประกันการเดินทาง",
-  "details.entrance": "ค่าเข้าสถานที่ท่องเที่ยว",
-  "details.fullName": "กรอกชื่อ-นามสกุล",
-  "details.phone": "กรอกเบอร์โทรศัพท์",
-  "details.email": "กรอกอีเมล",
-  "details.specialRequests": "ความต้องการพิเศษ (ถ้ามี)",
-  "packageDetails.enterDiscountCode": "กรอกโค้ดส่วนลด",
-  "packageDetails.validating": "ตรวจสอบ...",
-  "packageDetails.useCode": "ใช้โค้ด",
-  "packageDetails.fixedDiscount": "ส่วนลดคงที่",
-  "packageDetails.processing": "กำลังดำเนินการ...",
-  "packageDetails.fullyBooked": "จองเต็มแล้ว",
-  "packageDetails.bookNowTest": "จองเลย (โหมดทดสอบ)",
-
-  // TravelPackageCard
-  "travelCard.viewDetails": "ดูรายละเอียด",
-  "travelCard.fullyBooked": "เต็มแล้ว",
-
-  // Profile
-  "profile.minute": "นาที",
-  "profile.second": "วินาที",
-  "profile.packageNotSpecified": "ไม่ระบุแพ็คเกจ",
-
   // AdminDashboard
   "admin.error": "เกิดข้อผิดพลาด",
   "admin.cannotLoadUsers": "ไม่สามารถโหลดข้อมูลผู้ใช้ได้",
@@ -341,7 +313,7 @@ export default {
   "search.travelDate": "วันเดินทาง",
   "search.selectDateRange": "เลือกช่วงวันที่",
   "search.priceRange": "ช่วงราคา",
-  "packageDetails.codeFromAdvertiser": "โค้ดจาก Advertiser",
+
   // Commission and tiers
   commission: {
     noCommission: "ไม่มีค่าคอมมิชชั่น",

@@ -289,65 +289,45 @@ export default {
   "auth.yourName": "Your name",
   "auth.selectUserType": "Select user type",
   "auth.signingUp": "Signing up...",
-
-  // Package Details - Additional
-  "details.accommodation": "Accommodation as per program",
-  "details.meals": "Meals as per program",
-  "details.transport": "Air-conditioned coach",
-  "details.guide": "Local guide",
-  "details.insurance": "Travel insurance",
-  "details.entrance": "Entrance fees to attractions",
-  "details.fullName": "Enter full name",
-  "details.phone": "Enter phone number",
-  "details.email": "Enter email",
-  "details.specialRequests": "Special requests (if any)",
-  "packageDetails.enterDiscountCode": "Enter discount code",
-  "packageDetails.validating": "Validating...",
-  "packageDetails.useCode": "Use Code",
-  "packageDetails.fixedDiscount": "Fixed discount",
-  "packageDetails.processing": "Processing...",
-  "packageDetails.fullyBooked": "Fully booked",
-  "packageDetails.bookNowTest": "Book Now (Test Mode)",
-
-  // TravelPackageCard
-  "travelCard.viewDetails": "View Details",
-  "travelCard.fullyBooked": "Fully Booked",
-
-  // Profile
-  "profile.minute": "min",
-  "profile.second": "sec",
-  "profile.packageNotSpecified": "Package not specified",
-
-  // AdminDashboard
-  "admin.error": "Error occurred",
-  "admin.cannotLoadUsers": "Cannot load user data",
-  "admin.deleteUserSuccess": "User deleted successfully",
-  "admin.cannotDeleteUser": "Cannot delete user",
-  "admin.manager": "Manager",
-  "admin.advertiser": "Advertiser",
-  "admin.customer": "Customer",
-  "admin.searchPlaceholder": "Search by name or email...",
-  "admin.nameNotSpecified": "Name not specified",
-  "admin.notSpecified": "Not specified",
-
-  // MemberManagement
-  "member.cannotLoadMembers": "Cannot load member data",
-  "member.canDeleteAdvertiserOnly": "Can only delete 'Advertiser' accounts",
-  "member.deleteFeatureNotReady": "Member deletion feature is not ready yet",
-  "member.systemError": "System error occurred",
-
-  // SearchBar
   "search.searchPackages": "Search Packages",
   "search.packagePlaceholder": "Package name, location, province...",
   "search.travelDate": "Travel Date",
   "search.selectDateRange": "Select date range",
   "search.priceRange": "Price Range",
   "packageDetails.codeFromAdvertiser": "Code from Advertiser",
+
+  // TravelPackageCard
+  "travelCard.viewDetails": "View Details",
+  "travelCard.fullyBooked": "Fully Booked",
+
+  // Profile
+  "profile.minute": "minute",
+  "profile.second": "second",
+  "profile.packageNotSpecified": "Package not specified",
+
+  // AdminDashboard
+  "admin.error": "Error",
+  "admin.cannotLoadUsers": "Cannot load users",
+  "admin.deleteUserSuccess": "User deleted successfully",
+  "admin.cannotDeleteUser": "Cannot delete user",
+  "admin.manager": "Admin",
+  "admin.advertiser": "Middleman",
+  "admin.customer": "Tourist",
+  "admin.searchPlaceholder": "Search by name or email...",
+  "admin.nameNotSpecified": "Name not specified",
+  "admin.notSpecified": "Not specified",
+
+  // MemberManagement
+  "member.cannotLoadMembers": "Cannot load members",
+  "member.canDeleteAdvertiserOnly": "Can only delete 'Middleman' accounts",
+  "member.deleteFeatureNotReady": "Member deletion feature is not ready yet",
+  "member.systemError": "System error occurred",
+
   // Commission and tiers
   commission: {
-    noCommission: "No Commission",
+    noCommission: "No commission",
     noCommissionThisMonth: "No commission from discount codes this month",
-    fromDiscountCodes: "Commission from Discount Codes",
+    fromDiscountCodes: "Commission from discount codes",
     listFromDiscountCodes: "List of commission from discount code usage",
   },
 };
