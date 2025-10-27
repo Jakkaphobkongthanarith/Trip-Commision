@@ -150,12 +150,10 @@ func (mc *ManagerController) GetRecentPackages(c *gin.Context) {
 	// ใช้ GORM Preload เพื่อ JOIN tables ตามที่ต้องการ:
 	// travel_packages -> package_advertisers -> users -> profiles
 	err := mc.DB.
-		Preload("Advertisers").          // JOIN package_advertisers table
-		Preload("Advertisers.Profile").  // JOIN profiles table
-		Where("is_active = ?", true).
-		Order("created_at DESC").
-		Limit(10).
-		Find(&travelPackages).Error
+    Where("is_active = ?", true).
+    Order("created_at DESC").
+    Limit(10).
+    Find(&travelPackages).Error
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{

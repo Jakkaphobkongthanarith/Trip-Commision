@@ -16,5 +16,5 @@ type Profile struct {
 	UpdatedAt   time.Time `json:"updated_at" gorm:"type:timestamp with time zone;autoUpdateTime"`
 	
 	// Belongs to User relationship
-	User User `json:"user,omitempty" gorm:"foreignKey:UserID;references:ID"`
+	User *User `json:"user,omitempty" gorm:"-"` // ปิดการสร้าง constraint ไปยัง auth.users
 }

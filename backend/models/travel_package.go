@@ -32,8 +32,8 @@ type TravelPackage struct {
 	AdvertiserNames  string  `json:"advertiser_names" gorm:"-"` // จะรวมจาก profiles
 	
 	// Relationships - Reviews relationship removed
-	Advertisers []User    `json:"advertisers,omitempty" gorm:"many2many:package_advertisers;joinForeignKey:travel_package_id;joinReferences:advertiser_id;"`
-	Advertiser  *User     `json:"advertiser,omitempty" gorm:"foreignKey:AdvertiserID;references:ID"`
+	Advertisers []User    `json:"advertisers,omitempty" gorm:"-"` // ปิดการสร้าง constraint ไปยัง auth.users
+	Advertiser  *User     `json:"advertiser,omitempty" gorm:"-"` // ปิดการสร้าง constraint ไปยัง auth.users
 	Bookings    []Booking `json:"bookings,omitempty" gorm:"foreignKey:PackageID"`
 }
 

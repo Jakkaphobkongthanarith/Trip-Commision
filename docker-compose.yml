@@ -1,54 +1,52 @@
-version: "3.8"
-
 services:
-  # Backend Service
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile.backend
-    ports:
-      - "8000:8000"
-    environment:
-      - SUPABASE_DB_URL=${SUPABASE_DB_URL}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-    networks:
-      - app-network
-    restart: unless-stopped
-
-  # Frontend Service
+  # Frontend (Port 8080)
   frontend:
     build:
       context: .
       dockerfile: Dockerfile.frontend
       args:
-        VITE_API_BASE_URL: http://backend:8000
+        VITE_API_BASE_URL: http://localhost:8000
+        VITE_WS_URL: ws://localhost:8000
+        VITE_SUPABASE_PROJECT_ID: japhrkohqnslieqeuodn
+        VITE_SUPABASE_PUBLISHABLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphcGhya29ocW5zbGllcWV1b2RuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc2NTAxNDcsImV4cCI6MjA3MzIyNjE0N30.ojxILnrhEnag8ShhMnC2AsqS4O-mW_VvjejOEGd0R3A
+        VITE_SUPABASE_URL: https://japhrkohqnslieqeuodn.supabase.co
+
+    container_name: triptrader_frontend
     ports:
-      - "3000:3000"
+      - "8080:8080" # เปลี่ยนเป็น 8080
     depends_on:
       - backend
     networks:
-      - app-network
+      - triptrader_network
     restart: unless-stopped
 
-  # Nginx Reverse Proxy (Optional)
-  nginx:
-    image: nginx:alpine
+  # Backend (Port 8000)
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: triptrader_backend
+    environment:
+      - SUPABASE_DB_URL=postgresql://postgres.japhrkohqnslieqeuodn:2I91XBeW6dBoreCC@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres
+      - ALLOWED_ORIGINS=http://localhost:8080
+      - GIN_MODE=release
+      - PORT=8000
+      - SUPABASE_URL=https://japhrkohqnslieqeuodn.supabase.co
+      - SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphcGhya29ocW5zbGllcWV1b2RuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzY1MDE0NywiZXhwIjoyMDczMjI2MTQ3fQ.xqRvVjR18eNskr12qx3X-jg6tFlLfqwM13au1Gw12zA
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphcGhya29ocW5zbGllcWV1b2RuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc2NTAxNDcsImV4cCI6MjA3MzIyNjE0N30.ojxILnrhEnag8ShhMnC2AsqS4O-mW_VvjejOEGd0R3A
     ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/ssl:ro # if using SSL
-    depends_on:
-      - frontend
-      - backend
+      - "8000:8000"
     networks:
-      - app-network
+      - triptrader_network
     restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    extra_hosts:
+      - "db.japhrkohqnslieqeuodn.supabase.co:52.77.146.31"
+    volumes:
+      - ./backend/uploads:/root/uploads
 
 networks:
-  app-network:
+  triptrader_network:
     driver: bridge
-# To use external database, you can remove the postgres service
-# and use SUPABASE_DB_URL pointing to your external database

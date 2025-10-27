@@ -47,22 +47,18 @@ func (j JSONMap) Value() (driver.Value, error) {
 
 // User represents the auth.users table from Supabase
 type User struct {
-	ID               uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey"`
-	Email            string     `json:"email" gorm:"type:varchar(255);uniqueIndex;not null"`
-	Phone            *string    `json:"phone" gorm:"type:varchar(15)"`
-	EmailConfirmedAt *time.Time `json:"email_confirmed_at" gorm:"type:timestamp with time zone"`
-	LastSignInAt     *time.Time `json:"last_sign_in_at" gorm:"type:timestamp with time zone"`
-	RawAppMetaData   JSONMap    `json:"raw_app_meta_data" gorm:"type:jsonb"`
-	RawUserMetaData  JSONMap    `json:"raw_user_meta_data" gorm:"type:jsonb"`
-	CreatedAt        time.Time  `json:"created_at" gorm:"type:timestamp with time zone"`
-	UpdatedAt        time.Time  `json:"updated_at" gorm:"type:timestamp with time zone"`
-	
-	// Relationships
-	Role             *UserRole  `json:"role" gorm:"foreignKey:UserID;references:ID"`
-	Profile          *Profile   `json:"profile" gorm:"foreignKey:UserID;references:ID"`
-	
-	// Many-to-many relationship with TravelPackages (for advertisers)
-	AdvertisedPackages []TravelPackage `json:"advertised_packages,omitempty" gorm:"many2many:package_advertisers;joinForeignKey:advertiser_id;joinReferences:travel_package_id;"`
+    ID                 uuid.UUID       `json:"id"`
+    Email              string          `json:"email"`
+    Phone              *string         `json:"phone"`
+    EmailConfirmedAt   *time.Time      `json:"email_confirmed_at"`
+    LastSignInAt       *time.Time      `json:"last_sign_in_at"`
+	RawAppMetaData     JSONMap         `json:"raw_app_meta_data" gorm:"-"`
+	RawUserMetaData    JSONMap         `json:"raw_user_meta_data" gorm:"-"`
+    CreatedAt          time.Time       `json:"created_at"`
+    UpdatedAt          time.Time       `json:"updated_at"`
+    Role               *UserRole       `json:"role"`
+    Profile            *Profile        `json:"profile"`
+	AdvertisedPackages []TravelPackage `json:"advertised_packages,omitempty" gorm:"-"`
 }
 
 // UserRole represents the public.user_roles table

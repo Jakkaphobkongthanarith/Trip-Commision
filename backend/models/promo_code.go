@@ -28,7 +28,7 @@ type DiscountCode struct {
 	UpdatedAt      time.Time `json:"updated_at" gorm:"type:timestamp with time zone;not null;default:now()"`
 	
 	// Relations
-	Advertiser User          `json:"advertiser,omitempty" gorm:"foreignKey:AdvertiserID"`
+	Advertiser User          `json:"advertiser,omitempty" gorm:"-"` // ปิดการสร้าง constraint ไปยัง auth.users
 	Package    TravelPackage `json:"package,omitempty" gorm:"foreignKey:PackageID"`
 }
 

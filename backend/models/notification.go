@@ -16,14 +16,14 @@ type Notification struct {
 	Priority  int                      `json:"priority" gorm:"column:priority;type:integer;default:2"` // เพิ่ม: 1=HIGH, 2=MEDIUM, 3=LOW
 	ActionURL string                   `json:"action_url" gorm:"column:action_url;type:text"` // เพิ่ม: ลิงก์ที่เกี่ยวข้อง
 	ImageURL  string                   `json:"image_url" gorm:"column:image_url;type:text"` // เพิ่ม: รูปภาพประกอบ
-	Data      JSONMap                  `json:"data" gorm:"column:data;type:jsonb"` // เพิ่ม: ข้อมูลเพิ่มเติม
+	Data      JSONMap                  `json:"data" gorm:"-"` // เพิ่ม: ข้อมูลเพิ่มเติม
 	IsRead    bool                     `json:"is_read" gorm:"column:is_read;type:boolean;not null;default:false"`
 	ExpiresAt *time.Time               `json:"expires_at" gorm:"column:expires_at;type:timestamp with time zone"` // เพิ่ม: หมดอายุ notification
 	CreatedAt time.Time                `json:"created_at" gorm:"column:created_at;type:timestamp with time zone;not null;default:now()"`
 	UpdatedAt time.Time                `json:"updated_at" gorm:"column:updated_at;type:timestamp with time zone;not null;default:now()"`
 
 	// Foreign key relationships (ไม่มี CASCADE constraint ใน schema ที่มีอยู่)
-	User *User `json:"user,omitempty" gorm:"foreignKey:UserID"`
+	User *User `json:"user,omitempty" gorm:"-"` // ปิดการสร้าง constraint ไปยัง auth.users
 }
 
 // TableName กำหนดชื่อ table

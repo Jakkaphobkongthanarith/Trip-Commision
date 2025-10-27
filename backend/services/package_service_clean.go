@@ -17,12 +17,12 @@ func (s *PackageStatsService) GetPackageWithStats(packageID uuid.UUID) (*models.
 	
 	// ดึง package ด้วย GORM Preload (ไม่มี Reviews)
 	if err := s.DB.
-		Preload("Advertisers.Profile").
-		Preload("Bookings", "status = ?", "confirmed").
-		Where("id = ? AND is_active = ?", packageID, true).
-		First(&pkg).Error; err != nil {
-		return nil, err
-	}
+    // ลบ Preload("Advertisers.Profile")
+    Preload("Bookings", "status = ?", "confirmed").
+    Where("id = ? AND is_active = ?", packageID, true).
+    First(&pkg).Error; err != nil {
+    return nil, err
+}
 
 	// คำนวณ stats พื้นฐาน (ไม่มี rating/review)
 	s.computeBasicStats(&pkg)
@@ -36,12 +36,12 @@ func (s *PackageStatsService) GetAllPackagesWithStats() ([]models.TravelPackage,
 	
 	// ดึง packages ทั้งหมดด้วย GORM (ไม่มี Reviews)
 	if err := s.DB.
-		Preload("Advertisers.Profile").
-		Preload("Bookings", "status = ?", "confirmed").
-		Where("is_active = ?", true).
-		Find(&packages).Error; err != nil {
-		return nil, err
-	}
+    // ลบ Preload("Advertisers.Profile")
+    Preload("Bookings", "status = ?", "confirmed").
+    Where("is_active = ?", true).
+    Find(&packages).Error; err != nil {
+    return nil, err
+}
 
 	// คำนวณ stats สำหรับแต่ละ package (ไม่มี rating/review)
 	for i := range packages {
@@ -57,11 +57,15 @@ func (s *PackageStatsService) GetActivePackagesWithPagination(limit, offset int)
 	var total int64
 	
 	// นับ total packages
-	if err := s.DB.Model(&models.TravelPackage{}).
-		Where("is_active = ?", true).
-		Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
+	if err := s.DB.
+    // ลบ Preload("Advertisers.Profile")
+    Preload("Bookings", "status = ?", "confirmed").
+    Where("is_active = ?", true).
+    Limit(limit).
+    Offset(offset).
+    Find(&packages).Error; err != nil {
+    return nil, 0, err
+}
 	
 	// ดึง packages แบบ pagination (ไม่มี Reviews)
 	if err := s.DB.
