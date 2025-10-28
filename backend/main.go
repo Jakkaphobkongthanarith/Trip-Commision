@@ -44,9 +44,13 @@ func main() {
 	// Initialize Gin router
 	router := gin.Default()
 
-	// CORS middleware
+	// CORS middleware (add production frontend domain)
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:8080", "http://localhost:3000"},
+		AllowOrigins: []string{
+			"http://localhost:8080",
+			"http://localhost:3000",
+			"https://trip-trader-production.up.railway.app",
+		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"*"},
 		AllowCredentials: true,
