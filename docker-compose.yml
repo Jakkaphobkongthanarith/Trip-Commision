@@ -5,8 +5,8 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
       args:
-        VITE_API_BASE_URL: http://localhost:8000
-        VITE_WS_URL: ws://localhost:8000
+        VITE_API_BASE_URL: trip-trader-backend.up.railway.app
+        VITE_WS_URL: wss://trip-trader-backend.up.railway.app/ws
         VITE_SUPABASE_PROJECT_ID: japhrkohqnslieqeuodn
         VITE_SUPABASE_PUBLISHABLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphcGhya29ocW5zbGllcWV1b2RuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc2NTAxNDcsImV4cCI6MjA3MzIyNjE0N30.ojxILnrhEnag8ShhMnC2AsqS4O-mW_VvjejOEGd0R3A
         VITE_SUPABASE_URL: https://japhrkohqnslieqeuodn.supabase.co
