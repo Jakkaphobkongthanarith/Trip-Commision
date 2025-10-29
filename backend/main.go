@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"trip-trader-backend/controllers"
+
 	// "trip-trader-backend/models"
 	"trip-trader-backend/utils"
 
@@ -52,7 +53,9 @@ func main() {
 			"https://trip-trader-production.up.railway.app",
 		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"*"},
+		AllowHeaders: []string{
+            "Origin", "Content-Length", "Content-Type", "Authorization", "Accept", "X-Requested-With",
+        },
 		AllowCredentials: true,
 	}))
 
