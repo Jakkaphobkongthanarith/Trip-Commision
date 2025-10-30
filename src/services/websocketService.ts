@@ -182,6 +182,8 @@ const getWebSocketURL = (): string => {
   // สำหรับ development ใช้ localhost, สำหรับ production ใช้ host เดียวกัน
   if (import.meta.env.DEV) {
     wsUrl = `${protocol}//localhost:${port}/ws`;
+  } else if (import.meta.env.VITE_WS_URL) {
+    wsUrl = import.meta.env.VITE_WS_URL;
   } else {
     wsUrl = `${protocol}//${host}:${port}/ws`;
   }
