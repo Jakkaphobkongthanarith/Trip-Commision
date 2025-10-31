@@ -161,6 +161,11 @@ func CreatePackageHandler(c *gin.Context, db *gorm.DB) {
 	// Set default is_active = true
 	trueValue := true
 	pkg.IsActive = &trueValue
+
+	// Generate unique display_id (auto-increment style)
+	var maxDisplayID int
+	db.Model(&models.TravelPackage{}).Select("COALESCE(MAX(display_id), 0)").Scan(&maxDisplayID)
+	pkg.DisplayID = maxDisplayID + 1
 	
 	// สร้าง record ใหม่ (GORM Create)
 	result := db.Create(&pkg)
