@@ -289,6 +289,16 @@ export default {
   "auth.selectUserType": "เลือกประเภทผู้ใช้",
   "auth.signingUp": "กำลังสมัครสมาชิก...",
 
+  // TravelPackageCard
+  "travelCard.viewDetails": "View Details",
+  "travelCard.fullyBooked": "Fully Booked",
+
+  // Profile
+  "profile.minute": "minute",
+  "profile.second": "second",
+  "profile.packageNotSpecified": "Package not specified",
+
+
   // AdminDashboard
   "admin.error": "เกิดข้อผิดพลาด",
   "admin.cannotLoadUsers": "ไม่สามารถโหลดข้อมูลผู้ใช้ได้",
