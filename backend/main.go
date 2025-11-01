@@ -10,11 +10,15 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 func main() {
+	// Load .env for local dev
+	_ = godotenv.Load(".env")
+
 	// Set Gin mode
 	gin.SetMode(gin.ReleaseMode)
 
@@ -49,6 +53,7 @@ func main() {
 	router.Use(cors.New(cors.Config{
 		AllowOrigins: []string{
 			"http://localhost:8080",
+			"http://localhost:8081",
 			"http://localhost:3000",
 			"https://trip-trader-production.up.railway.app",
 		},
@@ -88,6 +93,7 @@ func main() {
 func initDatabase() (*gorm.DB, error) {
 	// Get database URL from environment
 	dbURL := os.Getenv("SUPABASE_DB_URL")
+	log.Println("🔧 Initializing database connection...", dbURL)
 	
 	// Debug: พิมพ์ connection info (ซ่อน password)
 	if dbURL != "" {

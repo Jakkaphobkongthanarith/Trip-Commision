@@ -120,18 +120,10 @@ const Index = () => {
               {t("hero.description2")}
             </p>
             <div>
-              <h1>Meow API Response:</h1>
-              <p>{meow}</p>
-              <h1>WS Status:</h1>
-              <p
-                style={{
-                  color: isConnected ? "green" : "red",
-                  fontWeight: "bold",
-                  fontSize: "18px",
-                }}
-              >
-                {isConnected ? "Connected" : "Disconnected"}
-              </p>
+              <h1>role tourist = tourist@gmail.com</h1>
+              <h1>role middle = middle@gmail.com</h1>
+              <h1>role admin = admin@gmail.com</h1>
+              <p>pw: 123456</p>
 
               {/* Test WebSocket Button */}
               {/* {user?.id && isConnected && (
