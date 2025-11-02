@@ -115,25 +115,6 @@ All colors MUST be HSL.
   }
 }
 
-@layer utilities {
-  /* Gradient backgrounds */
-  .bg-sunset-gradient {
-    background-image: var(--sunset-gradient);
-  }
-  
-  .bg-sky-gradient {
-    background-image: var(--sky-gradient);
-  }
-  
-  /* Gradient text */
-  .text-gradient-sunset {
-    background-image: var(--sunset-gradient);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-}
-
 /* React Image Crop Styles */
 .ReactCrop {
   display: inline-block;
