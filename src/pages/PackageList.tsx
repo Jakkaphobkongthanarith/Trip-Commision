@@ -34,7 +34,7 @@ const MainContent = ({
         {/* Hero Section */}
         <section className="relative bg-gradient-to-br from-primary/10 via-background to-secondary/10 py-16">
           <div className="container mx-auto px-6 text-center">
-            <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-sunset-gradient bg-clip-text text-transparent">
+            <h1 className="text-4xl md:text-6xl font-bold mb-6 text-gradient-sunset">
               {t("packages.title")}
             </h1>
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
