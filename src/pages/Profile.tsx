@@ -44,7 +44,6 @@ const Profile = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
 
-  // Early return ถ้าไม่มี user (ต้องอยู่ก่อน useState และ useEffect)
   if (!user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -66,7 +65,6 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  // Timer สำหรับอัปเดตเวลาที่เหลือ
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
@@ -93,18 +91,14 @@ const Profile = () => {
       });
     } catch (error) {
       console.error("Error fetching profile:", error);
-      // ถ้าไม่มีข้อมูล profile ยังไม่ต้องแสดง error
-      // เพราะอาจเป็นครั้งแรกที่ user เข้าใช้งาน
     }
   };
 
   const fetchBookings = async () => {
     try {
-      // เรียกใช้ Backend API แทน Supabase โดยตรง
       const response = await bookingAPI.getAll();
       console.log("All bookings response:", response);
 
-      // กรองเฉพาะ bookings ของ user ปัจจุบัน
       const userBookings = (response.bookings || []).filter(
         (booking: any) => booking.customer_id === user?.id
       );
@@ -112,7 +106,6 @@ const Profile = () => {
       console.log("Filtered user bookings:", userBookings);
       console.log("Current user ID:", user?.id);
 
-      // เรียงลำดับตาม booking_date (ใหม่ที่สุดก่อน)
       const sortedBookings = userBookings.sort(
         (a: any, b: any) =>
           new Date(b.booking_date).getTime() -
@@ -174,14 +167,12 @@ const Profile = () => {
     return status;
   };
 
-  // ฟังก์ชันตรวจสอบว่าการจองหมดเวลาแล้วหรือไม่
   const isBookingExpired = (booking: any) => {
     if (!booking.expires_at || booking.payment_status !== "pending")
       return false;
     return new Date(booking.expires_at) < new Date();
   };
 
-  // ฟังก์ชันคำนวณเวลาที่เหลือ
   const getTimeRemaining = (expiresAt: string) => {
     const now = new Date();
     const expires = new Date(expiresAt);
@@ -201,7 +192,6 @@ const Profile = () => {
     }
   };
 
-  // ฟังก์ชันสำหรับยืนยันการจอง (ไปหน้าชำระเงิน)
   const handleConfirmBooking = (booking: any) => {
     const params = new URLSearchParams({
       title: booking.travel_packages?.title || t("profile.packageNotSpecified"),

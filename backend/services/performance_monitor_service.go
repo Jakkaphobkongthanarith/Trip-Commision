@@ -9,31 +9,25 @@ import (
 	"gorm.io/gorm"
 )
 
-// PerformanceMonitor - Service สำหรับ monitor performance ของ computed fields
 type PerformanceMonitor struct {
 	DB *gorm.DB
 }
 
-// QueryPerformanceMetrics - เก็บ metrics ของ query performance
 type QueryPerformanceMetrics struct {
 	Operation    string        `json:"operation"`
 	Duration     time.Duration `json:"duration"`
 	RecordCount  int           `json:"record_count"`
 	Timestamp    time.Time     `json:"timestamp"`
-	QueryType    string        `json:"query_type"` // "computed_fields", "direct_query", etc.
+	QueryType    string        `json:"query_type"`
 }
 
-// MonitorPackageStatsQuery - Monitor performance ของ package stats queries
 func (pm *PerformanceMonitor) MonitorPackageStatsQuery(operation string, queryFunc func() (interface{}, error)) (interface{}, error) {
 	startTime := time.Now()
 	
-	// Execute query
 	result, err := queryFunc()
 	
-	// Calculate duration
 	duration := time.Since(startTime)
 	
-	// Log performance metrics
 	metrics := QueryPerformanceMetrics{
 		Operation:   operation,
 		Duration:    duration,
@@ -41,7 +35,6 @@ func (pm *PerformanceMonitor) MonitorPackageStatsQuery(operation string, queryFu
 		QueryType:   "computed_fields",
 	}
 	
-	// Count records if result is slice
 	switch v := result.(type) {
 	case []models.TravelPackage:
 		metrics.RecordCount = len(v)
@@ -51,19 +44,17 @@ func (pm *PerformanceMonitor) MonitorPackageStatsQuery(operation string, queryFu
 		}
 	}
 	
-	// Log warning if query takes too long
 	if duration > 1*time.Second {
-		log.Printf("⚠️  SLOW QUERY WARNING: %s took %v for %d records", 
+		 log.Printf("SLOW QUERY WARNING: %s took %v for %d records", 
 			operation, duration, metrics.RecordCount)
 	} else {
-		log.Printf("✅ Query Performance: %s completed in %v for %d records", 
+		log.Printf("Query Performance: %s completed in %v for %d records", 
 			operation, duration, metrics.RecordCount)
 	}
 	
 	return result, err
 }
 
-// GetPackageWithStatsMonitored - GetPackageWithStats พร้อม performance monitoring
 func (pm *PerformanceMonitor) GetPackageWithStatsMonitored(packageID uuid.UUID) (*models.TravelPackage, error) {
 	statsService := &PackageStatsService{DB: pm.DB}
 	
@@ -78,7 +69,6 @@ func (pm *PerformanceMonitor) GetPackageWithStatsMonitored(packageID uuid.UUID) 
 	return result.(*models.TravelPackage), nil
 }
 
-// GetAllPackagesWithStatsMonitored - GetAllPackagesWithStats พร้อม performance monitoring
 func (pm *PerformanceMonitor) GetAllPackagesWithStatsMonitored() ([]models.TravelPackage, error) {
 	statsService := &PackageStatsService{DB: pm.DB}
 	
@@ -93,7 +83,6 @@ func (pm *PerformanceMonitor) GetAllPackagesWithStatsMonitored() ([]models.Trave
 	return result.([]models.TravelPackage), nil
 }
 
-// GetActivePackagesWithPaginationMonitored - Pagination query พร้อม monitoring
 func (pm *PerformanceMonitor) GetActivePackagesWithPaginationMonitored(limit, offset int) ([]models.TravelPackage, int64, error) {
 	statsService := &PackageStatsService{DB: pm.DB}
 	
@@ -101,39 +90,34 @@ func (pm *PerformanceMonitor) GetActivePackagesWithPaginationMonitored(limit, of
 	packages, total, err := statsService.GetActivePackagesWithPagination(limit, offset)
 	duration := time.Since(startTime)
 	
-	// Log pagination performance
 	log.Printf("📄 Pagination Query: %d records (offset %d, limit %d) in %v", 
 		len(packages), offset, limit, duration)
 	
 	if duration > 500*time.Millisecond {
-		log.Printf("⚠️  PAGINATION SLOW: Consider indexing or query optimization")
+		 log.Printf("PAGINATION SLOW: Consider indexing or query optimization")
 	}
 	
 	return packages, total, err
 }
 
-// AnalyzeQueryPerformance - วิเคราะห์ performance และให้คำแนะนำ
 func (pm *PerformanceMonitor) AnalyzeQueryPerformance() {
-	log.Println("🔍 Starting Performance Analysis...")
+		log.Println("Starting Performance Analysis...")
 	
-	// Test individual package query (ไม่มี Reviews)
 	startTime := time.Now()
 	var pkg models.TravelPackage
 	pm.DB.Preload("Bookings").First(&pkg)
 	singleQueryTime := time.Since(startTime)
 	
-	// Test bulk query (ไม่มี Reviews)
 	startTime = time.Now()
 	var packages []models.TravelPackage
 	pm.DB.Preload("Bookings").Limit(10).Find(&packages)
 	bulkQueryTime := time.Since(startTime)
 	
-	log.Printf("📊 Performance Analysis Results:")
+	 log.Printf("Performance Analysis Results:")
 	log.Printf("   Single Package Query: %v", singleQueryTime)
 	log.Printf("   Bulk Query (10 packages): %v", bulkQueryTime)
 	log.Printf("   Average per package: %v", bulkQueryTime/10)
 	
-	// Recommendations
 	if singleQueryTime > 100*time.Millisecond {
 		log.Printf("🔧 Recommendation: Consider adding database indexes on frequently queried fields")
 	}
@@ -142,19 +126,16 @@ func (pm *PerformanceMonitor) AnalyzeQueryPerformance() {
 		log.Printf("🔧 Recommendation: Consider implementing caching layer for bulk queries")
 	}
 	
-	// Check for missing indexes
 	pm.checkIndexes()
 }
 
-// checkIndexes - ตรวจสอบ indexes ที่สำคัญ
 func (pm *PerformanceMonitor) checkIndexes() {
-	log.Println("🔍 Checking Database Indexes...")
+		log.Println("Checking Database Indexes...")
 	
-	// Check for important indexes (ไม่มี reviews indexes)
 	indexes := []string{
-		"travel_packages_package_id_idx",  // package_id foreign key
-		"bookings_package_id_idx",         // bookings.package_id
-		"travel_packages_is_active_idx",   // is_active filter
+		"travel_packages_package_id_idx",
+		"bookings_package_id_idx",
+		"travel_packages_is_active_idx",
 	}
 	
 	for _, indexName := range indexes {
@@ -166,14 +147,13 @@ func (pm *PerformanceMonitor) checkIndexes() {
 			)`, indexName).Scan(&exists)
 		
 		if !exists {
-			log.Printf("⚠️  Missing Index: %s", indexName)
+			 log.Printf("Missing Index: %s", indexName)
 		} else {
-			log.Printf("✅ Index Found: %s", indexName)
+			   log.Printf("Index Found: %s", indexName)
 		}
 	}
 }
 
-// GetRecommendedIndexes - แนะนำ indexes ที่ควรสร้าง (ไม่มี reviews)
 func (pm *PerformanceMonitor) GetRecommendedIndexes() []string {
 	return []string{
 		"CREATE INDEX IF NOT EXISTS travel_packages_is_active_idx ON travel_packages(is_active);",

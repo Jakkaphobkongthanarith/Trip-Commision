@@ -67,7 +67,7 @@ CREATE INDEX IF NOT EXISTS travel_packages_advertiser_id_idx ON travel_packages(
 
 ---
 
-## 🚀 **Performance Monitoring**
+## **Performance Monitoring**
 
 ### **Real-time Monitoring Endpoints**
 

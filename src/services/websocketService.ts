@@ -5,7 +5,7 @@ interface NotificationMessage {
   message: string;
   userID?: string;
   timestamp: string;
-  data?: any; // เพิ่ม data field สำหรับข้อมูลเพิ่มเติม
+  data?: any;
 }
 
 interface WebSocketOptions {
@@ -21,7 +21,7 @@ interface WebSocketOptions {
 class WebSocketService {
   private socket: WebSocket | null = null;
   private url: string;
-  public options: WebSocketOptions; // เปลี่ยนเป็น public
+  public options: WebSocketOptions;
   private reconnectAttempts = 0;
   private isConnected = false;
   private messageQueue: NotificationMessage[] = [];
@@ -37,7 +37,6 @@ class WebSocketService {
     };
   }
 
-  // Method สำหรับอัพเดท options
   updateOptions(newOptions: Partial<WebSocketOptions>): void {
     this.options = {
       ...this.options,
@@ -47,17 +46,15 @@ class WebSocketService {
 
   connect(userID?: string): void {
     try {
-      // เพิ่ม userID เป็น query parameter ถ้ามี
       const wsUrl = userID ? `${this.url}?userID=${userID}` : this.url;
 
       this.socket = new WebSocket(wsUrl);
 
       this.socket.onopen = () => {
-        console.log("✅ WebSocket connected");
+        console.log("WebSocket connected");
         this.isConnected = true;
         this.reconnectAttempts = 0;
 
-        // ส่งข้อความที่รอส่งในคิว (ถ้ามี)
         this.flushMessageQueue();
 
         if (this.options.onConnect) {
@@ -68,28 +65,26 @@ class WebSocketService {
       this.socket.onmessage = (event) => {
         try {
           const message: NotificationMessage = JSON.parse(event.data);
-          console.log("📨 Received notification:", message);
+          console.log("Received notification:", message);
 
-          // แจ้งให้ทุก listeners
           this.listeners.forEach((listener) => listener(message));
 
           if (this.options.onMessage) {
             this.options.onMessage(message);
           }
         } catch (error) {
-          console.error("❌ Error parsing WebSocket message:", error);
+          console.error("Error parsing WebSocket message:", error);
         }
       };
 
       this.socket.onclose = (event) => {
-        console.log("🔌 WebSocket disconnected:", event.code, event.reason);
+        console.log("WebSocket disconnected:", event.code, event.reason);
         this.isConnected = false;
 
         if (this.options.onDisconnect) {
           this.options.onDisconnect();
         }
 
-        // Auto-reconnect ถ้าเปิดใช้งาน
         if (
           this.options.autoReconnect &&
           this.reconnectAttempts < (this.options.maxReconnectAttempts || 5)
@@ -106,14 +101,14 @@ class WebSocketService {
       };
 
       this.socket.onerror = (error) => {
-        console.error("❌ WebSocket error:", error);
+        console.error("WebSocket error:", error);
 
         if (this.options.onError) {
           this.options.onError(error);
         }
       };
     } catch (error) {
-      console.error("❌ Error creating WebSocket connection:", error);
+      console.error("Error creating WebSocket connection:", error);
     }
   }
 
@@ -125,12 +120,10 @@ class WebSocketService {
     }
   }
 
-  // เพิ่ม listener สำหรับรับข้อความ
   addMessageListener(listener: (message: NotificationMessage) => void): void {
     this.listeners.push(listener);
   }
 
-  // ลบ listener
   removeMessageListener(
     listener: (message: NotificationMessage) => void
   ): void {
@@ -140,17 +133,15 @@ class WebSocketService {
     }
   }
 
-  // ส่งข้อความผ่าน WebSocket (ถ้าจำเป็น)
   sendMessage(message: any): void {
     if (this.isConnected && this.socket) {
       this.socket.send(JSON.stringify(message));
     } else {
-      console.warn("⚠️ WebSocket not connected, message queued");
+      console.warn("WebSocket not connected, message queued");
       this.messageQueue.push(message);
     }
   }
 
-  // ส่งข้อความที่รอในคิว
   private flushMessageQueue(): void {
     while (this.messageQueue.length > 0 && this.isConnected && this.socket) {
       const message = this.messageQueue.shift();
@@ -160,18 +151,15 @@ class WebSocketService {
     }
   }
 
-  // ตรวจสอบสถานะการเชื่อมต่อ
   isSocketConnected(): boolean {
     return this.isConnected && this.socket?.readyState === WebSocket.OPEN;
   }
 
-  // รีเซ็ต reconnection attempts
   resetReconnectAttempts(): void {
     this.reconnectAttempts = 0;
   }
 }
 
-// สร้าง singleton instance
 const getWebSocketURL = (): string => {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const host = window.location.hostname;
@@ -179,7 +167,6 @@ const getWebSocketURL = (): string => {
 
   let wsUrl: string;
 
-  // สำหรับ development ใช้ localhost, สำหรับ production ใช้ host เดียวกัน
   if (import.meta.env.DEV) {
     wsUrl = `${protocol}//localhost:${port}/ws`;
   } else if (import.meta.env.VITE_WS_URL) {
@@ -191,7 +178,6 @@ const getWebSocketURL = (): string => {
   return wsUrl;
 };
 
-// Export singleton instance
 export const websocketService = new WebSocketService(getWebSocketURL(), {
   autoReconnect: true,
   reconnectInterval: 3000,

@@ -42,9 +42,8 @@ const TravelPackageCard: React.FC<TravelPackageCardProps> = ({
   const navigate = useNavigate();
   const { t } = useLanguage();
 
-  // คำนวณราคาส่วนลดอย่างถูกต้อง
   const discountPercentage = pkg.discount_percentage || 0;
-  const originalPrice = pkg.price; // ราคาเต็ม
+  const originalPrice = pkg.price;
   const discountedPrice =
     discountPercentage > 0
       ? pkg.price * (1 - discountPercentage / 100)
@@ -104,13 +103,11 @@ const TravelPackageCard: React.FC<TravelPackageCardProps> = ({
           {(() => {
             let tagsArray: string[] = [];
             if (typeof pkg.tags === "string" && (pkg.tags as string).trim()) {
-              // If tags is a comma-separated string, split it
               tagsArray = (pkg.tags as string)
                 .split(",")
                 .map((tag) => tag.trim())
                 .filter((tag) => tag);
             } else if (Array.isArray(pkg.tags)) {
-              // If tags is already an array
               tagsArray = pkg.tags;
             }
 

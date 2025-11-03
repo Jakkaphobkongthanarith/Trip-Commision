@@ -92,7 +92,6 @@ export default function PackageManagement() {
   const { userRole, loading } = useUserRole();
   const { toast } = useToast();
 
-  // Package states
   const [packages, setPackages] = useState<Package[]>([]);
   const [advertisers, setAdvertisers] = useState<User[]>([]);
   const [existingTags, setExistingTags] = useState<string[]>([]);
@@ -106,7 +105,6 @@ export default function PackageManagement() {
   const [selectedPackageTitle, setSelectedPackageTitle] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Package form state
   const [formData, setFormData] = useState({
     title: "",
     location: "",
@@ -124,17 +122,14 @@ export default function PackageManagement() {
   const [newTag, setNewTag] = useState("");
   const [tagComboOpen, setTagComboOpen] = useState(false);
 
-  // Image upload states
   const [isDragOver, setIsDragOver] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Image crop states
   const [showCrop, setShowCrop] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState<string>("");
-  const [aspectRatio, setAspectRatio] = useState<number>(16 / 9); // Default 16:9 for package cards
+  const [aspectRatio, setAspectRatio] = useState<number>(16 / 9);
 
-  // Advertiser selection modal states
   const [isAdvertiserModalOpen, setIsAdvertiserModalOpen] = useState(false);
 
   useEffect(() => {
@@ -145,7 +140,6 @@ export default function PackageManagement() {
     }
   }, [userRole]);
 
-  // Auto-calculate duration from date range
   useEffect(() => {
     if (formData.available_from && formData.available_to) {
       const startDate = new Date(formData.available_from);
@@ -160,14 +154,12 @@ export default function PackageManagement() {
           duration: dayDiff.toString(),
         }));
       } else if (endDate.getTime() === startDate.getTime()) {
-        // Same day = 1 day trip
         setFormData((prev) => ({
           ...prev,
           duration: "1",
         }));
       }
     } else {
-      // Reset duration if dates are cleared
       setFormData((prev) => ({
         ...prev,
         duration: "",
@@ -175,7 +167,6 @@ export default function PackageManagement() {
     }
   }, [formData.available_from, formData.available_to]);
 
-  // Early return หลังจาก useState ทั้งหมด
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -273,7 +264,6 @@ export default function PackageManagement() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate duration
     if (!formData.duration || parseInt(formData.duration) <= 0) {
       toast({
         title: "เกิดข้อผิดพลาด",
@@ -421,21 +411,18 @@ export default function PackageManagement() {
         try {
           await sendNotificationToAdvertiser(
             advertiserId,
-            `🎯 คุณได้รับมอบหมายให้โฆษณาแพ็กเกจ "${packageName}" แล้ว! เริ่มสร้างโค้ดส่วนลดและโปรโมทได้เลย`,
+            `คุณได้รับมอบหมายให้โฆษณาแพ็กเกจ "${packageName}" แล้ว! เริ่มสร้างโค้ดส่วนลดและโปรโมทได้เลย`,
             "package_assignment",
             packageId
           );
         } catch (error) {
-          console.error(
-            `❌ Failed to notify advertiser ${advertiserId}:`,
-            error
-          );
+          console.error(`Failed to notify advertiser ${advertiserId}:`, error);
         }
       }
 
       window.dispatchEvent(new CustomEvent("notificationCreated"));
     } catch (error) {
-      console.error("❌ Error in notifyAssignedAdvertisers:", error);
+      console.error("Error in notifyAssignedAdvertisers:", error);
     }
   };
 
@@ -474,12 +461,11 @@ export default function PackageManagement() {
         throw new Error(`Notification failed: ${response.status}`);
       }
     } catch (error) {
-      console.error("❌ Error sending notification:", error);
+      console.error("Error sending notification:", error);
       throw error;
     }
   };
 
-  // Image upload functions
   const handleImageUpload = async (file: File) => {
     if (!file.type.startsWith("image/")) {
       toast({
@@ -503,7 +489,6 @@ export default function PackageManagement() {
     try {
       const objectUrl = URL.createObjectURL(file);
 
-      // Open crop modal instead of directly setting image
       setCropImageSrc(objectUrl);
       setShowCrop(true);
     } catch (error) {
@@ -518,9 +503,7 @@ export default function PackageManagement() {
     }
   };
 
-  // Crop functions
   const handleCropComplete = (croppedImageUrl: string) => {
-    // croppedImageUrl จะเป็น Supabase URL แล้ว ไม่ใช่ blob URL
     setImagePreview(croppedImageUrl);
     setFormData((prev) => ({ ...prev, image_url: croppedImageUrl }));
     setShowCrop(false);

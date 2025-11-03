@@ -8,11 +8,9 @@ import (
 	"gorm.io/gorm"
 )
 
-// AutoCancelExpiredBookings - ยกเลิกการจองที่หมดเวลาอัตโนมัติ
 func AutoCancelExpiredBookings(db *gorm.DB) {
 	log.Printf("[AUTO-CANCEL] Starting expired bookings check at %v", time.Now())
 
-	// หาการจองที่หมดเวลาแล้ว และยังไม่ได้ชำระเงิน
 	var expiredBookings []models.Booking
 	currentTime := time.Now()
 	log.Printf("[AUTO-CANCEL] Searching for bookings with expires_at < %v AND payment_status = 'pending' AND status = 'pending'", currentTime)
@@ -34,15 +32,13 @@ func AutoCancelExpiredBookings(db *gorm.DB) {
 
 	log.Printf("Found %d expired bookings to cancel", len(expiredBookings))
 
-	// ยกเลิกการจองทีละรายการ
 	for i, booking := range expiredBookings {
 		log.Printf("[AUTO-CANCEL] Processing booking %d/%d: ID=%s, Expires=%v, Package=%s, Guests=%d", 
 			i+1, len(expiredBookings), booking.ID, booking.ExpiresAt, booking.PackageID, booking.GuestCount)
 		
-		// อัปเดตสถานะเป็น cancelled
 		updateResult := db.Model(&booking).Updates(map[string]interface{}{
 			"status":         "cancelled",
-			"payment_status": "failed", // ใช้ "failed" ที่อนุญาตแล้ว
+			"payment_status": "failed",
 			"updated_at":     time.Now(),
 		})
 
@@ -52,7 +48,6 @@ func AutoCancelExpiredBookings(db *gorm.DB) {
 		}
 		log.Printf("[AUTO-CANCEL] Booking %s status updated to cancelled", booking.ID)
 
-		// ลด current_bookings ของ package
 		packageUpdateResult := db.Model(&models.TravelPackage{}).
 			Where("id = ?", booking.PackageID).
 			Update("current_bookings", gorm.Expr("current_bookings - ?", booking.GuestCount))
@@ -69,23 +64,18 @@ func AutoCancelExpiredBookings(db *gorm.DB) {
 	log.Printf("Auto-cancel completed: %d bookings cancelled", len(expiredBookings))
 }
 
-// StartAutoCancelScheduler - เริ่มตัวจับเวลาสำหรับยกเลิกอัตโนมัติ
 func StartAutoCancelScheduler(db *gorm.DB) {
 	log.Println("Starting auto-cancel scheduler...")
 	
-	// ทำงานทุก 1 นาที
 	ticker := time.NewTicker(1 * time.Minute)
 	
 	go func() {
 		defer ticker.Stop()
 		log.Println("[AUTO-CANCEL] Goroutine started successfully")
-		for {
-			select {
-			case <-ticker.C:
-				log.Println("[AUTO-CANCEL] Ticker triggered, calling AutoCancelExpiredBookings...")
-				AutoCancelExpiredBookings(db)
-				log.Println("[AUTO-CANCEL] AutoCancelExpiredBookings completed")
-			}
+		for range ticker.C {
+			log.Println("[AUTO-CANCEL] Ticker triggered, calling AutoCancelExpiredBookings...")
+			AutoCancelExpiredBookings(db)
+			log.Println("[AUTO-CANCEL] AutoCancelExpiredBookings completed")
 		}
 	}()
 	

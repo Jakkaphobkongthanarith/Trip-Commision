@@ -1,8 +1,12 @@
 import type { Config } from "tailwindcss";
-
 export default {
   darkMode: ["class"],
-  content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
+  content: [
+    "./pages/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    "./app/**/*.{ts,tsx}",
+    "./src/**/*.{ts,tsx}",
+  ],
   prefix: "",
   theme: {
     container: {
@@ -57,7 +61,6 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        // Travel theme colors
         travel: {
           sky: "hsl(var(--sky-blue))",
           ocean: "hsl(var(--ocean-blue))",
@@ -66,13 +69,13 @@ export default {
         },
       },
       backgroundImage: {
-        'sunset-gradient': 'var(--sunset-gradient)',
-        'sky-gradient': 'var(--sky-gradient)',
+        "sunset-gradient": "var(--sunset-gradient)",
+        "sky-gradient": "var(--sky-gradient)",
       },
       boxShadow: {
-        'card': 'var(--card-shadow)',
-        'card-hover': 'var(--card-shadow-hover)',
-        'hero': 'var(--hero-shadow)',
+        card: "var(--card-shadow)",
+        "card-hover": "var(--card-shadow-hover)",
+        hero: "var(--hero-shadow)",
       },
       borderRadius: {
         lg: "var(--radius)",

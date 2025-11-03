@@ -31,19 +31,19 @@ function Write-ColorOutput {
 function Test-DatabaseConnection {
     param($DbUrl)
     try {
-        Write-ColorOutput $Blue "🔍 Testing database connection..."
+        Write-ColorOutput $Blue "Testing database connection..."
         # Test connection using psql
         $testQuery = "SELECT 1;"
         $result = psql $DbUrl -c $testQuery 2>&1
         if ($LASTEXITCODE -eq 0) {
-            Write-ColorOutput $Green "✅ Database connection successful"
+            Write-ColorOutput $Green "Database connection successful"
             return $true
         } else {
-            Write-ColorOutput $Red "❌ Database connection failed: $result"
+            Write-ColorOutput $Red "Database connection failed: $result"
             return $false
         }
     } catch {
-        Write-ColorOutput $Red "❌ Database connection error: $_"
+    Write-ColorOutput $Red "Database connection error: $_"
         return $false
     }
 }
@@ -51,7 +51,7 @@ function Test-DatabaseConnection {
 function Backup-Database {
     param($DbUrl)
     if ($SkipBackup) {
-        Write-ColorOutput $Yellow "⚠️  Skipping backup as requested"
+        Write-ColorOutput $Yellow "Skipping backup as requested"
         return $true
     }
     
@@ -64,18 +64,18 @@ function Backup-Database {
             New-Item -ItemType Directory -Path ".\backups"
         }
         
-        Write-ColorOutput $Blue "💾 Creating database backup..."
+    Write-ColorOutput $Blue "Creating database backup..."
         pg_dump $DatabaseUrl > $backupFile
         
         if ($LASTEXITCODE -eq 0) {
-            Write-ColorOutput $Green "✅ Backup created: $backupFile"
+            Write-ColorOutput $Green "Backup created: $backupFile"
             return $true
         } else {
-            Write-ColorOutput $Red "❌ Backup failed"
+            Write-ColorOutput $Red "Backup failed"
             return $false
         }
     } catch {
-        Write-ColorOutput $Red "❌ Backup error: $_"
+    Write-ColorOutput $Red "Backup error: $_"
         return $false
     }
 }
@@ -83,10 +83,10 @@ function Backup-Database {
 function Execute-Migration {
     param($DbUrl, $MigrationFile)
     try {
-        Write-ColorOutput $Blue "🚀 Executing migration: $MigrationFile"
+    Write-ColorOutput $Blue "Executing migration: $MigrationFile"
         
         if ($DryRun) {
-            Write-ColorOutput $Yellow "🔍 DRY RUN MODE - Changes will not be applied"
+            Write-ColorOutput $Yellow "DRY RUN MODE - Changes will not be applied"
             # Just validate the SQL syntax
             $result = psql $DbUrl -f $MigrationFile --dry-run 2>&1
         } else {
@@ -94,21 +94,21 @@ function Execute-Migration {
         }
         
         if ($LASTEXITCODE -eq 0) {
-            Write-ColorOutput $Green "✅ Migration completed successfully"
+            Write-ColorOutput $Green "Migration completed successfully"
             return $true
         } else {
-            Write-ColorOutput $Red "❌ Migration failed: $result"
+            Write-ColorOutput $Red "Migration failed: $result"
             return $false
         }
     } catch {
-        Write-ColorOutput $Red "❌ Migration error: $_"
+    Write-ColorOutput $Red "Migration error: $_"
         return $false
     }
 }
 
 function Test-Application {
     try {
-        Write-ColorOutput $Blue "🧪 Testing application endpoints..."
+    Write-ColorOutput $Blue "Testing application endpoints..."
         
         # Test basic endpoints (assuming server is running on localhost:8080)
         $endpoints = @(
@@ -119,34 +119,34 @@ function Test-Application {
         foreach ($endpoint in $endpoints) {
             try {
                 $response = Invoke-RestMethod -Uri $endpoint -Method GET -TimeoutSec 10
-                Write-ColorOutput $Green "✅ Endpoint working: $endpoint"
+                Write-ColorOutput $Green "Endpoint working: $endpoint"
             } catch {
-                Write-ColorOutput $Yellow "⚠️  Endpoint issue: $endpoint - $_"
+                Write-ColorOutput $Yellow "Endpoint issue: $endpoint - $_"
             }
         }
         
         return $true
     } catch {
-        Write-ColorOutput $Red "❌ Application test error: $_"
+    Write-ColorOutput $Red "Application test error: $_"
         return $false
     }
 }
 
 # Main execution
-Write-ColorOutput $Blue "🎯 Starting Trip Trader Database Migration"
+Write-ColorOutput $Blue "Starting Trip Trader Database Migration"
 Write-ColorOutput $Blue "Database: $DatabaseUrl"
 Write-ColorOutput $Blue "Dry Run: $DryRun"
 Write-ColorOutput $Blue "Create Indexes: $CreateIndexes"
 
 # Step 1: Test database connection
 if (!(Test-DatabaseConnection $DatabaseUrl)) {
-    Write-ColorOutput $Red "❌ Cannot proceed without database connection"
+    Write-ColorOutput $Red "Cannot proceed without database connection"
     exit 1
 }
 
 # Step 2: Create backup
 if (!(Backup-Database $DatabaseUrl)) {
-    Write-ColorOutput $Red "❌ Cannot proceed without backup"
+    Write-ColorOutput $Red "Cannot proceed without backup"
     exit 1
 }
 
@@ -154,7 +154,7 @@ if (!(Backup-Database $DatabaseUrl)) {
 $migrationFile1 = ".\migrations\001_remove_redundant_fields.sql"
 if (Test-Path $migrationFile1) {
     if (!(Execute-Migration $DatabaseUrl $migrationFile1)) {
-        Write-ColorOutput $Red "❌ Field removal migration failed"
+        Write-ColorOutput $Red "Field removal migration failed"
         exit 1
     }
 } else {
@@ -167,22 +167,22 @@ if ($CreateIndexes) {
     $migrationFile2 = ".\migrations\002_create_performance_indexes.sql"
     if (Test-Path $migrationFile2) {
         if (!(Execute-Migration $DatabaseUrl $migrationFile2)) {
-            Write-ColorOutput $Yellow "⚠️  Index creation failed, but main migration succeeded"
+            Write-ColorOutput $Yellow "Index creation failed, but main migration succeeded"
         }
     } else {
-        Write-ColorOutput $Yellow "⚠️  Index migration file not found: $migrationFile2"
+    Write-ColorOutput $Yellow "Index migration file not found: $migrationFile2"
     }
 }
 
 # Step 5: Test application (optional)
-Write-ColorOutput $Blue "🧪 Would you like to test the application endpoints? (y/n)"
+Write-ColorOutput $Blue "Would you like to test the application endpoints? (y/n)"
 $testApp = Read-Host
 if ($testApp -eq "y" -or $testApp -eq "Y") {
     Test-Application
 }
 
-Write-ColorOutput $Green "🎉 Migration completed successfully!"
-Write-ColorOutput $Blue "📋 Next steps:"
+Write-ColorOutput $Green "Migration completed successfully!"
+Write-ColorOutput $Blue "Next steps:"
 Write-ColorOutput $Blue "1. Test your application thoroughly"
 Write-ColorOutput $Blue "2. Monitor performance logs"
 Write-ColorOutput $Blue "3. Remove backup files after verification"

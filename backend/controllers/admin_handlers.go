@@ -8,8 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
-
-// UserForQuery is a lightweight struct for querying users without JSONB fields
+ 
 type UserForQuery struct {
 	ID               string    `json:"id" gorm:"column:id"`
 	Email            string    `json:"email" gorm:"column:email"`
@@ -21,13 +20,11 @@ type UserForQuery struct {
 	Role             *models.UserRole `json:"role" gorm:"foreignKey:UserID;references:ID"`
 	Profile          *models.Profile  `json:"profile" gorm:"foreignKey:UserID;references:ID"`
 }
-
-// TableName สำหรับ UserForQuery
+ 
 func (UserForQuery) TableName() string {
 	return "auth.users"
 }
-
-// UserResponse สำหรับ API response โดยไม่รวม JSONB fields ที่มีปัญหา
+ 
 type UserResponse struct {
 	ID               string         `json:"id"`
 	Email            string         `json:"email"`
@@ -43,7 +40,6 @@ type UserResponse struct {
 func GetAllUsersHandler(c *gin.Context, db *gorm.DB) {
 	var users []UserForQuery
 
-	// Query users using the lightweight struct
 	err := db.Preload("Role").Preload("Profile").Find(&users).Error
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -53,7 +49,6 @@ func GetAllUsersHandler(c *gin.Context, db *gorm.DB) {
 		return
 	}
 
-	// Convert to response format
 	var userResponses []UserResponse
 	for _, user := range users {
 		userResponses = append(userResponses, UserResponse{
@@ -71,8 +66,7 @@ func GetAllUsersHandler(c *gin.Context, db *gorm.DB) {
 
 	c.JSON(http.StatusOK, userResponses)
 }
-
-// Placeholder handlers สำหรับ routes ที่ยังไม่ implement
+ 
 func UpdateUserRoleHandler(c *gin.Context, db *gorm.DB) {
 	c.JSON(200, gin.H{"message": "UpdateUserRole - Not implemented yet"})
 }
@@ -111,7 +105,6 @@ func GetCommissionsHandler(c *gin.Context, db *gorm.DB) {
 
 	var commissions []CommissionResult
 	
-	// ใช้ GORM ORM แทน raw SQL เพื่อความปลอดภัย
 	err := db.Table("commissions c").
 		Select(`c.id,
 				c.booking_id,

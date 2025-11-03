@@ -29,10 +29,9 @@ export function TagSidebar({ packages }: TagSidebarProps) {
   const selectedTag = searchParams.get("tag");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // คำนวณ tag counts
   const tagCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    
+
     packages.forEach((pkg) => {
       const tags = pkg.tags || [];
       tags.forEach((tag: string) => {
@@ -40,20 +39,16 @@ export function TagSidebar({ packages }: TagSidebarProps) {
       });
     });
 
-    // เรียงตามจำนวน
     return Object.entries(counts)
       .sort(([, a], [, b]) => b - a)
       .map(([tag, count]) => ({ tag, count }));
   }, [packages]);
 
-  // กรอง tag ตามการค้นหา
   const filteredTags = useMemo(() => {
     if (!searchQuery.trim()) return tagCounts;
-    
+
     const query = searchQuery.toLowerCase();
-    return tagCounts.filter(({ tag }) => 
-      tag.toLowerCase().includes(query)
-    );
+    return tagCounts.filter(({ tag }) => tag.toLowerCase().includes(query));
   }, [tagCounts, searchQuery]);
 
   const handleTagClick = (tag: string) => {
@@ -69,7 +64,6 @@ export function TagSidebar({ packages }: TagSidebarProps) {
     setSearchQuery("");
   };
 
-  // Always render sidebar; offcanvas handles hide/show
   return (
     <Sidebar className="w-72" collapsible="offcanvas">
       <SidebarHeader className="border-b px-4 py-3 bg-background">
@@ -117,7 +111,7 @@ export function TagSidebar({ packages }: TagSidebarProps) {
                 {filteredTags.length > 0 ? (
                   filteredTags.map(({ tag, count }) => {
                     const isActive = selectedTag === tag;
-                    
+
                     return (
                       <SidebarMenuItem key={tag}>
                         <SidebarMenuButton
@@ -130,7 +124,7 @@ export function TagSidebar({ packages }: TagSidebarProps) {
                         >
                           <div className="flex items-center justify-between w-full">
                             <span className="truncate">{tag}</span>
-                            <Badge 
+                            <Badge
                               variant={isActive ? "default" : "secondary"}
                               className="ml-auto text-xs"
                             >

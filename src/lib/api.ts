@@ -1,8 +1,6 @@
-// API Base URL Configuration
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
-// ✅ Utility functions สำหรับใช้นอก React components
 export const getAuthToken = (): string | null => {
   return (
     localStorage.getItem("authToken") || sessionStorage.getItem("authToken")
@@ -23,21 +21,18 @@ export const getUserRole = (): string | null => {
   return localStorage.getItem("userRole") || sessionStorage.getItem("userRole");
 };
 
-// Helper function สำหรับเรียก API (JWT Version)
 export const apiRequest = async (
   endpoint: string,
   options: RequestInit = {}
 ) => {
   const url = `${API_BASE_URL}${endpoint}`;
 
-  // Get JWT token from storage (localStorage first, then sessionStorage)
   const token =
     localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
 
   const defaultOptions: RequestInit = {
     headers: {
       "Content-Type": "application/json",
-      // Include authorization header if token exists
       ...(token && {
         Authorization: `Bearer ${token}`,
       }),
@@ -50,13 +45,11 @@ export const apiRequest = async (
   const response = await fetch(url, defaultOptions);
   console.log("API response:", response.status, response.statusText);
 
-  // Handle 401 unauthorized (token expired)
   if (response.status === 401) {
     console.warn("Token expired, clearing auth data");
     localStorage.removeItem("authToken");
     localStorage.removeItem("userRole");
     sessionStorage.removeItem("userRole");
-    // Redirect to login will be handled by AuthContext
     throw new Error("Session expired. Please login again.");
   }
 
@@ -67,7 +60,6 @@ export const apiRequest = async (
   return response.json();
 };
 
-// Specific API functions
 export const packageAPI = {
   getAll: () => apiRequest("/allPackages"),
   getById: (id: string) => apiRequest(`/package/${id}`),
@@ -118,7 +110,6 @@ export const authAPI = {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  // New JWT methods
   verifyToken: (token: string) =>
     apiRequest("/api/verify-token", {
       method: "POST",
@@ -140,24 +131,19 @@ export const bookingAPI = {
       body: JSON.stringify(data),
     }),
 
-  // ดึง bookings ทั้งหมด
   getAll: () => apiRequest("/api/bookings"),
 
-  // ดึง bookings ตาม package ID
   getByPackageId: (packageId: string) =>
     apiRequest(`/api/bookings?package_id=${packageId}`),
 
-  // ดึง bookings ตาม package ID (alternative route)
   getByPackage: (packageId: string) =>
     apiRequest(`/api/bookings/package/${packageId}`),
 
-  // ยืนยันการชำระเงิน - try multiple endpoints
   confirmPayment: (bookingId: string) =>
     apiRequest(`/api/booking/${bookingId}/confirm-payment`, {
       method: "PUT",
     }),
 
-  // Alternative endpoint formats
   confirmPaymentAlt1: (bookingId: string) =>
     apiRequest(`/api/booking/${bookingId}/confirm`, {
       method: "PUT",
@@ -170,12 +156,10 @@ export const bookingAPI = {
 };
 
 export const discountCodeAPI = {
-  // Manager APIs - จัดการ discount codes
   getAllDiscountCodes: () => apiRequest("/api/manager/discount-codes"),
   getAllAdvertisers: () => apiRequest("/api/manager/advertisers"),
   getAllPackages: () => apiRequest("/api/manager/packages"),
 
-  // สร้างโค้ดส่วนลดสำหรับ advertiser เฉพาะ
   createForAdvertiser: (data: {
     package_id: string;
     advertiser_id: string;
@@ -187,7 +171,6 @@ export const discountCodeAPI = {
       body: JSON.stringify(data),
     }),
 
-  // สร้างโค้ดส่วนลดทั่วไป
   createGlobal: (data: {
     discount_value: number;
     discount_type: "percentage" | "fixed";
@@ -199,44 +182,36 @@ export const discountCodeAPI = {
       body: JSON.stringify(data),
     }),
 
-  // ดึงโค้ดส่วนลดทั่วไป
   getAllGlobalCodes: () => apiRequest("/api/manager/global-discount-codes"),
 
-  // เปิด/ปิดสถานะโค้ดส่วนลด
   toggleStatus: (id: string, isActive: boolean) =>
     apiRequest(`/api/discount-codes/${id}/toggle`, {
       method: "PUT",
       body: JSON.stringify({ is_active: isActive }),
     }),
 
-  // เปิด/ปิดสถานะโค้ดส่วนลดทั่วไป
   toggleGlobalStatus: (id: string, isActive: boolean) =>
     apiRequest(`/api/global-discount-codes/${id}/toggle`, {
       method: "PUT",
       body: JSON.stringify({ is_active: isActive }),
     }),
 
-  // ลบโค้ดส่วนลด
   delete: (id: string) =>
     apiRequest(`/api/discount-codes/${id}`, {
       method: "DELETE",
     }),
 
-  // ลบโค้ดส่วนลดทั่วไป
   deleteGlobal: (id: string) =>
     apiRequest(`/api/global-discount-codes/${id}`, {
       method: "DELETE",
     }),
 
-  // Advertiser APIs - ดูโค้ดของตัวเอง
   getByAdvertiser: (advertiserId: string) =>
     apiRequest(`/api/advertiser/${advertiserId}/discount-codes`),
 
-  // ดูค่าคอมมิชชั่น
   getCommissionsByAdvertiser: (advertiserId: string) =>
     apiRequest(`/api/advertiser/${advertiserId}/commissions`),
 
-  // Public API - ตรวจสอบความถูกต้องของโค้ด
   validate: (code: string, packageId: string) =>
     apiRequest("/api/discount-codes/validate", {
       method: "POST",

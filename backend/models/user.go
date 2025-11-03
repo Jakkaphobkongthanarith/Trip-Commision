@@ -8,10 +8,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// JSONMap is a custom type for handling JSON data from database
 type JSONMap map[string]interface{}
 
-// Scan implements the Scanner interface for database scanning
 func (j *JSONMap) Scan(value interface{}) error {
 	if value == nil {
 		*j = make(JSONMap)
@@ -37,7 +35,6 @@ func (j *JSONMap) Scan(value interface{}) error {
 	return json.Unmarshal(bytes, j)
 }
 
-// Value implements the driver Valuer interface for database writing
 func (j JSONMap) Value() (driver.Value, error) {
 	if j == nil {
 		return nil, nil
@@ -45,7 +42,6 @@ func (j JSONMap) Value() (driver.Value, error) {
 	return json.Marshal(j)
 }
 
-// User represents the auth.users table from Supabase
 type User struct {
     ID                 uuid.UUID       `json:"id"`
     Email              string          `json:"email"`
@@ -61,7 +57,6 @@ type User struct {
 	AdvertisedPackages []TravelPackage `json:"advertised_packages,omitempty" gorm:"-"`
 }
 
-// UserRole represents the public.user_roles table
 type UserRole struct {
 	ID        uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:uuid_generate_v4()"`
 	UserID    uuid.UUID `json:"user_id" gorm:"type:uuid;not null;uniqueIndex"`
@@ -70,19 +65,16 @@ type UserRole struct {
 	UpdatedAt time.Time `json:"updated_at" gorm:"type:timestamp with time zone;autoUpdateTime"`
 }
 
-// Role constants
 const (
 	RoleCustomer   = "customer"
 	RoleAdvertiser = "advertiser"
 	RoleManager    = "manager"
 )
 
-// ValidRoles returns slice of valid roles
 func ValidRoles() []string {
 	return []string{RoleCustomer, RoleAdvertiser, RoleManager}
 }
 
-// IsValidRole checks if role is valid
 func IsValidRole(role string) bool {
 	for _, validRole := range ValidRoles() {
 		if role == validRole {
@@ -92,12 +84,10 @@ func IsValidRole(role string) bool {
 	return false
 }
 
-// TableName sets the table name for User model to auth.users
 func (User) TableName() string {
 	return "auth.users"
 }
 
-// TableName sets the table name for UserRole model to public.user_roles
 func (UserRole) TableName() string {
 	return "public.user_roles"
 }

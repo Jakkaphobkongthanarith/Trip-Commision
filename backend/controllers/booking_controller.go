@@ -6,14 +6,13 @@ import (
 	"os"
 	"strconv"
 	"time"
+	"trip-trader-backend/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stripe/stripe-go/v78"
 	"github.com/stripe/stripe-go/v78/checkout/session"
 	"gorm.io/gorm"
-
-	"trip-trader-backend/models"
 )
 
 type CreateBookingPaymentRequest struct {
@@ -21,8 +20,8 @@ type CreateBookingPaymentRequest struct {
 	GuestCount       int        `json:"guestCount" binding:"required,min=1"`
 	TotalAmount      float64    `json:"totalAmount" binding:"required,min=0"`
 	FinalAmount      float64    `json:"finalAmount" binding:"required,min=0"`
-	DiscountCodeID   *uuid.UUID `json:"discount_code_id,omitempty"`    // ใช้ snake_case ตาม frontend
-	GlobalCodeID     *uuid.UUID `json:"global_code_id,omitempty"`      // ใช้ snake_case ตาม frontend
+	DiscountCodeID   *uuid.UUID `json:"discount_code_id,omitempty"`
+	GlobalCodeID     *uuid.UUID `json:"global_code_id,omitempty"`
 	ContactName      string     `json:"contact_name" binding:"required"`
 	ContactPhone     string     `json:"contact_phone" binding:"required"`
 	ContactEmail     string     `json:"contact_email" binding:"required,email"`
@@ -36,7 +35,6 @@ func CreateBookingPaymentHandler(c *gin.Context, db *gorm.DB) {
 		return
 	}
 
-	// Get user from token (assuming you have middleware that sets user_id)
 	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
@@ -45,7 +43,6 @@ func CreateBookingPaymentHandler(c *gin.Context, db *gorm.DB) {
 
 	userUUID, ok := userID.(uuid.UUID)
 	if !ok {
-		// Try to parse from string if it's not UUID
 		userIDStr, ok := userID.(string)
 		if !ok {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
@@ -59,14 +56,12 @@ func CreateBookingPaymentHandler(c *gin.Context, db *gorm.DB) {
 		}
 	}
 
-	// Get package details
 	var travelPackage models.TravelPackage
 	if err := db.First(&travelPackage, "id = ?", req.PackageID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Package not found"})
 		return
 	}
 
-	// Create booking record with expiration time (10 minutes from now)
 	expiresAt := time.Now().Add(10 * time.Minute)
 	booking := models.Booking{
 		CustomerID:      userUUID,
@@ -76,8 +71,8 @@ func CreateBookingPaymentHandler(c *gin.Context, db *gorm.DB) {
 		TotalAmount:     req.TotalAmount,
 		DiscountAmount:  req.TotalAmount - req.FinalAmount,
 		FinalAmount:     req.FinalAmount,
-		DiscountCodeID:  req.DiscountCodeID,   // เพิ่มการบันทึก discount code ID
-		GlobalCodeID:    req.GlobalCodeID,     // เพิ่มการบันทึก global code ID
+		DiscountCodeID:  req.DiscountCodeID,
+		GlobalCodeID:    req.GlobalCodeID,
 		Status:          "pending",
 		PaymentStatus:   "pending",
 		ExpiresAt:       &expiresAt,
@@ -87,7 +82,6 @@ func CreateBookingPaymentHandler(c *gin.Context, db *gorm.DB) {
 		SpecialRequests: req.SpecialRequests,
 	}
 
-	// Debug log สำหรับ discount codes
 	fmt.Printf("🎫 Creating booking with discount info:\n")
 	fmt.Printf("   - Discount Code ID: %v\n", req.DiscountCodeID)
 	fmt.Printf("   - Global Code ID: %v\n", req.GlobalCodeID)
@@ -98,19 +92,15 @@ func CreateBookingPaymentHandler(c *gin.Context, db *gorm.DB) {
 		return
 	}
 
-	fmt.Printf("✅ Booking created successfully with ID: %s\n", booking.ID)
+	fmt.Printf("Booking created successfully with ID: %s\n", booking.ID)
 
-	// Check if we're in test mode (for mockup)
 	stripeKey := os.Getenv("STRIPE_SECRET_KEY")
 	if stripeKey == "" || stripeKey == "sk_test_51234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef12" {
-		// Mock payment mode - simulate successful payment
 		mockSessionID := "cs_test_mock_" + booking.ID.String()
 		
-		// Update booking with mock session ID
 		booking.StripePaymentIntentID = &mockSessionID
 		db.Save(&booking)
 
-		// Return mock success URL for testing
 		mockSuccessURL := fmt.Sprintf("%s/payment/success?session_id=%s&booking_id=%s", 
 			os.Getenv("FRONTEND_URL"), mockSessionID, booking.ID.String())
 
@@ -124,10 +114,8 @@ func CreateBookingPaymentHandler(c *gin.Context, db *gorm.DB) {
 		return
 	}
 
-	// Real Stripe integration (when proper keys are provided)
 	stripe.Key = stripeKey
 
-	// Create Stripe checkout session
 	params := &stripe.CheckoutSessionParams{
 		PaymentMethodTypes: stripe.StringSlice([]string{"card"}),
 		LineItems: []*stripe.CheckoutSessionLineItemParams{
@@ -138,7 +126,7 @@ func CreateBookingPaymentHandler(c *gin.Context, db *gorm.DB) {
 						Name:        stripe.String(travelPackage.Title),
 						Description: stripe.String(fmt.Sprintf("ทริป %s สำหรับ %d ท่าน", travelPackage.Title, req.GuestCount)),
 					},
-					UnitAmount: stripe.Int64(int64(req.FinalAmount * 100)), // Convert to satang
+					  UnitAmount: stripe.Int64(int64(req.FinalAmount * 100)),
 				},
 				Quantity: stripe.Int64(1),
 			},
@@ -157,13 +145,11 @@ func CreateBookingPaymentHandler(c *gin.Context, db *gorm.DB) {
 
 	stripeSession, err := session.New(params)
 	if err != nil {
-		// Delete the booking if Stripe session creation fails
 		db.Delete(&booking)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create payment session"})
 		return
 	}
 
-	// Update booking with Stripe session ID
 	booking.StripePaymentIntentID = &stripeSession.ID
 	db.Save(&booking)
 
@@ -174,7 +160,6 @@ func CreateBookingPaymentHandler(c *gin.Context, db *gorm.DB) {
 	})
 }
 
-// GetBookingsByPackageQueryHandler - ดึง bookings ตาม package_id จาก query parameter
 func GetBookingsByPackageQueryHandler(c *gin.Context, db *gorm.DB) {
 	packageID := c.Query("package_id")
 	if packageID == "" {
@@ -200,7 +185,6 @@ func GetBookingsByPackageQueryHandler(c *gin.Context, db *gorm.DB) {
 	})
 }
 
-// ConfirmPaymentHandler - ยืนยันการชำระเงินแบบ mockup
 func ConfirmPaymentHandler(c *gin.Context, db *gorm.DB) {
 	bookingID := c.Param("bookingId")
 	if bookingID == "" {
@@ -208,27 +192,24 @@ func ConfirmPaymentHandler(c *gin.Context, db *gorm.DB) {
 		return
 	}
 
-	// ดึงข้อมูล booking ก่อนอัปเดต
 	var booking models.Booking
 	if err := db.First(&booking, "id = ?", bookingID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Booking not found"})
 		return
 	}
 
-	// ดึงข้อมูลแพคเกจ
 	var pkg models.TravelPackage
 	if err := db.First(&pkg, booking.PackageID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Package not found"})
 		return
 	}
 
-	// อัปเดต payment_status และ status ของ booking และล้าง expires_at
 	result := db.Model(&models.Booking{}).
 		Where("id = ?", bookingID).
 		Updates(map[string]interface{}{
 			"payment_status": "paid",
 			"status":         "confirmed",
-			"expires_at":     nil, // ล้าง expiration เมื่อชำระสำเร็จ
+			"expires_at":     nil,
 		})
 
 	if result.Error != nil {
@@ -244,13 +225,10 @@ func ConfirmPaymentHandler(c *gin.Context, db *gorm.DB) {
 		return
 	}
 
-	// ส่ง notification ให้ลูกค้า
 	go SendPaymentSuccessNotification(booking, db)
 
-	// ส่ง notification ให้ advertiser (ถ้ามี)
 	go SendNewBookingNotificationToAdvertiser(booking, pkg, db)
 
-	// ถ้ามีการใช้ discount code ให้สร้าง commission
 	if booking.DiscountCodeID != nil {
 		var discountCode models.DiscountCode
 		if err := db.First(&discountCode, *booking.DiscountCodeID).Error; err == nil {

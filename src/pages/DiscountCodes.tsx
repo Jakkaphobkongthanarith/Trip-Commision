@@ -21,8 +21,7 @@ interface GlobalDiscountCode {
   updated_at: string;
 }
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export default function DiscountCodesPage() {
   const { user } = useAuth();
@@ -31,7 +30,6 @@ export default function DiscountCodesPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Fetch global discount codes
   const fetchGlobalDiscountCodes = async () => {
     try {
       const response = await fetch(
@@ -42,9 +40,8 @@ export default function DiscountCodesPage() {
       }
 
       const data = await response.json();
-      // Sort by created date (newest first) and show all codes (including expired ones for reference)
       const sortedCodes = data
-        .filter((code: GlobalDiscountCode) => code.is_active) // Only show active codes
+        .filter((code: GlobalDiscountCode) => code.is_active)
         .sort(
           (a: GlobalDiscountCode, b: GlobalDiscountCode) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -62,7 +59,6 @@ export default function DiscountCodesPage() {
     fetchGlobalDiscountCodes();
   }, []);
 
-  // Copy code to clipboard
   const copyToClipboard = async (code: string) => {
     try {
       await navigator.clipboard.writeText(code);
@@ -79,7 +75,6 @@ export default function DiscountCodesPage() {
     }
   };
 
-  // Filter codes based on search term
   const filteredCodes = globalCodes.filter((code) =>
     code.code.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -92,14 +87,11 @@ export default function DiscountCodesPage() {
     });
   };
 
-  // Check if code is still usable
   const isCodeUsable = (code: GlobalDiscountCode) => {
-    // Check if expired
     if (code.expires_at && new Date(code.expires_at) < new Date()) {
       return false;
     }
 
-    // Check if max uses reached
     if (code.max_uses && code.current_uses >= code.max_uses) {
       return false;
     }
@@ -107,7 +99,6 @@ export default function DiscountCodesPage() {
     return code.is_active;
   };
 
-  // Get status info for display
   const getCodeStatus = (code: GlobalDiscountCode) => {
     if (!code.is_active) {
       return {

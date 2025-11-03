@@ -70,7 +70,6 @@ const MemberManagement = () => {
   const { toast } = useToast();
   const { t } = useLanguage();
 
-  // Early returns ต้องอยู่ก่อน hooks ทั้งหมด
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
@@ -97,7 +96,6 @@ const MemberManagement = () => {
 
   const fetchMembers = async () => {
     try {
-      // Get all users with their roles and profiles from backend API
       const users = await userAPI.getAll();
       console.log("Users from backend:", users);
 
@@ -116,7 +114,6 @@ const MemberManagement = () => {
 
   const handleDeleteMember = async (userId: string, displayName: string) => {
     try {
-      // Only allow deleting advertiser role
       const memberToDelete = members.find((m) => m.id === userId);
       if (memberToDelete?.role?.role !== "advertiser") {
         toast({
@@ -127,15 +124,12 @@ const MemberManagement = () => {
         return;
       }
 
-      // TODO: Add delete user API endpoint in backend
       toast({
         title: t("admin.error"),
         description: t("member.deleteFeatureNotReady"),
         variant: "destructive",
       });
 
-      // For now, just remove from state to show UI works
-      // setMembers(members.filter((m) => m.id !== userId));
     } catch (error) {
       console.error("Error deleting member:", error);
       toast({
@@ -186,7 +180,6 @@ const MemberManagement = () => {
     }
   };
 
-  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">

@@ -42,7 +42,6 @@ const PackageDetails = () => {
   const [specialRequests, setSpecialRequests] = useState("");
   const [useProfileData, setUseProfileData] = useState(false);
 
-  // Discount code states
   const [discountCode, setDiscountCode] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState<{
     valid: boolean;
@@ -58,7 +57,6 @@ const PackageDetails = () => {
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
-  // Validate discount code
   const validateDiscountCode = async () => {
     if (!discountCode.trim()) {
       setAppliedDiscount(null);
@@ -118,28 +116,25 @@ const PackageDetails = () => {
     }
   };
 
-  // Clear discount when code is removed
   useEffect(() => {
     if (!discountCode.trim()) {
       setAppliedDiscount(null);
     }
   }, [discountCode]);
 
-  // Auto-fill contact info when profile data checkbox is toggled
   useEffect(() => {
-    console.log("🔍 useProfileData changed:", useProfileData);
-    console.log("🔍 user object:", user);
-    console.log("🔍 user.name:", user?.name);
-    console.log("🔍 user.display_name:", user?.display_name);
-    console.log("🔍 user.phone:", user?.phone);
-    console.log("🔍 user.email:", user?.email);
+    console.log("useProfileData changed:", useProfileData);
+    console.log("user object:", user);
+    console.log("user.name:", user?.name);
+    console.log("user.display_name:", user?.display_name);
+    console.log("user.phone:", user?.phone);
+    console.log("user.email:", user?.email);
 
     if (useProfileData && user) {
       setContactName(user.display_name || user.name || "");
       setContactPhone(user.phone || "");
       setContactEmail(user.email || "");
     } else if (!useProfileData) {
-      // Clear fields only when explicitly unchecked, not on initial load
       if (contactName || contactPhone || contactEmail) {
         setContactName("");
         setContactPhone("");
@@ -155,10 +150,9 @@ const PackageDetails = () => {
         const data = await packageAPI.getById(id);
         console.log("package data ->", data);
 
-        // Apply discount if exists
         const hasDiscount =
           data.discount_percentage && data.discount_percentage > 0;
-        const originalPrice = data.price; // ราคาเต็ม
+        const originalPrice = data.price;
         const discountedPrice = hasDiscount
           ? data.price * (1 - data.discount_percentage / 100)
           : data.price;
@@ -166,7 +160,7 @@ const PackageDetails = () => {
         setPackageData({
           ...data,
           originalPrice: originalPrice,
-          finalPrice: discountedPrice, // ราคาหลังส่วนลด
+          finalPrice: discountedPrice,
         });
       } catch (error) {
         console.error("Error fetching package:", error);
@@ -207,7 +201,6 @@ const PackageDetails = () => {
     ? packageData.max_guests - (packageData.current_bookings || 0)
     : 0;
 
-  // Calculate discount amount for display
   const discountAmount = appliedDiscount
     ? appliedDiscount.discount_type === "percentage"
       ? ((packageData.finalPrice || packageData.price) *
@@ -236,7 +229,6 @@ const PackageDetails = () => {
       return;
     }
 
-    // Validate contact information
     if (!contactName.trim() || !contactPhone.trim() || !contactEmail.trim()) {
       toast({
         title: t("packageDetails.fillContactInfo"),
@@ -246,7 +238,6 @@ const PackageDetails = () => {
       return;
     }
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(contactEmail)) {
       toast({
@@ -272,12 +263,10 @@ const PackageDetails = () => {
         (packageData.finalPrice || packageData.price) * guestCount;
       let discountAmount = 0;
 
-      // Add package discount
       if (packageData.discount_percentage) {
         discountAmount += (totalAmount * packageData.discount_percentage) / 100;
       }
 
-      // Add discount code discount
       if (appliedDiscount) {
         if (appliedDiscount.discount_type === "percentage") {
           discountAmount +=
@@ -290,7 +279,6 @@ const PackageDetails = () => {
 
       const finalAmount = totalAmount - discountAmount;
 
-      // Call backend API for booking payment
       const bookingData: any = {
         packageId: packageData.id,
         guestCount,
@@ -302,7 +290,6 @@ const PackageDetails = () => {
         special_requests: specialRequests || null,
       };
 
-      // Add discount code info if applied
       if (appliedDiscount) {
         if (appliedDiscount.type === "advertiser") {
           bookingData.discount_code_id = appliedDiscount.discount_code_id;
@@ -314,7 +301,6 @@ const PackageDetails = () => {
       const data = await bookingAPI.createPayment(bookingData);
 
       if (data?.url) {
-        // Update current_bookings
         try {
           await packageAPI.updateCurrentBookings(packageData.id, guestCount);
           const updatedPackage = await packageAPI.getById(packageData.id);
@@ -324,13 +310,11 @@ const PackageDetails = () => {
         }
 
         if (data.mock_mode) {
-          // Mock payment mode - redirect directly to success page
           toast({
             title: t("packageDetails.paymentSuccess"),
             description: t("packageDetails.bookingComplete"),
           });
 
-          // เตรียมข้อมูลที่จะส่งไปหน้า PaymentSuccess
           const bookingData = {
             title: packageData.title,
             guests: guestCount.toString(),
@@ -342,7 +326,6 @@ const PackageDetails = () => {
             booking_id: data.booking_id,
           };
 
-          // Redirect to success page with state data
           setTimeout(() => {
             const successUrl = data.url.replace(window.location.origin, "");
             navigate(successUrl, {
@@ -351,7 +334,6 @@ const PackageDetails = () => {
             });
           }, 1500);
         } else {
-          // Real Stripe checkout - open in new tab
           window.open(data.url, "_blank");
 
           toast({
@@ -374,7 +356,6 @@ const PackageDetails = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="bg-background border-b sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <Button
@@ -390,9 +371,7 @@ const PackageDetails = () => {
 
       <div className="container mx-auto px-4 py-8">
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Hero Image */}
             <div className="relative rounded-xl overflow-hidden">
               <img
                 src={packageData.image_url}
@@ -406,7 +385,6 @@ const PackageDetails = () => {
               )}
             </div>
 
-            {/* Package Info */}
             <div className="space-y-4">
               <div>
                 <h1 className="text-3xl font-bold text-foreground mb-2">
@@ -505,7 +483,6 @@ const PackageDetails = () => {
             </div>
           </div>
 
-          {/* Booking Sidebar */}
           <div className="lg:col-span-1">
             <Card className="sticky top-24">
               <CardHeader>
@@ -528,7 +505,6 @@ const PackageDetails = () => {
               </CardHeader>
 
               <CardContent className="space-y-6">
-                {/* Contact Information Section */}
                 <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold">ข้อมูลติดต่อ</h3>
@@ -597,7 +573,6 @@ const PackageDetails = () => {
                     />
                   </div>
 
-                  {/* Discount Code Input */}
                   <div className="space-y-2">
                     <Label htmlFor="discountCode">โค้ดส่วนลด (ถ้ามี)</Label>
                     <div className="flex gap-2">
@@ -639,7 +614,6 @@ const PackageDetails = () => {
                   </div>
                 </div>
 
-                {/* Guest Count Selection */}
                 <div className="space-y-2">
                   <Label>จำนวนผู้เดินทาง</Label>
                   <div className="flex items-center justify-between border rounded-lg p-3">
@@ -679,7 +653,6 @@ const PackageDetails = () => {
                   </p>
                 </div>
 
-                {/* Price Breakdown */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>ราคาต่อคน:</span>
@@ -756,18 +729,7 @@ const PackageDetails = () => {
                   </div>
                 </div>
 
-                <Button
-                  className="w-full"
-                  size="lg"
-                  onClick={handleBooking}
-                  // disabled={
-                  //   bookingLoading ||
-                  //   availableSpots === 0 ||
-                  //   !contactName ||
-                  //   !contactPhone ||
-                  //   !contactEmail
-                  // }
-                >
+                <Button className="w-full" size="lg" onClick={handleBooking}>
                   {bookingLoading
                     ? t("packageDetails.processing")
                     : availableSpots === 0

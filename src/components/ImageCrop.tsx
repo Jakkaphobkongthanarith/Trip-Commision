@@ -21,9 +21,9 @@ interface ImageCropProps {
   isOpen: boolean;
   onClose: () => void;
   onCropComplete: (croppedImageUrl: string) => void;
-  aspectRatio?: number; // เช่น 16/9, 4/3, 1 (สำหรับสี่เหลี่ยมจัตุรัส)
-  onUploadStart?: () => void; // เมื่อเริ่มอัปโหลด
-  onUploadError?: (error: string) => void; // เมื่อมี error
+  aspectRatio?: number;
+  onUploadStart?: () => void;
+  onUploadError?: (error: string) => void;
 }
 
 function centerAspectCrop(
@@ -51,7 +51,7 @@ export function ImageCrop({
   isOpen,
   onClose,
   onCropComplete,
-  aspectRatio = 16 / 9, // Default aspect ratio
+  aspectRatio = 16 / 9,
   onUploadStart,
   onUploadError,
 }: ImageCropProps) {
@@ -98,15 +98,10 @@ export function ImageCrop({
 
       ctx.save();
 
-      // 5) Move the crop origin to the canvas origin (0,0)
       ctx.translate(-cropX, -cropY);
-      // 4) Move the origin to the center of the original position
       ctx.translate(centerX, centerY);
-      // 3) Rotate around the origin
       ctx.rotate((rotate * Math.PI) / 180);
-      // 2) Scale the image
       ctx.scale(scale, scale);
-      // 1) Move the center of the image to the origin (0,0)
       ctx.translate(-centerX, -centerY);
       ctx.drawImage(image, 0, 0);
       ctx.restore();
@@ -128,16 +123,12 @@ export function ImageCrop({
     [scale, rotate]
   );
 
-  // อัปโหลดไฟล์ไป Supabase Storage
   const uploadToSupabase = async (blob: Blob): Promise<string> => {
     try {
       console.log("Starting Supabase upload...");
 
-      // Skip bucket validation และลองอัปโหลดตรงๆ
-      // เนื่องจาก RLS policy อาจบล็อกการ list buckets
       console.log("Skipping bucket validation, proceeding with upload...");
 
-      // สร้างชื่อไฟล์ไม่ซ้ำ
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 15);
       const fileName = `cropped_${timestamp}_${randomId}.jpg`;
@@ -145,7 +136,6 @@ export function ImageCrop({
 
       console.log("Uploading to path:", filePath);
 
-      // อัปโหลดไฟล์
       const { data, error } = await supabase.storage
         .from("package-images")
         .upload(filePath, blob, {
@@ -161,7 +151,6 @@ export function ImageCrop({
 
       console.log("Upload successful:", data);
 
-      // ได้ URL สาธารณะ
       const {
         data: { publicUrl },
       } = supabase.storage.from("package-images").getPublicUrl(filePath);
@@ -183,13 +172,10 @@ export function ImageCrop({
       onUploadStart?.();
 
       try {
-        // สร้าง cropped image blob
         const croppedBlob = await getCroppedImg(imgRef.current, completedCrop);
 
-        // อัปโหลดไป Supabase Storage
         const uploadedUrl = await uploadToSupabase(croppedBlob);
 
-        // ส่ง URL ที่อัปโหลดแล้วกลับไป
         onCropComplete(uploadedUrl);
         onClose();
       } catch (error) {

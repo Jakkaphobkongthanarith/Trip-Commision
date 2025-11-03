@@ -54,7 +54,6 @@ const AdminDashboard = () => {
   const { toast } = useToast();
   const { t } = useLanguage();
 
-  // Early returns ต้องอยู่ก่อน hooks ทั้งหมด
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
@@ -75,7 +74,6 @@ const AdminDashboard = () => {
 
   const fetchUsers = async () => {
     try {
-      // Get all profiles with their roles
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("*")
@@ -84,7 +82,6 @@ const AdminDashboard = () => {
       if (profilesError) throw profilesError;
 
       if (profiles) {
-        // Get user roles for each profile
         const usersWithRoles = await Promise.all(
           profiles.map(async (profile) => {
             const { data: roleData } = await supabase
@@ -96,7 +93,7 @@ const AdminDashboard = () => {
             return {
               ...profile,
               role: roleData?.role || "customer",
-              email: `user_${profile.user_id.slice(0, 8)}@example.com`, // Placeholder since we can't access auth.users
+              email: `user_${profile.user_id.slice(0, 8)}@example.com`,
             };
           })
         );
@@ -117,7 +114,6 @@ const AdminDashboard = () => {
 
   const handleDeleteUser = async (userId: string, displayName: string) => {
     try {
-      // Delete user profile and related data
       const { error: profileError } = await supabase
         .from("profiles")
         .delete()
@@ -125,7 +121,6 @@ const AdminDashboard = () => {
 
       if (profileError) throw profileError;
 
-      // Delete user role
       const { error: roleError } = await supabase
         .from("user_roles")
         .delete()
@@ -133,7 +128,6 @@ const AdminDashboard = () => {
 
       if (roleError) throw roleError;
 
-      // Remove from local state
       setUsers(users.filter((u) => u.user_id !== userId));
 
       toast({
@@ -191,7 +185,6 @@ const AdminDashboard = () => {
     };
   };
 
-  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">

@@ -33,9 +33,7 @@ import {
   Clock,
 } from "lucide-react";
 
-// API Base URL Configuration
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 interface DashboardStats {
   totalUsers: number;
@@ -89,7 +87,6 @@ const ManagerDashboard = () => {
   const [recentBookings, setRecentBookings] = useState<RecentBooking[]>([]);
   const [recentPackages, setRecentPackages] = useState<RecentPackage[]>([]);
 
-  // Quick Actions Configuration
   const quickActions: QuickAction[] = [
     {
       title: "จัดการโค้ดส่วนลด",
@@ -121,7 +118,6 @@ const ManagerDashboard = () => {
     },
   ];
 
-  // Fetch Dashboard Statistics
   const fetchStats = async () => {
     try {
       const response = await fetch(
@@ -133,7 +129,6 @@ const ManagerDashboard = () => {
       }
     } catch (error) {
       console.error("Error fetching stats:", error);
-      // Mock data for demonstration
       setStats({
         totalUsers: 156,
         totalAdvertisers: 23,
@@ -146,7 +141,6 @@ const ManagerDashboard = () => {
     }
   };
 
-  // Fetch Recent Bookings
   const fetchRecentBookings = async () => {
     try {
       const response = await fetch(
@@ -158,7 +152,6 @@ const ManagerDashboard = () => {
       }
     } catch (error) {
       console.error("Error fetching recent bookings:", error);
-      // Mock data
       setRecentBookings([
         {
           id: "1",
@@ -180,7 +173,6 @@ const ManagerDashboard = () => {
     }
   };
 
-  // Fetch Recent Packages
   const fetchRecentPackages = async () => {
     try {
       const response = await fetch(
@@ -192,7 +184,6 @@ const ManagerDashboard = () => {
       }
     } catch (error) {
       console.error("Error fetching recent packages:", error);
-      // Mock data
       setRecentPackages([
         {
           id: "1",

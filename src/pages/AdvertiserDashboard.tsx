@@ -5,13 +5,13 @@ import { useLanguage } from "@/contexts/LanguageContext";
 interface DiscountCode {
   id: string;
   code: string;
-  discount_value: number; // ✅ เปลี่ยนจาก discount_percentage
-  discount_type: string; // ✅ เพิ่มใหม่
+  discount_value: number;
+  discount_type: string;
   max_uses: number;
   current_uses: number;
-  usage_percentage: number; // คำนวณจาก current_uses/max_uses
-  commission_rate: number; // คำนวณตาม business rules
-  tier: string; // คำนวณตาม usage_percentage
+  usage_percentage: number;
+  commission_rate: number;
+  tier: string;
   is_active: boolean;
   expires_at?: string;
   package_id?: string;
@@ -150,7 +150,6 @@ const AdvertiserDashboard = () => {
   const { t } = useLanguage();
   console.log("Current user in AdvertiserDashboard:", user);
 
-  // Early returns ต้องอยู่ก่อน hooks ทั้งหมด
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
@@ -173,7 +172,6 @@ const AdvertiserDashboard = () => {
     location: string;
   } | null>(null);
 
-  // Discount commission month/year selection
   const [discountSelectedMonth, setDiscountSelectedMonth] = useState(
     new Date().getMonth() + 1
   );
@@ -187,10 +185,8 @@ const AdvertiserDashboard = () => {
       if (!user) return;
       setLoading(true);
 
-      // First, fetch user role
       await fetchUserRole();
 
-      // Then fetch other data
       await Promise.allSettled([fetchCommissions(), fetchUpcomingTrips()]);
 
       if (!isCancelled) setLoading(false);
@@ -201,7 +197,6 @@ const AdvertiserDashboard = () => {
     };
   }, [user]);
 
-  // Separate useEffect for role-dependent data
   useEffect(() => {
     if (!user || !userRole) return;
 
@@ -230,17 +225,14 @@ const AdvertiserDashboard = () => {
     if (!user) return;
 
     try {
-      // สำหรับ customer ไม่ต้องดึงข้อมูล commission
       if (userRole === "customer") {
         setCommissions([]);
         setMonthlyCommission(0);
         return;
       }
 
-      // เปลี่ยนเป็น API สำหรับดึงค่าคอมมิชชั่นจาก discount code เท่านั้น
       const data = await apiRequest(`/api/advertiser/${user.id}/commissions`);
 
-      // ตรวจสอบว่า data เป็น array หรือไม่
       const commissionsArray = Array.isArray(data)
         ? data
         : data?.commissions || [];
@@ -254,7 +246,6 @@ const AdvertiserDashboard = () => {
 
       setCommissions(commissionsArray);
 
-      // Calculate monthly commission
       const currentMonth = new Date().getMonth();
       const currentYear = new Date().getFullYear();
       const monthlyTotal = commissionsArray
@@ -283,12 +274,12 @@ const AdvertiserDashboard = () => {
     if (!user || userRole !== "advertiser") return;
 
     try {
-      console.log("🔍 Fetching discount codes for user:", user.id);
+      console.log("Fetching discount codes for user:", user.id);
 
       const data = await apiRequest(
         `/api/advertiser/${user.id}/discount-codes`
       );
-      console.log("🔍 Raw discount codes response:", data);
+      console.log("Raw discount codes response:", data);
 
       if (!Array.isArray(data)) {
         console.log("Invalid discount codes format:", data);
@@ -296,14 +287,12 @@ const AdvertiserDashboard = () => {
         return;
       }
 
-      // Transform data ให้ตรงกับ interface ใหม่
       const transformedCodes = data.map((code: any) => {
         const maxGuests = code.package?.max_guests || code.max_uses;
         const usagePercentage = maxGuests
           ? (code.current_uses / maxGuests) * 100
           : 0;
 
-        // คำนวณ commission rate ตาม business rules
         let commissionRate = 0;
         let tier = t("commission.noCommission");
 
@@ -328,7 +317,7 @@ const AdvertiserDashboard = () => {
         };
       });
 
-      console.log("🔍 Transformed discount codes:", transformedCodes);
+      console.log("Transformed discount codes:", transformedCodes);
       setDiscountCodes(transformedCodes);
     } catch (error) {
       console.error("Error fetching discount codes:", error);
@@ -341,19 +330,17 @@ const AdvertiserDashboard = () => {
 
     try {
       console.log(
-        "🔍 Fetching discount commissions for:",
+        "Fetching discount commissions for:",
         user.id,
         discountSelectedMonth,
         discountSelectedYear
       );
 
-      // ดึงข้อมูล bookings ทั้งหมด
       const bookingsData = await apiRequest(`/api/bookings`);
       const bookingsArray = Array.isArray(bookingsData)
         ? bookingsData
         : bookingsData?.bookings || [];
 
-      // ดึงข้อมูล discount codes ของ advertiser นี้
       const discountCodesData = await apiRequest(
         `/api/advertiser/${user.id}/discount-codes`
       );
@@ -361,18 +348,16 @@ const AdvertiserDashboard = () => {
         ? discountCodesData
         : [];
 
-      // กรอง bookings ที่มี status = "confirmed" และอยู่ในเดือน/ปีที่เลือก
       const confirmedBookings = bookingsArray.filter((booking: any) => {
         const bookingDate = new Date(booking.created_at);
         return (
           booking.status === "confirmed" &&
           bookingDate.getMonth() + 1 === discountSelectedMonth &&
           bookingDate.getFullYear() === discountSelectedYear &&
-          booking.discount_code_id // มีการใช้ discount code
+          booking.discount_code_id
         );
       });
 
-      // จัดกลุ่ม bookings ตาม package_id และคำนวณรายได้
       const packageRevenue: {
         [key: string]: {
           package_id: string;
@@ -387,16 +372,14 @@ const AdvertiserDashboard = () => {
       } = {};
 
       confirmedBookings.forEach((booking: any) => {
-        // หา discount code ที่ตรงกัน
         const discountCode = advertiserDiscountCodes.find(
           (dc: any) => dc.id === booking.discount_code_id
         );
-        if (!discountCode) return; // ข้าม booking ที่ไม่ใช่ discount code ของ advertiser นี้
+        if (!discountCode) return;
 
         const packageId = booking.package_id;
 
         if (!packageRevenue[packageId]) {
-          // คำนวณ usage percentage และ commission rate
           const maxGuests =
             discountCode.package?.max_guests || discountCode.max_uses;
           const usagePercentage = maxGuests
@@ -430,12 +413,11 @@ const AdvertiserDashboard = () => {
         packageRevenue[packageId].total_revenue += booking.final_amount || 0;
       });
 
-      // คำนวณค่าคอมมิชชั่น
       Object.values(packageRevenue).forEach((pkg) => {
         pkg.commission_amount = (pkg.total_revenue * pkg.commission_rate) / 100;
       });
 
-      console.log("🔍 Calculated package revenues:", packageRevenue);
+      console.log("Calculated package revenues:", packageRevenue);
       setDiscountCommissions(Object.values(packageRevenue) as any);
     } catch (error) {
       console.error("Error fetching discount commissions:", error);
@@ -447,7 +429,6 @@ const AdvertiserDashboard = () => {
     try {
       const data = await apiRequest(`/api/bookings`);
 
-      // ตรวจสอบว่า data เป็น array หรือไม่
       const bookingsArray = Array.isArray(data) ? data : data?.bookings || [];
 
       if (!Array.isArray(bookingsArray) || bookingsArray.length === 0) {
@@ -456,13 +437,11 @@ const AdvertiserDashboard = () => {
         return;
       }
 
-      // ดึงข้อมูลแพคเกจทั้งหมด
       const packagesData = await apiRequest(`/api/packages`);
       const packagesArray = Array.isArray(packagesData)
         ? packagesData
         : packagesData?.packages || [];
 
-      // สร้าง map ของ package_id -> package info เพื่อใช้ lookup
       const packageMap = new Map();
       packagesArray.forEach((pkg: any) => {
         packageMap.set(pkg.id, {
@@ -471,7 +450,6 @@ const AdvertiserDashboard = () => {
         });
       });
 
-      // ใช้ข้อมูลจาก /api/bookings และเชื่อมกับข้อมูลแพคเกจจริง
       const processedTrips = bookingsArray.map((trip: any) => {
         const packageInfo = packageMap.get(trip.package_id);
         return {
@@ -493,7 +471,6 @@ const AdvertiserDashboard = () => {
     }
   };
 
-  // Group bookings by package
   const groupedPackages = upcomingTrips.reduce((acc: any, trip) => {
     const packageTitle =
       trip.travel_packages?.title || t("common.notSpecified");
@@ -516,15 +493,12 @@ const AdvertiserDashboard = () => {
 
   const handlePackageClick = async (packageInfo: any) => {
     try {
-      // เรียก API เส้นใหม่เพื่อดึงรายชื่อผู้จองที่ confirmed แล้ว พร้อมข้อมูลครบถ้วน
       const confirmedBookings = await apiRequest(
         `/package/userList/${packageInfo.package_id}`
       );
 
-      // ข้อมูลจาก API ใหม่จะมีข้อมูล TravelPackage และ Profile ครบแล้ว
       setSelectedPackageBookings(confirmedBookings);
 
-      // ใช้ข้อมูลจาก booking แรกเพื่อแสดงชื่อแพคเกจ
       const packageTitle =
         confirmedBookings[0]?.TravelPackages?.title ||
         confirmedBookings[0]?.travel_packages?.title ||
@@ -548,8 +522,6 @@ const AdvertiserDashboard = () => {
     }
   };
 
-  // Loading state
-  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -558,7 +530,6 @@ const AdvertiserDashboard = () => {
     );
   }
 
-  // Role check - allow both advertiser and customer to access
   if (userRole !== "advertiser" && userRole !== "customer") {
     return <Navigate to="/" replace />;
   }

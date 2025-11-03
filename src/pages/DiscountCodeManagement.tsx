@@ -51,7 +51,7 @@ interface DiscountCode {
   code: string;
   discount_value: number;
   discount_type: "percentage" | "fixed";
-  commission_rate?: number; // Optional เนื่องจากคำนวณอัตโนมัติ
+  commission_rate?: number;
   is_active: boolean;
   package_id: string;
   advertiser_id: string;
@@ -70,7 +70,6 @@ const DiscountCodeManagement = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isGlobalDialogOpen, setIsGlobalDialogOpen] = useState(false);
 
-  // Form state สำหรับสร้างโค้ดใหม่
   const [newCode, setNewCode] = useState({
     package_id: "",
     advertiser_id: "",
@@ -78,13 +77,11 @@ const DiscountCodeManagement = () => {
     discount_type: "percentage" as "percentage" | "fixed",
   });
 
-  // Form state สำหรับสร้างโค้ดทั่วไป
   const [newGlobalCode, setNewGlobalCode] = useState({
     discount_value: 10,
     discount_type: "percentage" as "percentage" | "fixed",
   });
 
-  // โหลดข้อมูลเริ่มต้น
   useEffect(() => {
     loadInitialData();
   }, []);
@@ -145,7 +142,6 @@ const DiscountCodeManagement = () => {
           "โค้ดส่วนลดใหม่ถูกสร้างและส่งการแจ้งเตือนไปยัง Advertiser แล้ว",
       });
 
-      // Reset form และ reload data
       setNewCode({
         package_id: "",
         advertiser_id: "",
@@ -185,7 +181,6 @@ const DiscountCodeManagement = () => {
         description: "โค้ดส่วนลดทั่วไปใหม่ถูกสร้างแล้ว",
       });
 
-      // Reset form และ reload data
       setNewGlobalCode({
         discount_value: 10,
         discount_type: "percentage",

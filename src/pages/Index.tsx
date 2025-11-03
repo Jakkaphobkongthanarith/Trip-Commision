@@ -19,7 +19,6 @@ const Index = () => {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(9);
 
-  // Helper function to normalize tags
   const normalizeTags = (tags: any): string[] => {
     if (!tags) return [];
     if (Array.isArray(tags)) return tags.filter((t) => typeof t === "string");
@@ -37,7 +36,6 @@ const Index = () => {
     const fetchPackages = async () => {
       try {
         const data = await packageAPI.getAll();
-        // Normalize tags for all packages
         const normalizedData = (data || []).map((pkg) => ({
           ...pkg,
           tags: normalizeTags(pkg.tags),
@@ -58,11 +56,9 @@ const Index = () => {
     ? packages.filter((pkg) => pkg.tags?.includes(selectedTag))
     : packages;
 
-  // จำนวนรายการที่จะแสดง
   const displayedPackages = filteredPackages.slice(0, visibleCount);
   const hasMorePackages = filteredPackages.length > visibleCount;
 
-  // ฟังก์ชันไปหน้าแพคเกจทั้งหมด
   const viewAllPackages = () => {
     if (selectedTag) {
       navigate(`/packages?tag=${encodeURIComponent(selectedTag)}`);
@@ -71,7 +67,6 @@ const Index = () => {
     }
   };
 
-  // รีเซ็ตการแสดงผลเมื่อเปลี่ยน filter
   useEffect(() => {
     setVisibleCount(9);
   }, [selectedTag]);
@@ -82,8 +77,6 @@ const Index = () => {
     )
       .then((res) => res.json())
       .then((data) => {
-        console.log("abc");
-        console.log("fetch meow ->", data);
         setMeow(data.data);
       })
       .catch((err) => setMeow("error"));
@@ -92,10 +85,9 @@ const Index = () => {
   const handleTagClick = (tag: string) => {
     setSelectedTag(tag);
   };
-
   const clearFilter = () => {
     setSelectedTag(null);
-    setVisibleCount(9); // รีเซ็ตการแสดงผลกลับไปเป็น 9 รายการ
+    setVisibleCount(9);
   };
 
   return (
@@ -177,7 +169,6 @@ const Index = () => {
       </section>
 
       {/* Packages Section */}
-
       <section className="py-16 px-6">
         <div className="container mx-auto">
           <div className="text-center mb-12">
@@ -188,7 +179,6 @@ const Index = () => {
               {t("packages.description")}
               {t("packages.description2")}
             </p>
-            {/* ปุ่มดูแพคเกจทั้งหมด */}
             {!loading && hasMorePackages && (
               <div className="text-center mt-12">
                 <Button

@@ -10,17 +10,14 @@ import (
 )
 
 func SetupRoutes(r *gin.Engine, db *gorm.DB, hub *utils.Hub) {
-	// Middleware เพื่อใส่ db instance ใน context
 	r.Use(func(c *gin.Context) {
 		c.Set("db", db)
 		c.Next()
 	})
 
-	// Travel Package routes
 	r.GET("/allPackages", func(c *gin.Context) {
 		GetAllPackagesHandler(c, db)
 	})
-	// เพิ่ม REST API routes ที่ Frontend ต้องการ
 	r.GET("/api/travel-packages", func(c *gin.Context) {
 		GetAllPackagesHandler(c, db)
 	})
@@ -37,7 +34,6 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, hub *utils.Hub) {
 		CreatePackageHandler(c, db)
 	})
 	r.PUT("/api/travel-packages/:id", func(c *gin.Context) {
-		// TODO: สร้าง UpdatePackageHandler
 		GetAllPackagesHandler(c, db)
 	})
 	r.PUT("/api/packages/:id", func(c *gin.Context) {
@@ -56,7 +52,6 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, hub *utils.Hub) {
 		GetPackageConfirmedUsersHandler(c, db)
 	})
 	
-	// Package-Advertiser management routes
 	r.PUT("/api/package/:id/advertisers", func(c *gin.Context) {
 		UpdatePackageAdvertisersHandler(c, db)
 	})
@@ -67,7 +62,6 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, hub *utils.Hub) {
 		DeletePackageHandler(c, db)
 	})
 
-	// Profile/User routes (สำหรับ profiles table)
 	r.GET("/api/profiles", func(c *gin.Context) {
 		GetAllProfilesHandler(c, db)
 	})
@@ -78,7 +72,6 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, hub *utils.Hub) {
 		UpsertProfileHandler(c, db)
 	})
 
-	// Members/Users management
 	r.GET("/api/users", func(c *gin.Context) {
 		GetAllUsersHandler(c, db)
 	})
@@ -90,18 +83,12 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, hub *utils.Hub) {
 		UpdateUserRoleHandler(c, db)
 	})
 
-	// Note: Traditional commission system disabled - only discount code commissions are used
-	// Commission endpoints are now handled by promo_code_controller.go
 
-	// Bookings routes
 	r.GET("/api/bookings", func(c *gin.Context) {
-		// รองรับทั้ง query parameter และ path parameter
 		packageID := c.Query("package_id")
 		if packageID != "" {
-			// ถ้ามี package_id ใน query parameter ให้แสดงเฉพาะของ package นั้น
 			GetBookingsByPackageQueryHandler(c, db)
 		} else {
-			// ถ้าไม่มี package_id ให้แสดงทั้งหมด
 			GetAllBookingsHandler(c, db)
 		}
 	})
@@ -109,7 +96,6 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, hub *utils.Hub) {
 		GetBookingsByPackageHandler(c, db)
 	})
 	
-	// Protected booking routes (require authentication)
 	authorized := r.Group("/")
 	authorized.Use(AuthMiddleware())
 	{
@@ -122,12 +108,10 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, hub *utils.Hub) {
 	}
 
 
-	// Auth routes
 	r.POST("/api/signup", SignupHandler)
 	r.POST("/api/login", LoginHandler)
 	r.POST("/api/logout", LogoutHandler)
 
-	// Test routes
 	r.GET("/meow", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"data": "abc"})
 	})
@@ -136,7 +120,6 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, hub *utils.Hub) {
 		c.JSON(http.StatusOK, gin.H{"message": "pong"})
 	})
 
-	// Manager Dashboard routes
 	managerController := &ManagerController{DB: db}
 	r.GET("/api/manager/dashboard/stats", managerController.GetDashboardStats)
 	r.GET("/api/manager/recent-bookings", managerController.GetRecentBookings)
@@ -145,10 +128,8 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, hub *utils.Hub) {
 	r.GET("/api/manager/package-statistics", managerController.GetPackageStatistics)
 	r.GET("/api/manager/monthly-booking-stats", managerController.GetMonthlyBookingStats)
 
-	// Discount Code routes (Advertiser-based และ Global codes)
 	discountCodeController := NewDiscountCodeController(db)
 	
-	// Manager routes - จัดการ discount codes
 	r.GET("/api/manager/discount-codes", discountCodeController.GetAllDiscountCodes)
 	r.GET("/api/manager/global-discount-codes", discountCodeController.GetAllGlobalDiscountCodes)
 	r.GET("/api/manager/advertisers", discountCodeController.GetAllAdvertisers)
@@ -156,48 +137,34 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, hub *utils.Hub) {
 	r.PUT("/api/discount-codes/:id/toggle", discountCodeController.ToggleDiscountCodeStatus)
 	r.PUT("/api/global-discount-codes/:id/toggle", discountCodeController.ToggleGlobalDiscountCodeStatus)
 	
-	// Manager only - สร้างโค้ดส่วนลด
 	r.POST("/api/discount-codes/advertiser", discountCodeController.CreateDiscountCodeForAdvertiser)
 	r.POST("/api/global-discount-codes", discountCodeController.CreateGlobalDiscountCode)
 	
-	// Advertiser - ดูโค้ดของตัวเอง
 	r.GET("/api/advertiser/:advertiser_id/discount-codes", discountCodeController.GetDiscountCodesByAdvertiser)
 	
-	// Advertiser - ดูค่าคอมมิชชั่น
 	r.GET("/api/advertiser/:advertiser_id/commissions", discountCodeController.GetCommissionsByAdvertiser)
 	
-	// Public - ตรวจสอบความถูกต้องของโค้ด
 	r.POST("/api/discount-codes/validate", discountCodeController.ValidateDiscountCode)
 	
-	// Booking - ใช้โค้ดส่วนลด (internal)
 	r.POST("/api/discount-codes/use", discountCodeController.UseDiscountCode)
 	
-	// Manager - ลบโค้ดส่วนลด
 	r.DELETE("/api/discount-codes/:id", discountCodeController.DeleteDiscountCode)
 	r.DELETE("/api/global-discount-codes/:id", discountCodeController.DeleteGlobalDiscountCode)
 
-	// Notification routes - ใช้ Hub ที่ส่งมาจาก main.go
 	notificationController := NewNotificationController(db, hub)
 	
-	// WebSocket endpoint สำหรับ real-time notifications
 	r.GET("/ws", notificationController.WebSocketHandler)
 	
-	// สร้าง notification สำหรับผู้ใช้คนเดียว
 	r.POST("/api/notifications", notificationController.CreateNotification)
 	
-	// ส่ง notification ให้ผู้ใช้ทั้งหมด (broadcast)
 	r.POST("/api/notifications/broadcast", notificationController.BroadcastNotification)
 	
-	// ทำเครื่องหมาย notification ว่าอ่านแล้ว
 	r.PUT("/api/notifications/:id/read", notificationController.MarkAsRead)
 	
-	// ทำเครื่องหมาย notifications ทั้งหมดของผู้ใช้ว่าอ่านแล้ว
 	r.PUT("/api/notifications/user/:user_id/read-all", notificationController.MarkAllAsRead)
 	
-	// ลบ notification
 	r.DELETE("/api/notifications/:id", notificationController.DeleteNotification)
 	
-	// Test endpoint สำหรับทดสอบ WebSocket notification
 	r.POST("/api/test-notification", notificationController.TestNotification)
 
 	r.GET("/greet", func(c *gin.Context) {

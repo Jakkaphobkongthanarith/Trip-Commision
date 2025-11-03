@@ -25,7 +25,6 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useNotifications } from "@/contexts/NotificationContext";
 
-// Category icons และ colors
 const categoryConfig = {
   booking: { icon: Calendar, color: "bg-blue-500", label: "การจอง" },
   payment: { icon: DollarSign, color: "bg-green-500", label: "การชำระเงิน" },
@@ -46,7 +45,6 @@ export function NotificationPanel() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // ใช้ข้อมูลจาก NotificationContext แทน API calls
   const {
     notifications,
     unreadCount,
@@ -65,21 +63,17 @@ export function NotificationPanel() {
   console.log("🔔 NotificationPanel - Unread count:", unreadCount);
   console.log("🔔 NotificationPanel - WebSocket connected:", isConnected);
 
-  // Handle notification click
   const handleNotificationClick = async (notification: any) => {
-    // Mark as read if not already read
     if (!notification.isRead) {
       await markAsRead(notification.id);
     }
 
-    // Navigate to action URL if provided
     if (notification.action_url) {
       navigate(notification.action_url);
-      setIsOpen(false); // ปิด notification panel
+      setIsOpen(false);
     }
   };
 
-  // Format relative time
   const formatRelativeTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -99,7 +93,6 @@ export function NotificationPanel() {
     return date.toLocaleDateString("th-TH");
   };
 
-  // Don't render if user is not logged in
   if (!user) {
     return null;
   }
@@ -154,13 +147,12 @@ export function NotificationPanel() {
           ) : (
             <div className="space-y-3">
               {notifications.map((notification) => {
-                // Mapping ข้อมูลจาก NotificationContext format
                 const notificationData = {
                   id: notification.id,
                   title: notification.title,
                   message: notification.message,
-                  category: "info" as const, // Default category
-                  priority: 2 as const, // Default priority
+                  category: "info" as const,
+                  priority: 2 as const,
                   is_read: notification.isRead,
                   created_at: notification.createdAt,
                   action_url: undefined,
@@ -252,7 +244,7 @@ export function NotificationPanel() {
                             variant="outline"
                             className="text-xs bg-green-50"
                           >
-                            🔗 WebSocket
+                            WebSocket
                           </Badge>
                         </div>
 

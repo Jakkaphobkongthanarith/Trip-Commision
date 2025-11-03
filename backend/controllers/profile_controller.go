@@ -9,7 +9,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// ดึง profiles ทั้งหมด
 func GetAllProfilesHandler(c *gin.Context, db *gorm.DB) {
 	var profiles []models.Profile
 	result := db.Find(&profiles)
@@ -20,7 +19,6 @@ func GetAllProfilesHandler(c *gin.Context, db *gorm.DB) {
 	c.JSON(200, profiles)
 }
 
-// ดึง profile โดย user_id
 func GetProfileByUserIdHandler(c *gin.Context, db *gorm.DB) {
 	userId := c.Param("userId")
 	var profile models.Profile
@@ -43,11 +41,9 @@ func GetProfileByUserIdHandler(c *gin.Context, db *gorm.DB) {
 	c.JSON(200, profile)
 }
 
-// อัปเดต profile หรือสร้างใหม่ถ้าไม่มี (upsert)
 func UpsertProfileHandler(c *gin.Context, db *gorm.DB) {
 	userId := c.Param("userId")
 	
-	// Parse UUID
 	userUUID, err := uuid.Parse(userId)
 	if err != nil {
 		c.JSON(400, gin.H{"error": "Invalid user ID format", "details": err.Error()})
@@ -71,12 +67,10 @@ func UpsertProfileHandler(c *gin.Context, db *gorm.DB) {
 	
 	var profile models.Profile
 	
-	// ลองหา profile ที่มีอยู่แล้ว
 	result := db.Where("user_id = ?", userUUID).First(&profile)
 	
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
-			// สร้างใหม่ถ้าไม่มี
 			profile = models.Profile{
 				UserID: userUUID,
 			}
@@ -89,7 +83,6 @@ func UpsertProfileHandler(c *gin.Context, db *gorm.DB) {
 		fmt.Println("Updating existing profile...")
 	}
 	
-	// อัปเดตข้อมูล
 	if profileData.DisplayName != nil {
 		profile.DisplayName = *profileData.DisplayName
 	}
@@ -100,7 +93,6 @@ func UpsertProfileHandler(c *gin.Context, db *gorm.DB) {
 		profile.Address = *profileData.Address
 	}
 	
-	// บันทึกข้อมูล
 	if err := db.Save(&profile).Error; err != nil {
 		c.JSON(500, gin.H{"error": "Failed to save profile", "details": err.Error()})
 		return

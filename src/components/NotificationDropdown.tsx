@@ -37,7 +37,6 @@ export default function NotificationDropdown() {
 
   const [isOpen, setIsOpen] = useState(false);
 
-  // ฟังก์ชันทดสอบสร้าง notification
   const createTestNotification = async () => {
     if (!user?.id) return;
 
@@ -56,17 +55,17 @@ export default function NotificationDropdown() {
       });
 
       if (response.ok) {
-        console.log("✅ Test notification created successfully");
+        console.log("Test notification created successfully");
       } else {
         const errorText = await response.text();
         console.error(
-          "❌ Create test notification error:",
+          "Create test notification error:",
           response.status,
           errorText
         );
       }
     } catch (error) {
-      console.error("❌ Error creating test notification:", error);
+      console.error("Error creating test notification:", error);
     }
   };
 

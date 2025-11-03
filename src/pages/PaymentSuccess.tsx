@@ -18,7 +18,6 @@ const PaymentSuccess = () => {
   const bookingId = searchParams.get("booking_id");
   const sessionId = searchParams.get("session_id");
 
-  // รับข้อมูล state จากหน้าก่อน
   const bookingData = location.state?.bookingData || {
     title: searchParams.get("title") || "ไม่ระบุแพ็คเกจ",
     guests: searchParams.get("guests") || "1",
@@ -55,9 +54,7 @@ const PaymentSuccess = () => {
       }
 
       try {
-        // Check if this is a mock payment (session_id starts with cs_test_mock_)
         if (sessionId.startsWith("cs_test_mock_")) {
-          // Mock payment mode - automatically mark as successful
           setVerificationComplete(true);
           toast({
             title: "การชำระเงินสำเร็จ (โหมดทดสอบ)",
@@ -67,7 +64,6 @@ const PaymentSuccess = () => {
           return;
         }
 
-        // Real Stripe payment verification
         const { data, error } = await supabase.functions.invoke(
           "verify-payment",
           {
@@ -95,7 +91,6 @@ const PaymentSuccess = () => {
         }
       } catch (error) {
         console.error("Payment verification error:", error);
-        // In mock mode, treat errors as success for demo purposes
         if (sessionId.startsWith("cs_test_mock_")) {
           setVerificationComplete(true);
           toast({

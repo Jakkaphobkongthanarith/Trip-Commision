@@ -71,21 +71,17 @@ export function TagFilter({
 
   const handleTagClick = (tag: string) => {
     if (tag === "") {
-      // Clear all filters when clicking "All"
       navigate("/packages");
     } else {
       const newSearchParams = new URLSearchParams(searchParams);
 
-      // Check if tag is already selected
       const currentTags = newSearchParams.getAll("tag");
       if (currentTags.includes(tag)) {
-        // Remove the tag if it's already selected
         newSearchParams.delete("tag");
         currentTags
           .filter((t) => t !== tag)
           .forEach((t) => newSearchParams.append("tag", t));
       } else {
-        // Add the tag if it's not selected
         newSearchParams.append("tag", tag);
       }
 

@@ -54,56 +54,49 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // WebSocket connection
   const { isConnected, lastMessage } = useWebSocket({
     userID: user?.id,
     onMessage: (message: NotificationMessage) => {
-      console.log("📨 Received real-time notification:", message);
-      console.log("📨 Message type:", message.type);
-      console.log("📨 Message data:", message.data);
+      console.log("Received real-time notification:", message);
+      console.log("Message type:", message.type);
+      console.log("Message data:", message.data);
 
-      // Handle different message types
       if (message.type === "existing_notification") {
-        console.log("📋 Processing existing notification:", message);
-        // ข้อมูล notifications เก่าจาก WebSocket
+        console.log("Processing existing notification:", message);
         const existingNotification: NotificationData = {
           id: message.id,
           title: message.title,
           message: message.message,
           type: "notification",
-          isRead: message.data?.isRead || false, // ถ้ามีข้อมูล isRead จาก data
+          isRead: message.data?.isRead || false,
           createdAt: message.timestamp,
         };
 
         console.log(
-          "📋 Adding existing notification to state:",
+          "Adding existing notification to state:",
           existingNotification
         );
 
         setNotifications((prev) => {
-          // ตรวจสอบไม่ให้ duplicate
           if (!prev.find((n) => n.id === existingNotification.id)) {
             const newList = [...prev, existingNotification];
-            console.log("📋 Updated notifications list:", newList);
+            console.log("Updated notifications list:", newList);
             return newList;
           }
-          console.log("📋 Notification already exists, skipping");
+          console.log("Notification already exists, skipping");
           return prev;
         });
       } else if (message.type === "unread_count") {
-        console.log("📊 Processing unread count:", message.data?.count);
-        // อัพเดท unread count
+        console.log("Processing unread count:", message.data?.count);
         setUnreadCount(message.data?.count || 0);
       } else if (message.type === "notification") {
         console.log("🔔 Processing new real-time notification:", message);
-        // Notification ใหม่แบบ real-time
         toast({
           title: message.title,
           description: message.message,
           duration: 5000,
         });
 
-        // เพิ่ม notification ใหม่ลงใน list
         if (message.id) {
           const newNotification: NotificationData = {
             id: message.id,
@@ -120,15 +113,14 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
       }
     },
     onConnect: () => {
-      console.log("🔗 Notification WebSocket connected");
+      console.log("Notification WebSocket connected");
     },
     onDisconnect: () => {
-      console.log("🔌 Notification WebSocket disconnected");
+      console.log("Notification WebSocket disconnected");
     },
-    autoConnect: !!user?.id, // เชื่อมต่ออัตโนมัติเมื่อมี user
+    autoConnect: !!user?.id,
   });
 
-  // ทำเครื่องหมาย notification ว่าอ่านแล้ว
   const markAsRead = async (id: string) => {
     try {
       const response = await fetch(
@@ -149,11 +141,10 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
         setUnreadCount((prev) => Math.max(0, prev - 1));
       }
     } catch (error) {
-      console.error("❌ Error marking notification as read:", error);
+      console.error("Error marking notification as read:", error);
     }
   };
 
-  // ทำเครื่องหมาย notifications ทั้งหมดว่าอ่านแล้ว
   const markAllAsRead = async () => {
     if (!user?.id) return;
 
@@ -174,11 +165,10 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
         setUnreadCount(0);
       }
     } catch (error) {
-      console.error("❌ Error marking all notifications as read:", error);
+      console.error("Error marking all notifications as read:", error);
     }
   };
 
-  // ลบ notification
   const deleteNotification = async (id: string) => {
     try {
       const response = await fetch(
@@ -192,25 +182,21 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
 
       if (response.ok) {
         setNotifications((prev) => prev.filter((notif) => notif.id !== id));
-        // ลด unread count ถ้า notification ที่ลบยังไม่ได้อ่าน
         const deletedNotif = notifications.find((n) => n.id === id);
         if (deletedNotif && !deletedNotif.isRead) {
           setUnreadCount((prev) => Math.max(0, prev - 1));
         }
       }
     } catch (error) {
-      console.error("❌ Error deleting notification:", error);
+      console.error("Error deleting notification:", error);
     }
   };
 
-  // รีเซ็ต state เมื่อ user เปลี่ยนหรือ logout
   useEffect(() => {
     if (!user?.id) {
-      // รีเซ็ต state เมื่อ logout
       setNotifications([]);
       setUnreadCount(0);
     }
-    // ไม่ต้อง fetch จาก API เพราะใช้ WebSocket แล้ว
   }, [user?.id]);
 
   const value: NotificationContextType = {

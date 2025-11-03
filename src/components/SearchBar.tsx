@@ -29,12 +29,10 @@ const SearchBar = () => {
     if (searchQuery) params.set("search", searchQuery);
     if (location) params.set("location", location);
 
-    // Format date range
     if (dateRange?.from) {
       params.set("date", format(dateRange.from, "yyyy-MM-dd"));
     }
 
-    // Price range
     if (priceRange[0] > 0 || priceRange[1] < 50000) {
       params.set("minPrice", priceRange[0].toString());
       params.set("maxPrice", priceRange[1].toString());

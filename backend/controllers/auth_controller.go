@@ -18,16 +18,15 @@ func SignupHandler(c *gin.Context) {
 		Email       string `json:"email"`
 		Password    string `json:"password"`
 		DisplayName string `json:"display_name"`
-		Role        string `json:"role"` // เพิ่ม role field
+		Role        string `json:"role"` 
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
 
-	// ตรวจสอบ role ว่าเป็นค่าที่ถูกต้องหรือไม่
 	if req.Role == "" {
-		req.Role = models.RoleCustomer // default เป็น customer
+		req.Role = models.RoleCustomer 
 	}
 	if !models.IsValidRole(req.Role) {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -44,13 +43,12 @@ func SignupHandler(c *gin.Context) {
 		return
 	}
 
-	// สร้าง payload สำหรับ Supabase signup พร้อม role ใน metadata
 	payload := map[string]interface{}{
 		"email":    req.Email,
 		"password": req.Password,
 		"data": map[string]interface{}{
 			"display_name": req.DisplayName,
-			"role":         req.Role, // เพิ่ม role ใน user metadata
+			"role":         req.Role,
 		},
 	}
 	body, _ := json.Marshal(payload)
@@ -67,7 +65,6 @@ func SignupHandler(c *gin.Context) {
 	defer resp.Body.Close()
 	respBody, _ := io.ReadAll(resp.Body)
 
-	// ถ้า signup สำเร็จ ให้สร้าง user role ใน database
 	if resp.StatusCode == http.StatusOK {
 		var supabaseResp map[string]interface{}
 		if err := json.Unmarshal(respBody, &supabaseResp); err == nil {
@@ -75,7 +72,6 @@ func SignupHandler(c *gin.Context) {
 				if userIdStr, ok := user["id"].(string); ok {
 					userID, err := uuid.Parse(userIdStr)
 					if err == nil {
-						// สร้าง user role ใน database
 						db := c.MustGet("db").(*gorm.DB)
 						createUserRole(userID, req.Role, db)
 					}
@@ -87,7 +83,6 @@ func SignupHandler(c *gin.Context) {
 	c.Data(resp.StatusCode, "application/json", respBody)
 }
 
-// createUserRole สร้าง user role ใน database
 func createUserRole(userID uuid.UUID, role string, db *gorm.DB) error {
 	userRole := models.UserRole{
 		UserID: userID,
@@ -131,7 +126,6 @@ func LoginHandler(c *gin.Context) {
 	defer resp.Body.Close()
 	respBody, _ := io.ReadAll(resp.Body)
 
-	// ถ้า login สำเร็จ ให้เพิ่ม role ใน response
 	if resp.StatusCode == http.StatusOK {
 		var loginResp map[string]interface{}
 		if err := json.Unmarshal(respBody, &loginResp); err == nil {
@@ -139,11 +133,9 @@ func LoginHandler(c *gin.Context) {
 				if userIdStr, ok := user["id"].(string); ok {
 					userID, err := uuid.Parse(userIdStr)
 					if err == nil {
-						// ดึง role จาก database
 						db := c.MustGet("db").(*gorm.DB)
 						var userRole models.UserRole
 						if err := db.Where("user_id = ?", userID).First(&userRole).Error; err == nil {
-							// เพิ่ม role ใน response
 							loginResp["role"] = userRole.Role
 							respBody, _ = json.Marshal(loginResp)
 						}
@@ -161,35 +153,25 @@ func LogoutHandler(c *gin.Context) {
 		AccessToken string `json:"access_token"`
 	}
 
-	// ตรวจสอบ request format แต่ไม่บังคับ access_token
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
 
-	// Log logout attempt
 	if req.AccessToken != "" {
-		// มี token - อาจจะยัง valid อยู่
-		// TODO: ในอนาคตอาจจะเพิ่ม token validation หรือ blacklist
 		c.JSON(http.StatusOK, gin.H{
 			"message":        "logged out successfully",
 			"token_received": true,
 		})
 	} else {
-		// ไม่มี token - session หมดอายุแล้วแต่ให้ logout สำเร็จ
 		c.JSON(http.StatusOK, gin.H{
 			"message":        "logged out successfully",
 			"token_received": false,
 		})
 	}
 
-	// ไม่เรียก Supabase API เพราะ:
-	// 1. Token อาจหมดอายุแล้ว (จะได้ 403)
-	// 2. Frontend จัดการ Supabase logout เอง
-	// 3. Backend logout เป็นแค่ acknowledgment
 }
 
-// GetCurrentUserRoleHandler - deprecated, แนะนำให้ใช้ session storage จาก login response
 func GetCurrentUserRoleHandler(c *gin.Context, db *gorm.DB) {
 	c.JSON(http.StatusNotImplemented, gin.H{
 		"message": "This endpoint is deprecated. Use session storage from login response instead.",

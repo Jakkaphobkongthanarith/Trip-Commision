@@ -156,7 +156,6 @@ const PackageList = () => {
   const [visibleCount, setVisibleCount] = useState(9);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Get multiple tags from URL parameters
   const selectedTags = searchParams.getAll("tag").filter((tag) => tag);
   const searchQuery = searchParams.get("search");
   const locationFilter = searchParams.get("location");
@@ -164,7 +163,6 @@ const PackageList = () => {
   const minPrice = searchParams.get("minPrice");
   const maxPrice = searchParams.get("maxPrice");
 
-  // Helper function to normalize tags
   const normalizeTags = (tags: any): string[] => {
     if (!tags) return [];
     if (Array.isArray(tags)) return tags.filter((t) => typeof t === "string");
@@ -186,7 +184,6 @@ const PackageList = () => {
           (pkg: any) => pkg.is_active !== false
         );
 
-        // Normalize tags and apply discount for all packages
         const normalizedData = activePackages.map((pkg: any) => {
           const hasDiscount =
             pkg.discount_percentage && pkg.discount_percentage > 0;
@@ -212,7 +209,6 @@ const PackageList = () => {
   }, []);
 
   const filteredPackages = packages.filter((pkg: any) => {
-    // Check if package has ALL selected tags (AND logic)
     if (selectedTags.length > 0) {
       const hasAllTags = selectedTags.every((tag) => pkg.tags?.includes(tag));
       if (!hasAllTags) return false;
@@ -237,8 +233,7 @@ const PackageList = () => {
   const displayedPackages = filteredPackages.slice(0, visibleCount);
   const hasMorePackages = filteredPackages.length > visibleCount;
 
-  // Debug log
-  console.log("📊 Package Stats:", {
+  console.log("Package Stats:", {
     totalPackages: packages.length,
     filteredPackages: filteredPackages.length,
     visibleCount,
@@ -248,7 +243,7 @@ const PackageList = () => {
 
   const loadMore = () => {
     console.log("🔄 Load More clicked");
-    console.log("📊 Current visibleCount:", visibleCount);
+    console.log("Current visibleCount:", visibleCount);
     console.log("📦 Total filteredPackages:", filteredPackages.length);
 
     setVisibleCount((prev) => {
@@ -258,25 +253,21 @@ const PackageList = () => {
     });
   };
 
-  // Reset visible count only when filters change, not on every render
   useEffect(() => {
-    console.log("🔍 Filters changed, resetting visibleCount to 9");
+    console.log("Filters changed, resetting visibleCount to 9");
     setVisibleCount(9);
-  }, [selectedTags.join(","), searchQuery, locationFilter, minPrice, maxPrice]); // Join tags to avoid unnecessary resets
+  }, [selectedTags.join(","), searchQuery, locationFilter, minPrice, maxPrice]);
 
   const handleTagClick = (tag: string) => {
     const newSearchParams = new URLSearchParams(searchParams);
 
-    // Check if tag is already selected
     const currentTags = newSearchParams.getAll("tag");
     if (currentTags.includes(tag)) {
-      // Remove the tag if it's already selected
       newSearchParams.delete("tag");
       currentTags
         .filter((t) => t !== tag)
         .forEach((t) => newSearchParams.append("tag", t));
     } else {
-      // Add the tag if it's not selected
       newSearchParams.append("tag", tag);
     }
 
@@ -287,7 +278,6 @@ const PackageList = () => {
     const newSearchParams = new URLSearchParams(searchParams);
     newSearchParams.delete("tag");
 
-    // Add back all tags except the one to remove
     selectedTags
       .filter((tag) => tag !== tagToRemove)
       .forEach((tag) => {

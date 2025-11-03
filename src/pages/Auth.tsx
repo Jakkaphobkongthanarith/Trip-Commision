@@ -38,7 +38,6 @@ const Auth = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
 
-  // Check URL parameter for signup mode
   useEffect(() => {
     const signupParam = searchParams.get("signup");
     if (signupParam === "true") {
@@ -46,7 +45,6 @@ const Auth = () => {
     }
   }, [searchParams]);
 
-  // Redirect if already logged in
   if (user) {
     navigate("/");
     return null;
@@ -82,7 +80,6 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
-      // Create the user account with role
       const { error: signUpError } = await signUp(
         email,
         password,
@@ -151,7 +148,6 @@ const Auth = () => {
           </CardHeader>
           <CardContent>
             {!isSignUp ? (
-              // Sign In Form
               <form onSubmit={handleSignIn} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">อีเมล</Label>
@@ -199,7 +195,6 @@ const Auth = () => {
                 </div>
               </form>
             ) : (
-              // Sign Up Form
               <form onSubmit={handleSignUp} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="displayName">ชื่อที่แสดง</Label>

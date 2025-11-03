@@ -27,7 +27,6 @@ const PaymentConfirmation = () => {
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // ข้อมูลจาก URL params (จาก PackageDetails)
   const packageTitle = searchParams.get("title");
   const guestCount = searchParams.get("guests");
   const totalAmount = searchParams.get("amount");
@@ -49,7 +48,6 @@ const PaymentConfirmation = () => {
     try {
       console.log("🔄 Attempting payment confirmation for booking:", bookingId);
 
-      // Try multiple endpoint formats
       let confirmed = false;
       let lastError = null;
 
@@ -63,11 +61,11 @@ const PaymentConfirmation = () => {
         try {
           console.log(`🔄 Trying endpoint ${i + 1}/3`);
           await endpoints[i]();
-          console.log(`✅ Payment confirmed with endpoint ${i + 1}`);
+          console.log(`Payment confirmed with endpoint ${i + 1}`);
           confirmed = true;
           break;
         } catch (error) {
-          console.warn(`❌ Endpoint ${i + 1} failed:`, error);
+          console.warn(`Endpoint ${i + 1} failed:`, error);
           lastError = error;
         }
       }

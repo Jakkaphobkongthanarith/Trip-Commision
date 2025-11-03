@@ -15,29 +15,25 @@ type TravelPackage struct {
 	Location    string    `json:"location"`
 	Duration    int       `json:"duration"`
 	MaxGuests        int       `json:"max_guests" gorm:"column:max_guests"`
-	CurrentBookings  int       `json:"current_bookings" gorm:"column:current_bookings;default:0"` // ยังใช้อยู่
+	CurrentBookings  int       `json:"current_bookings" gorm:"column:current_bookings;default:0"`
 	AvailableFrom    *string   `json:"available_from" gorm:"column:available_from;type:date"`
 	AvailableTo      *string   `json:"available_to" gorm:"column:available_to;type:date"`
-	Tags             string    `json:"-" gorm:"column:tags"` // ไม่ส่งออกใน JSON โดยตรง
-	TagsArray        []string  `json:"tags" gorm:"-"` // ส่งออกใน JSON แต่ไม่เก็บใน DB
+	Tags             string    `json:"-" gorm:"column:tags"`
+	TagsArray        []string  `json:"tags" gorm:"-"`
 	DiscountPercentage float64 `json:"discount_percentage" gorm:"column:discount_percentage;default:0"`
-	AdvertiserID     *uuid.UUID `json:"advertiser_id" gorm:"column:advertiser_id;type:uuid"` // ยังใช้อยู่ (backward compatibility)
+	AdvertiserID     *uuid.UUID `json:"advertiser_id" gorm:"column:advertiser_id;type:uuid"`
 	IsActive         *bool     `json:"is_active" gorm:"column:is_active;type:boolean;default:true"`
 	DisplayID        int       `json:"display_id" gorm:"column:display_id;uniqueIndex"`
 	CreatedAt        time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt        time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 	
-	// Computed fields (จะคำนวณ real-time แทน stored values) - REMOVED
-	// AverageRating and ReviewCount features removed
-	AdvertiserNames  string  `json:"advertiser_names" gorm:"-"` // จะรวมจาก profiles
+	AdvertiserNames  string  `json:"advertiser_names" gorm:"-"`
 	
-	// Relationships - Reviews relationship removed
-	Advertisers []User    `json:"advertisers,omitempty" gorm:"-"` // ปิดการสร้าง constraint ไปยัง auth.users
-	Advertiser  *User     `json:"advertiser,omitempty" gorm:"-"` // ปิดการสร้าง constraint ไปยัง auth.users
+	Advertisers []User    `json:"advertisers,omitempty" gorm:"-"`
+	Advertiser  *User     `json:"advertiser,omitempty" gorm:"-"`
 	Bookings    []Booking `json:"bookings,omitempty" gorm:"foreignKey:PackageID"`
 }
 
-// Junction table for package-advertiser relationship
 type PackageAdvertiser struct {
 	TravelPackageID uuid.UUID `json:"travel_package_id" gorm:"column:travel_package_id;type:uuid;primaryKey"`
 	AdvertiserID    uuid.UUID `json:"advertiser_id" gorm:"column:advertiser_id;type:uuid;primaryKey"`

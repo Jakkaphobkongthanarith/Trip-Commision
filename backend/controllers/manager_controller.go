@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-
 	"trip-trader-backend/models"
 	"trip-trader-backend/services"
 
@@ -51,33 +50,25 @@ type RecentPackage struct {
 	AdvertiserName string  `json:"advertiser_name"`
 }
 
-// GetDashboardStats - ดึงสถิติสำหรับ Manager Dashboard (ใช้ GORM ORM)
 func (mc *ManagerController) GetDashboardStats(c *gin.Context) {
 	var stats DashboardStats
 
-	// Count total users ด้วย GORM Model
 	mc.DB.Model(&models.UserRole{}).Where("role != ?", "manager").Count(&stats.TotalUsers)
 
-	// Count total advertisers ด้วย GORM Model
 	mc.DB.Model(&models.UserRole{}).Where("role = ?", "advertiser").Count(&stats.TotalAdvertisers)
 
-	// Count total packages ด้วย GORM Model
 	mc.DB.Model(&models.TravelPackage{}).Count(&stats.TotalPackages)
 
-	// Count active packages ด้วย GORM Model
 	mc.DB.Model(&models.TravelPackage{}).Where("is_active = ?", true).Count(&stats.ActivePackages)
 
-	// Count total bookings ด้วย GORM Model
 	mc.DB.Model(&models.Booking{}).Count(&stats.TotalBookings)
 
-	// Count this month bookings ด้วย GORM Model
 	now := time.Now()
 	firstOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
 	mc.DB.Model(&models.Booking{}).
 		Where("created_at >= ?", firstOfMonth).
 		Count(&stats.ThisMonthBookings)
 
-	// Calculate total revenue ด้วย GORM Model (sum of all confirmed bookings)
 	type RevenueResult struct {
 		Total float64 `gorm:"column:total"`
 	}
@@ -91,11 +82,9 @@ func (mc *ManagerController) GetDashboardStats(c *gin.Context) {
 	c.JSON(http.StatusOK, stats)
 }
 
-// GetRecentBookings - ดึงการจองล่าสุด 10 รายการ (ใช้ GORM ORM)
 func (mc *ManagerController) GetRecentBookings(c *gin.Context) {
 	var bookings []RecentBooking
 
-	// ใช้ GORM ORM แทน raw SQL เพื่อความปลอดภัย
 	type BookingResult struct {
 		ID           string  `gorm:"column:id"`
 		PackageTitle string  `gorm:"column:package_title"`
@@ -127,7 +116,6 @@ func (mc *ManagerController) GetRecentBookings(c *gin.Context) {
 		return
 	}
 
-	// แปลงผลลัพธ์
 	for _, result := range results {
 		bookings = append(bookings, RecentBooking{
 			ID:           result.ID,
@@ -142,13 +130,10 @@ func (mc *ManagerController) GetRecentBookings(c *gin.Context) {
 	c.JSON(http.StatusOK, bookings)
 }
 
-// GetRecentPackages - ดึงแพคเกจใหม่ล่าสุด 10 รายการ พร้อม advertiser name จาก profiles (ใช้ GORM relationships)
 func (mc *ManagerController) GetRecentPackages(c *gin.Context) {
 	var packages []RecentPackage
 	var travelPackages []models.TravelPackage
 
-	// ใช้ GORM Preload เพื่อ JOIN tables ตามที่ต้องการ:
-	// travel_packages -> package_advertisers -> users -> profiles
 	err := mc.DB.
     Where("is_active = ?", true).
     Order("created_at DESC").
@@ -163,15 +148,12 @@ func (mc *ManagerController) GetRecentPackages(c *gin.Context) {
 		return
 	}
 
-	// แปลงผลลัพธ์เป็น RecentPackage พร้อมจัดการ advertiser names
 	for _, pkg := range travelPackages {
 		advertiserName := "ไม่ระบุ"
 		
-		// ตรวจสอบและสร้างชื่อ advertiser จาก profiles
 		if len(pkg.Advertisers) > 0 {
 			var names []string
 			for _, advertiser := range pkg.Advertisers {
-				// ใช้ Profile.DisplayName จาก relationship
 				if advertiser.Profile != nil && advertiser.Profile.DisplayName != "" {
 					names = append(names, advertiser.Profile.DisplayName)
 				}
@@ -199,7 +181,6 @@ func (mc *ManagerController) GetRecentPackages(c *gin.Context) {
 	c.JSON(http.StatusOK, packages)
 }
 
-// GetUserStatistics - สถิติผู้ใช้รายละเอียด (ใช้ GORM ORM)
 func (mc *ManagerController) GetUserStatistics(c *gin.Context) {
 	type UserStats struct {
 		Role  string `json:"role"`
@@ -208,7 +189,6 @@ func (mc *ManagerController) GetUserStatistics(c *gin.Context) {
 
 	var userStats []UserStats
 	
-	// ใช้ GORM ORM แทน raw SQL เพื่อความปลอดภัย
 	err := mc.DB.Table("user_roles").
 		Select("role, COUNT(*) as count").
 		Where("role != ?", "manager").
@@ -226,7 +206,6 @@ func (mc *ManagerController) GetUserStatistics(c *gin.Context) {
 	c.JSON(http.StatusOK, userStats)
 }
 
-// GetPackageStatistics - สถิติแพคเกจรายละเอียด (ใช้ GORM ORM)
 func (mc *ManagerController) GetPackageStatistics(c *gin.Context) {
 	type PackageStats struct {
 		TotalPackages    int64   `json:"total_packages"`
@@ -238,12 +217,10 @@ func (mc *ManagerController) GetPackageStatistics(c *gin.Context) {
 
 	var stats PackageStats
 
-	// Count packages by status ด้วย GORM Model
 	mc.DB.Model(&models.TravelPackage{}).Count(&stats.TotalPackages)
 	mc.DB.Model(&models.TravelPackage{}).Where("is_active = ?", true).Count(&stats.ActivePackages)
 	mc.DB.Model(&models.TravelPackage{}).Where("is_active = ?", false).Count(&stats.InactivePackages)
 
-	// Calculate average price ด้วย GORM Model
 	type AvgPriceResult struct {
 		Average float64 `gorm:"column:average"`
 	}
@@ -254,7 +231,6 @@ func (mc *ManagerController) GetPackageStatistics(c *gin.Context) {
 		Scan(&avgPrice)
 	stats.AvgPrice = avgPrice.Average
 
-	// Find top location ด้วย GORM Model
 	type LocationResult struct {
 		Location string `gorm:"column:location"`
 	}
@@ -271,7 +247,6 @@ func (mc *ManagerController) GetPackageStatistics(c *gin.Context) {
 	c.JSON(http.StatusOK, stats)
 }
 
-// GetMonthlyBookingStats - สถิติการจองรายเดือน (12 เดือนล่าสุด) ใช้ GORM ORM + PostgreSQL
 func (mc *ManagerController) GetMonthlyBookingStats(c *gin.Context) {
 	type MonthlyStats struct {
 		Month    string  `json:"month"`
@@ -281,11 +256,8 @@ func (mc *ManagerController) GetMonthlyBookingStats(c *gin.Context) {
 
 	var monthlyStats []MonthlyStats
 
-	// ใช้ GORM ORM แทน raw SQL เพื่อความปลอดภัย
-	// คำนวณวันที่ 12 เดือนที่แล้ว
 	twelveMonthsAgo := time.Now().AddDate(0, -12, 0)
 
-	// ใช้ PostgreSQL TO_CHAR function ด้วย GORM
 	type MonthlyResult struct {
 		Month    string  `gorm:"column:month"`
 		Bookings int64   `gorm:"column:bookings"`
@@ -312,7 +284,6 @@ func (mc *ManagerController) GetMonthlyBookingStats(c *gin.Context) {
 		return
 	}
 
-	// แปลงผลลัพธ์
 	for _, result := range results {
 		monthlyStats = append(monthlyStats, MonthlyStats{
 			Month:    result.Month,
@@ -324,14 +295,11 @@ func (mc *ManagerController) GetMonthlyBookingStats(c *gin.Context) {
 	c.JSON(http.StatusOK, monthlyStats)
 }
 
-// PerformanceAnalysis - วิเคราะห์ performance ของระบบ database
 func (mc *ManagerController) PerformanceAnalysis(c *gin.Context) {
 	perfMonitor := &services.PerformanceMonitor{DB: mc.DB}
 	
-	// Run performance analysis
 	perfMonitor.AnalyzeQueryPerformance()
 	
-	// Get recommended indexes
 	recommendedIndexes := perfMonitor.GetRecommendedIndexes()
 	
 	response := PerformanceAnalysisResponse{

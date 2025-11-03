@@ -16,7 +16,7 @@ type Booking struct {
 	DiscountAmount        float64   `json:"discount_amount" gorm:"type:numeric;default:0"`
 	FinalAmount           float64   `json:"final_amount" gorm:"type:numeric;not null"`
 	DiscountCodeID        *uuid.UUID `json:"discount_code_id" gorm:"type:uuid"`
-	GlobalCodeID          *uuid.UUID `json:"global_code_id" gorm:"type:uuid"` // เชื่อมโยงกับ global_discount_codes
+	GlobalCodeID          *uuid.UUID `json:"global_code_id" gorm:"type:uuid"`
 	Status                string    `json:"status" gorm:"type:text;not null;default:'pending'"`
 	PaymentStatus         string    `json:"payment_status" gorm:"type:text;default:'pending'"`
 	StripePaymentIntentID *string   `json:"stripe_payment_intent_id" gorm:"type:text"`

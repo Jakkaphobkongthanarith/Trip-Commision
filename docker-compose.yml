@@ -1,5 +1,5 @@
 services:
-  # Frontend (Port 8080)
+  
   frontend:
     build:
       context: .
@@ -13,14 +13,14 @@ services:
 
     container_name: triptrader_frontend
     ports:
-      - "8080:8080" # เปลี่ยนเป็น 8080
+      - "8080:8080" 
     depends_on:
       - backend
     networks:
       - triptrader_network
     restart: unless-stopped
 
-  # Backend (Port 8000)
+  
   backend:
     build:
       context: .
