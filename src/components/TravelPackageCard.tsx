@@ -136,20 +136,23 @@ const TravelPackageCard: React.FC<TravelPackageCardProps> = ({
           })()}
         </div>
 
+        {/* เพิ่มการแสดงวันที่ที่เด่นชัด */}
+        {pkg.available_from && pkg.available_to && (
+          <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">
+            <div className="flex items-center gap-2 text-primary">
+              <Calendar className="h-4 w-4" />
+              <span className="text-sm font-medium">
+                ช่วงเวลาให้บริการ: {format(new Date(pkg.available_from), "dd MMM")} - {format(new Date(pkg.available_to), "dd MMM yyyy")}
+              </span>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-1 text-muted-foreground">
             <Users className="h-4 w-4" />
             <span>เหลือ {availableSpots} ที่นั่ง</span>
           </div>
-          {pkg.available_from && pkg.available_to && (
-            <div className="flex items-center gap-1 text-muted-foreground">
-              <Calendar className="h-4 w-4" />
-              <span className="text-xs">
-                {format(new Date(pkg.available_from), "dd MMM")} -{" "}
-                {format(new Date(pkg.available_to), "dd MMM")}
-              </span>
-            </div>
-          )}
         </div>
       </CardContent>
 

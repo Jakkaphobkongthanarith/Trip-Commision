@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
+import { th } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -401,14 +402,10 @@ const PackageDetails = () => {
                   </div>
                   {packageData.available_from && packageData.available_to && (
                     <div className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />
-                      <span>
-                        {format(new Date(packageData.available_from), "dd MMM")}{" "}
-                        -{" "}
-                        {format(
-                          new Date(packageData.available_to),
-                          "dd MMM yyyy"
-                        )}
+                      <Calendar className="h-4 w-4 text-primary" />
+                      <span className="font-medium text-primary">
+                        {format(new Date(packageData.available_from), "dd MMM")} -{" "}
+                        {format(new Date(packageData.available_to), "dd MMM yyyy")}
                       </span>
                     </div>
                   )}
@@ -418,6 +415,29 @@ const PackageDetails = () => {
                   </div>
                 </div>
               </div>
+
+              {packageData.available_from && packageData.available_to && (
+                <div className="mt-4 p-4 bg-primary/10 border border-primary/20 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar className="h-5 w-5 text-primary" />
+                    <h3 className="font-semibold text-primary">ช่วงเวลาที่เปิดให้บริการ</h3>
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">วันที่เริ่ม:</span>
+                      <span className="ml-2 font-medium">
+                        {format(new Date(packageData.available_from), "dd MMMM yyyy", { locale: th })}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">วันที่สิ้นสุด:</span>
+                      <span className="ml-2 font-medium">
+                        {format(new Date(packageData.available_to), "dd MMMM yyyy", { locale: th })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="flex flex-wrap gap-2">
                 {(() => {

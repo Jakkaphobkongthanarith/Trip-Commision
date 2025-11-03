@@ -227,6 +227,21 @@ const PackageList = () => {
       return false;
     if (minPrice && pkg.price < parseFloat(minPrice)) return false;
     if (maxPrice && pkg.price > parseFloat(maxPrice)) return false;
+    
+    // Date range filtering
+    if (dateFilter) {
+      const selectedDate = new Date(dateFilter);
+      const availableFrom = pkg.available_from ? new Date(pkg.available_from) : null;
+      const availableTo = pkg.available_to ? new Date(pkg.available_to) : null;
+      
+      // ถ้าแพ็กเกจไม่มีข้อมูลวันที่เลย ให้ซ่อนออกจากผลการค้นหา
+      if (!availableFrom || !availableTo) return false;
+      
+      // Check if selected date is within package availability range
+      if (selectedDate < availableFrom) return false;
+      if (selectedDate > availableTo) return false;
+    }
+    
     return true;
   });
 
