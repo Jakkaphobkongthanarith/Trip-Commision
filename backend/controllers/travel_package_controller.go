@@ -8,9 +8,31 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-
 	"gorm.io/gorm"
 )
+
+// Get all packages for a given advertiser
+	func GetAdvertiserPackagesHandler(c *gin.Context, db *gorm.DB) {
+		advertiserID := c.Param("advertiser_id")
+		if advertiserID == "" {
+			c.JSON(400, gin.H{"error": "Missing advertiser_id"})
+			return
+		}
+
+		var packages []models.TravelPackage
+		// Join package_advertisers to get all packages for this advertiser
+		err := db.Table("travel_packages").
+			Joins("JOIN package_advertisers ON travel_packages.id = package_advertisers.travel_package_id").
+			Where("package_advertisers.advertiser_id = ?", advertiserID).
+			Find(&packages).Error
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		// Convert tags for frontend compatibility
+		packages = convertAllPackagesTags(packages)
+		c.JSON(200, packages)
+	}
 
 func convertTagsToArray(pkg *models.TravelPackage) {
 	if pkg.Tags != "" {

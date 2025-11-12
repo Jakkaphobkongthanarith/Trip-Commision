@@ -181,6 +181,7 @@ export default {
   "discountCodes.noExpiry": "ไม่หมดอายุ",
   "discountCodes.noCommission": "ไม่มีค่าคอมมิชชั่น",
   "discountCodes.packageNotFound": "ไม่พบแพ็กเกจ",
+  "discountCodes.expiry": "หมดอายุ",
 
   // Commission Reports
   "commission.selectMonth": "เลือกเดือน/ปี สำหรับค่าคอมมิชชั่นจากโค้ดส่วนลด",
@@ -268,6 +269,8 @@ export default {
   "packageDetails.paymentSuccess": "การชำระเงินสำเร็จ (โหมดทดสอบ)",
   "packageDetails.openingPayment": "กำลังเปิดหน้าชำระเงิน",
   "packageDetails.openNewWindow": "จะเปิดหน้าต่างใหม่สำหรับชำระเงิน",
+  "packageDetails.useCode": "ใช้โค้ด",
+  "packageDetails.processing": "กำลังดำเนินการ...",
 
   // Auth
   "auth.loginFailed": "เข้าสู่ระบบไม่สำเร็จ",

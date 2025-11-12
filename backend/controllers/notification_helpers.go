@@ -38,33 +38,6 @@ func SendNotificationToAdvertiser(advertiserID uuid.UUID, discountCode models.Di
 }
 
  
-func SendCommissionEarnedNotification(commission models.Commission, db *gorm.DB) {
- 
-	var discountCode models.DiscountCode
-	var booking models.Booking
-	
-	db.Preload("Package").First(&discountCode, commission.DiscountCodeID)
-	db.First(&booking, commission.BookingID)
-
-	notification := models.Notification{
-		UserID:   commission.AdvertiserID,
-		Title:    "💰 ได้รับค่าคอมมิชชั่น!",
-		Message:  fmt.Sprintf("คุณได้รับค่าคอมมิชชั่น ฿%.2f จากโค้ด %s ในแพคเกจ %s", 
-				   commission.CommissionAmount, discountCode.Code, discountCode.Package.Title),
-		Type:     "commission_earned",
-		Category: "info",
-		Priority: 2,
-			ActionURL: "/advertiser",
-		Data: models.JSONMap{
-			"commission_id": commission.ID,
-			"amount": commission.CommissionAmount,
-			"discount_code": discountCode.Code,
-			"package_title": discountCode.Package.Title,
-		},
-	}
-
-	db.Create(&notification)
-}
 
  
 func SendNewBookingNotificationToAdvertiser(booking models.Booking, pkg models.TravelPackage, db *gorm.DB) {
@@ -138,7 +111,6 @@ func CreateCommission(bookingID, advertiserID, discountCodeID uuid.UUID, amount,
 	}
 
  
-	go SendCommissionEarnedNotification(commission, db)
 
 	return nil
 }

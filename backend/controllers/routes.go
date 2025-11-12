@@ -10,6 +10,10 @@ import (
 )
 
 func SetupRoutes(r *gin.Engine, db *gorm.DB, hub *utils.Hub) {
+	// Get all packages for a given advertiser
+	r.GET("/api/advertiser/:advertiser_id/packages", func(c *gin.Context) {
+		GetAdvertiserPackagesHandler(c, db)
+	})
 	r.Use(func(c *gin.Context) {
 		c.Set("db", db)
 		c.Next()
@@ -27,6 +31,21 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, hub *utils.Hub) {
 	r.GET("/api/packages/tags", func(c *gin.Context) {
 		GetAllTagsHandler(c, db)
 	})
+	
+	// Inclusions routes
+	r.GET("/api/inclusions", func(c *gin.Context) {
+		GetAllInclusionsHandler(c, db)
+	})
+	r.POST("/api/inclusions", func(c *gin.Context) {
+		CreateInclusionHandler(c, db)
+	})
+	r.GET("/api/packages/:id/inclusions", func(c *gin.Context) {
+		GetPackageInclusionsHandler(c, db)
+	})
+	r.PUT("/api/packages/:id/inclusions", func(c *gin.Context) {
+		UpdatePackageInclusionsHandler(c, db)
+	})
+	
 	r.POST("/api/travel-packages", func(c *gin.Context) {
 		CreatePackageHandler(c, db)
 	})

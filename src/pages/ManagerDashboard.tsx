@@ -84,8 +84,12 @@ const ManagerDashboard = () => {
     thisMonthBookings: 0,
     totalRevenue: 0,
   });
-  const [recentBookings, setRecentBookings] = useState<RecentBooking[]>([]);
-  const [recentPackages, setRecentPackages] = useState<RecentPackage[]>([]);
+  const [recentBookings, setRecentBookings] = useState<RecentBooking[] | null>(
+    null
+  );
+  const [recentPackages, setRecentPackages] = useState<RecentPackage[] | null>(
+    null
+  );
 
   const quickActions: QuickAction[] = [
     {
@@ -108,13 +112,6 @@ const ManagerDashboard = () => {
       icon: <Package className="h-6 w-6" />,
       href: "/package-management",
       color: "bg-purple-500 hover:bg-purple-600",
-    },
-    {
-      title: "รายงานการจอง",
-      description: "ดูรายงานและสถิติการจองทั้งหมด",
-      icon: <FileText className="h-6 w-6" />,
-      href: "/booking-reports",
-      color: "bg-orange-500 hover:bg-orange-600",
     },
   ];
 
@@ -391,47 +388,49 @@ const ManagerDashboard = () => {
               <CardDescription>การจองที่เกิดขึ้นล่าสุด</CardDescription>
             </CardHeader>
             <CardContent>
-              {recentBookings.length === 0 ? (
+              {Array.isArray(recentBookings) && recentBookings.length === 0 ? (
                 <div className="text-center py-8">
                   <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-500">ยังไม่มีการจอง</p>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {recentBookings.map((booking) => (
-                    <div
-                      key={booking.id}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                    >
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          {booking.package_title}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          {booking.user_name}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {booking.booking_date}
-                        </p>
+                  {(Array.isArray(recentBookings) ? recentBookings : []).map(
+                    (booking) => (
+                      <div
+                        key={booking.id}
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                      >
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {booking.package_title}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {booking.user_name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {booking.booking_date}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-gray-900">
+                            ฿{booking.total_price.toLocaleString()}
+                          </p>
+                          <Badge
+                            variant={
+                              booking.status === "confirmed"
+                                ? "default"
+                                : "secondary"
+                            }
+                          >
+                            {booking.status === "confirmed"
+                              ? "ยืนยันแล้ว"
+                              : "รอดำเนินการ"}
+                          </Badge>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-bold text-gray-900">
-                          ฿{booking.total_price.toLocaleString()}
-                        </p>
-                        <Badge
-                          variant={
-                            booking.status === "confirmed"
-                              ? "default"
-                              : "secondary"
-                          }
-                        >
-                          {booking.status === "confirmed"
-                            ? "ยืนยันแล้ว"
-                            : "รอดำเนินการ"}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  )}
                 </div>
               )}
             </CardContent>
@@ -447,39 +446,43 @@ const ManagerDashboard = () => {
               <CardDescription>แพคเกจที่เพิ่งถูกสร้างขึ้น</CardDescription>
             </CardHeader>
             <CardContent>
-              {recentPackages.length === 0 ? (
+              {Array.isArray(recentPackages) && recentPackages.length === 0 ? (
                 <div className="text-center py-8">
                   <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-500">ยังไม่มีแพคเกจใหม่</p>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {recentPackages.map((pkg) => (
-                    <div
-                      key={pkg.id}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                    >
-                      <div>
-                        <p className="font-medium text-gray-900">{pkg.title}</p>
-                        <p className="text-sm text-gray-600 flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          {pkg.location}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {pkg.advertiser_name}
-                        </p>
+                  {(Array.isArray(recentPackages) ? recentPackages : []).map(
+                    (pkg) => (
+                      <div
+                        key={pkg.id}
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                      >
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {pkg.title}
+                          </p>
+                          <p className="text-sm text-gray-600 flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {pkg.location}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {pkg.advertiser_name}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-gray-900">
+                            ฿{pkg.price.toLocaleString()}
+                          </p>
+                          <p className="text-xs text-gray-500 flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {pkg.created_at}
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-bold text-gray-900">
-                          ฿{pkg.price.toLocaleString()}
-                        </p>
-                        <p className="text-xs text-gray-500 flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {pkg.created_at}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  )}
                 </div>
               )}
             </CardContent>

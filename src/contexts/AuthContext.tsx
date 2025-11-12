@@ -12,6 +12,7 @@ interface User {
   email: string;
   name?: string;
   phone?: string;
+  address?: string;
   display_name?: string;
   role: "admin" | "manager" | "advertiser" | "customer";
 }
@@ -293,6 +294,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           name:
             response.user?.name || response.user?.display_name || response.name,
           phone: response.user?.phone || response.phone,
+          address: response.user?.address || response.address,
           display_name: response.user?.display_name || response.display_name,
           role: userRole as "admin" | "manager" | "advertiser" | "customer",
         };
@@ -301,7 +303,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           const profile = await profileAPI.getByUserId(loggedInUser.id);
 
           loggedInUser.name = profile.display_name || loggedInUser.name;
-          loggedInUser.phone = profile.phone;
+          loggedInUser.phone = profile.phone || loggedInUser.phone;
+          loggedInUser.address = profile.address;
           loggedInUser.display_name = profile.display_name;
 
           console.log("SignIn - updated loggedInUser:", loggedInUser);

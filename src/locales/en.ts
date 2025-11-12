@@ -183,6 +183,7 @@ export default {
   "discountCodes.noExpiry": "No Expiry",
   "discountCodes.noCommission": "No Commission",
   "discountCodes.packageNotFound": "Package Not Found",
+  "discountCodes.expiry": "Expires on",
 
   // Commission Reports
   "commission.selectMonth": "Select Month/Year for Discount Code Commission",
@@ -269,6 +270,8 @@ export default {
   "packageDetails.paymentSuccess": "Payment successful (test mode)",
   "packageDetails.openingPayment": "Opening payment page",
   "packageDetails.openNewWindow": "A new window will open for payment",
+  "packageDetails.useCode": "Use Code",
+  "packageDetails.processing": "Processing...",
 
   // Auth
   "auth.loginFailed": "Login Failed",

@@ -40,7 +40,6 @@ func (dc *DiscountCodeController) GetAllDiscountCodes(c *gin.Context) {
 			"advertiser_name": advertiserName,
 			"discount_value":  code.DiscountValue,
 			"discount_type":   code.DiscountType,
-			"commission_rate": code.CommissionRate,
 			"is_active":       code.IsActive,
 			"created_at":      code.CreatedAt,
 		})
@@ -167,23 +166,17 @@ func (dc *DiscountCodeController) CreateDiscountCodeForAdvertiser(c *gin.Context
 		code = models.GenerateDiscountCode(advertiserName, req.DiscountValue)
 	}
 
-	commissionRate := 5.0
-	if pkg.Price >= 10000 {
-		commissionRate = 7.0
-	}
-	
-	discountCode := models.DiscountCode{
-		ID:             uuid.New(),
-		Code:           code,
-		AdvertiserID:   advertiserID,
-		PackageID:      packageID,
-		DiscountValue:  req.DiscountValue,
-		DiscountType:   req.DiscountType,
-		CommissionRate: commissionRate,
-		MaxUses:        nil,
-		IsActive:       &[]bool{true}[0],
-		ExpiresAt:      nil,
-	}
+	   discountCode := models.DiscountCode{
+		   ID:             uuid.New(),
+		   Code:           code,
+		   AdvertiserID:   advertiserID,
+		   PackageID:      packageID,
+		   DiscountValue:  req.DiscountValue,
+		   DiscountType:   req.DiscountType,
+		   MaxUses:        nil,
+		   IsActive:       &[]bool{true}[0],
+		   ExpiresAt:      nil,
+	   }
 
 	if err := dc.DB.Create(&discountCode).Error; err != nil {
 		fmt.Printf("Error creating advertiser discount code: %v\n", err)
@@ -302,41 +295,40 @@ func (dc *DiscountCodeController) ValidateDiscountCode(c *gin.Context) {
 		return
 	}
 
-	var discountCode models.DiscountCode
-	if err := dc.DB.Where("code = ?", req.Code).First(&discountCode).Error; err == nil {
-		if !discountCode.IsValidForUse() {
-			c.JSON(400, gin.H{"error": "Discount code is inactive"})
+		var discountCode models.DiscountCode
+		if err := dc.DB.Where("code = ?", req.Code).First(&discountCode).Error; err == nil {
+			if !discountCode.IsValidForUse() {
+				c.JSON(400, gin.H{"error": "Discount code is inactive"})
+				return
+			}
+
+			if req.PackageID != nil {
+				packageID, err := uuid.Parse(*req.PackageID)
+				if err != nil {
+					c.JSON(400, gin.H{"error": "Invalid package ID"})
+					return
+				}
+
+				var count int64
+				dc.DB.Table("package_advertisers").
+					Where("travel_package_id = ? AND advertiser_id = ?", packageID, discountCode.AdvertiserID).
+					Count(&count)
+				if count == 0 {
+					c.JSON(400, gin.H{"error": "This advertiser code is not valid for this package"})
+					return
+				}
+			}
+
+			c.JSON(200, gin.H{
+				"valid":          true,
+				"type":           "advertiser",
+				"discount_value": discountCode.DiscountValue,
+				"discount_type":  discountCode.DiscountType,
+				"discount_code_id": discountCode.ID,
+				"advertiser_id":  discountCode.AdvertiserID,
+			})
 			return
 		}
-
-		if req.PackageID != nil {
-			packageID, err := uuid.Parse(*req.PackageID)
-			if err != nil {
-				c.JSON(400, gin.H{"error": "Invalid package ID"})
-				return
-			}
-
-			var count int64
-			dc.DB.Table("package_advertisers").
-				Where("travel_package_id = ? AND advertiser_id = ?", packageID, discountCode.AdvertiserID).
-				Count(&count)
-			
-			if count == 0 {
-				c.JSON(400, gin.H{"error": "This advertiser code is not valid for this package"})
-				return
-			}
-		}
-
-		c.JSON(200, gin.H{
-			"valid":          true,
-			"type":           "advertiser",
-			"discount_value": discountCode.DiscountValue,
-			"discount_type":  discountCode.DiscountType,
-			"discount_code_id": discountCode.ID,
-			"advertiser_id":  discountCode.AdvertiserID,
-		})
-		return
-	}
 
 	var globalCode models.GlobalDiscountCode
 	if err := dc.DB.Where("code = ?", req.Code).First(&globalCode).Error; err == nil {
@@ -440,23 +432,14 @@ func (dc *DiscountCodeController) UseDiscountCode(c *gin.Context) {
 }
 
 func (dc *DiscountCodeController) CreateCommission(tx *gorm.DB, advertiserID uuid.UUID, bookingID uuid.UUID, finalAmount float64, discountCodeID *string) {
-	var discountCode models.DiscountCode
-	commissionRate := 5.0
-	
-	if discountCodeID != nil {
-		if err := tx.Where("id = ?", *discountCodeID).First(&discountCode).Error; err == nil {
-			commissionRate = discountCode.CommissionRate
-		}
-	}
-	
-	commissionAmount := finalAmount * (commissionRate / 100)
-	
+	// commissionRate and commissionAmount should be calculated in booking_controller.go, not here
+	// This function should only create commission record with provided values
 	commission := models.Commission{
 		ID:                   uuid.New(),
 		BookingID:            bookingID,
 		AdvertiserID:         advertiserID,
-		CommissionAmount:     commissionAmount,
-		CommissionPercentage: commissionRate,
+		CommissionAmount:     finalAmount, // Pass calculated commissionAmount here
+		CommissionPercentage: 0, // Pass calculated commissionRate here if needed
 		Status:               "pending",
 	}
 	
@@ -514,20 +497,16 @@ func (dc *DiscountCodeController) GetCommissionsByAdvertiser(c *gin.Context) {
 		if commission.DiscountCodeID == nil {
 			continue
 		}
-		
 		discountCodeIDStr := commission.DiscountCodeID.String()
-		
 		if packageRevenue[discountCodeIDStr] == nil {
 			var discountCode models.DiscountCode
 			if err := dc.DB.Preload("Package").First(&discountCode, *commission.DiscountCodeID).Error; err != nil {
 				continue
 			}
-			
 			var currentUses int64
 			dc.DB.Model(&models.Booking{}).
 				Where("discount_code_id = ? AND payment_status IN (?)", discountCode.ID, []string{"paid", "confirmed", "completed"}).
 				Count(&currentUses)
-			
 			usagePercentage := float64(0)
 			maxUses := 1
 			if discountCode.MaxUses != nil {
@@ -536,7 +515,6 @@ func (dc *DiscountCodeController) GetCommissionsByAdvertiser(c *gin.Context) {
 					usagePercentage = (float64(currentUses) / float64(maxUses)) * 100
 				}
 			}
-			
 			commissionRate := float64(0)
 			if usagePercentage >= 50 && usagePercentage < 75 {
 				commissionRate = 3
@@ -545,13 +523,11 @@ func (dc *DiscountCodeController) GetCommissionsByAdvertiser(c *gin.Context) {
 			} else if usagePercentage >= 100 {
 				commissionRate = 10
 			}
-			
 			packageName := "ไม่พบแพ็กเกจ"
 			packageID := discountCode.PackageID.String()
 			if discountCode.Package.Title != "" {
 				packageName = discountCode.Package.Title
 			}
-			
 			packageRevenue[discountCodeIDStr] = &DiscountCommissionData{
 				PackageID:        packageID,
 				PackageName:      packageName,
@@ -563,16 +539,13 @@ func (dc *DiscountCodeController) GetCommissionsByAdvertiser(c *gin.Context) {
 				CommissionAmount: 0,
 			}
 		}
-		
-		packageRevenue[discountCodeIDStr].CommissionAmount += commission.CommissionAmount
 	}
-	
-	var result []DiscountCommissionData
-	for _, pkg := range packageRevenue {
-		result = append(result, *pkg)
+	// result is a map, convert to slice for response
+	var response []DiscountCommissionData
+	for _, v := range packageRevenue {
+		response = append(response, *v)
 	}
-	
-	c.JSON(200, result)
+	c.JSON(200, response)
 }
 
 func (dc *DiscountCodeController) GetAllAdvertisers(c *gin.Context) {
@@ -581,21 +554,18 @@ func (dc *DiscountCodeController) GetAllAdvertisers(c *gin.Context) {
 		c.JSON(500, gin.H{"error": "Failed to fetch advertisers"})
 		return
 	}
-
 	var result []gin.H
 	for _, advertiser := range advertisers {
 		advertiserName := advertiser.Email
 		if advertiser.DisplayName != "" {
 			advertiserName = advertiser.DisplayName
 		}
-
 		result = append(result, gin.H{
 			"id":           advertiser.ID,
 			"email":        advertiser.Email,
 			"display_name": advertiserName,
 		})
 	}
-
 	c.JSON(200, result)
 }
 
@@ -605,7 +575,6 @@ func (dc *DiscountCodeController) GetAllPackages(c *gin.Context) {
 		c.JSON(500, gin.H{"error": "Failed to fetch packages"})
 		return
 	}
-
 	var result []gin.H
 	for _, pkg := range packages {
 		result = append(result, gin.H{
@@ -615,7 +584,6 @@ func (dc *DiscountCodeController) GetAllPackages(c *gin.Context) {
 			"price":    pkg.Price,
 		})
 	}
-
 	c.JSON(200, result)
 }
 

@@ -97,7 +97,7 @@ const Navbar = () => {
                     className="text-foreground hover:text-primary flex items-center gap-2"
                   >
                     <User className="h-4 w-4" />
-                    <span>{user.email}</span>
+                    <span>{user.name}</span>
                     <ChevronDown className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>

@@ -34,12 +34,14 @@ const PackageDetails = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
   const [packageData, setPackageData] = useState(null);
+  const [inclusions, setInclusions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [guestCount, setGuestCount] = useState(1);
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [contactEmail, setContactEmail] = useState("");
+  const [contactAddress, setContactAddress] = useState("");
   const [specialRequests, setSpecialRequests] = useState("");
   const [useProfileData, setUseProfileData] = useState(false);
 
@@ -135,11 +137,13 @@ const PackageDetails = () => {
       setContactName(user.display_name || user.name || "");
       setContactPhone(user.phone || "");
       setContactEmail(user.email || "");
+      setContactAddress(user.address || "");
     } else if (!useProfileData) {
-      if (contactName || contactPhone || contactEmail) {
+      if (contactName || contactPhone || contactEmail || contactAddress) {
         setContactName("");
         setContactPhone("");
         setContactEmail("");
+        setContactAddress("");
       }
     }
   }, [useProfileData, user]);
@@ -163,6 +167,12 @@ const PackageDetails = () => {
           originalPrice: originalPrice,
           finalPrice: discountedPrice,
         });
+
+        // Fetch inclusions
+        fetch(`${API_BASE_URL}/api/packages/${id}/inclusions`)
+          .then((res) => res.json())
+          .then((data) => setInclusions(data || []))
+          .catch((err) => console.error("Error fetching inclusions:", err));
       } catch (error) {
         console.error("Error fetching package:", error);
         setPackageData(null);
@@ -491,19 +501,18 @@ const PackageDetails = () => {
                   สิ่งที่รวมอยู่ในแพคเกจ
                 </h2>
                 <div className="grid md:grid-cols-2 gap-3">
-                  {[
-                    t("details.accommodation"),
-                    t("details.meals"),
-                    t("details.transport"),
-                    t("details.guide"),
-                    t("details.insurance"),
-                    t("details.entrance"),
-                  ].map((item, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">{item}</span>
-                    </div>
-                  ))}
+                  {inclusions.length > 0 ? (
+                    inclusions.map((item) => (
+                      <div key={item.id} className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-green-600" />
+                        <span className="text-sm">{item.name}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground col-span-2">
+                      ไม่มีข้อมูลสิ่งที่รวมในแพคเกจ
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -584,6 +593,18 @@ const PackageDetails = () => {
                       onChange={(e) => setContactEmail(e.target.value)}
                       placeholder={t("details.email")}
                       required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="contactAddress">ที่อยู่</Label>
+                    <Textarea
+                      id="contactAddress"
+                      value={contactAddress}
+                      onChange={(e) => setContactAddress(e.target.value)}
+                      placeholder="ที่อยู่สำหรับติดต่อ"
+                      className="resize-none"
+                      rows={2}
                     />
                   </div>
 

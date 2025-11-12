@@ -229,11 +229,40 @@ func ConfirmPaymentHandler(c *gin.Context, db *gorm.DB) {
 
 	go SendNewBookingNotificationToAdvertiser(booking, pkg, db)
 
+	// Commission calculation: commissionAmount = finalAmount * (commissionRate / 100)
+	// Only send commission notification to advertiser, not admin
 	if booking.DiscountCodeID != nil {
 		var discountCode models.DiscountCode
-		if err := db.First(&discountCode, *booking.DiscountCodeID).Error; err == nil {
-			go CreateCommission(booking.ID, discountCode.AdvertiserID, *booking.DiscountCodeID, 
-							   booking.FinalAmount, discountCode.CommissionRate, db)
+		if err := db.Preload("Package").First(&discountCode, *booking.DiscountCodeID).Error; err == nil {
+			var advertiserProfile models.Profile
+			if err := db.First(&advertiserProfile, "id = ?", discountCode.AdvertiserID).Error; err == nil {
+				if advertiserProfile.UserRole == "advertiser" {
+					// Calculate usage percentage
+					var currentUses int64
+					var maxGuests int64 = 1
+					db.Model(&models.Booking{}).
+						Where("discount_code_id = ? AND payment_status IN (?)", discountCode.ID, []string{"paid", "confirmed", "completed"}).
+						Count(&currentUses)
+					if discountCode.MaxUses != nil && *discountCode.MaxUses > 0 {
+						maxGuests = int64(*discountCode.MaxUses)
+					} else if discountCode.Package.MaxGuests > 0 {
+						maxGuests = int64(discountCode.Package.MaxGuests)
+					}
+					usagePercentage := float64(currentUses) / float64(maxGuests) * 100
+					commissionRate := 0.0
+					if usagePercentage > 50 && usagePercentage < 75 {
+						commissionRate = 3.0
+					} else if usagePercentage >= 75 && usagePercentage < 100 {
+						commissionRate = 5.0
+					} else if usagePercentage >= 100 {
+						commissionRate = 10.0
+					}
+					if commissionRate > 0 {
+						go CreateCommission(booking.ID, discountCode.AdvertiserID, *booking.DiscountCodeID, 
+										   booking.FinalAmount, commissionRate, db)
+					}
+				}
+			}
 		}
 	}
 

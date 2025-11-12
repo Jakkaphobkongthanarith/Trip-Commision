@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Navigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
+import { InclusionSelector } from "@/components/InclusionSelector";
 import {
   Select,
   SelectContent,
@@ -115,6 +116,7 @@ export default function PackageManagement() {
     image_url: "",
     advertiser_ids: [] as string[],
     tags: [] as string[],
+    inclusion_ids: [] as string[],
     available_from: "",
     available_to: "",
     max_guests: "10",
@@ -315,6 +317,12 @@ export default function PackageManagement() {
           editingPackage.advertisers?.map((a) => a.id) || []
         );
 
+        // Update inclusions
+        await updatePackageInclusions(
+          editingPackage.id,
+          formData.inclusion_ids
+        );
+
         toast({
           title: "สำเร็จ",
           description: "อัปเดตแพคเกจเรียบร้อยแล้ว",
@@ -339,6 +347,11 @@ export default function PackageManagement() {
             formData.advertiser_ids,
             []
           );
+        }
+
+        // Update inclusions for new package
+        if (newPackage && formData.inclusion_ids.length > 0) {
+          await updatePackageInclusions(newPackage.id, formData.inclusion_ids);
         }
 
         toast({
@@ -395,6 +408,35 @@ export default function PackageManagement() {
       toast({
         title: "เกิดข้อผิดพลาด",
         description: "ไม่สามารถอัปเดตข้อมูลผู้โฆษณาได้",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updatePackageInclusions = async (
+    packageId: string,
+    inclusionIds: string[]
+  ) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/packages/${packageId}/inclusions`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ inclusion_ids: inclusionIds }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to update package inclusions");
+      }
+    } catch (error) {
+      console.error("Error updating package inclusions:", error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถอัปเดตสิ่งที่รวมในแพคเกจได้",
         variant: "destructive",
       });
     }
@@ -594,20 +636,45 @@ export default function PackageManagement() {
 
   const handleEdit = (pkg: Package) => {
     setEditingPackage(pkg);
-    setFormData({
-      title: pkg.title,
-      location: pkg.location,
-      price: pkg.price.toString(),
-      duration: pkg.duration.toString(),
-      description: pkg.description || "",
-      image_url: pkg.image_url || "",
-      advertiser_ids: pkg.advertisers?.map((a) => a.id) || [],
-      tags: normalizeTags(pkg.tags),
-      available_from: pkg.available_from || "",
-      available_to: pkg.available_to || "",
-      max_guests: pkg.max_guests.toString(),
-      discount_percentage: pkg.discount_percentage.toString(),
-    });
+
+    // Fetch inclusions สำหรับแพคเกจนี้
+    fetch(`${API_BASE_URL}/api/packages/${pkg.id}/inclusions`)
+      .then((res) => res.json())
+      .then((inclusions) => {
+        setFormData({
+          title: pkg.title,
+          location: pkg.location,
+          price: pkg.price.toString(),
+          duration: pkg.duration.toString(),
+          description: pkg.description || "",
+          image_url: pkg.image_url || "",
+          advertiser_ids: pkg.advertisers?.map((a) => a.id) || [],
+          tags: normalizeTags(pkg.tags),
+          inclusion_ids: inclusions?.map((i: any) => i.id) || [],
+          available_from: pkg.available_from || "",
+          available_to: pkg.available_to || "",
+          max_guests: pkg.max_guests.toString(),
+          discount_percentage: pkg.discount_percentage.toString(),
+        });
+      })
+      .catch(() => {
+        setFormData({
+          title: pkg.title,
+          location: pkg.location,
+          price: pkg.price.toString(),
+          duration: pkg.duration.toString(),
+          description: pkg.description || "",
+          image_url: pkg.image_url || "",
+          advertiser_ids: pkg.advertisers?.map((a) => a.id) || [],
+          tags: normalizeTags(pkg.tags),
+          inclusion_ids: [],
+          available_from: pkg.available_from || "",
+          available_to: pkg.available_to || "",
+          max_guests: pkg.max_guests.toString(),
+          discount_percentage: pkg.discount_percentage.toString(),
+        });
+      });
+
     setIsDialogOpen(true);
   };
 
@@ -690,6 +757,7 @@ export default function PackageManagement() {
       image_url: "",
       advertiser_ids: [],
       tags: [],
+      inclusion_ids: [],
       available_from: "",
       available_to: "",
       max_guests: "10",
@@ -1162,6 +1230,14 @@ export default function PackageManagement() {
                   </div>
                 </div>
               </div>
+
+              {/* Inclusions Section */}
+              <InclusionSelector
+                selectedIds={formData.inclusion_ids}
+                onChange={(ids) =>
+                  setFormData({ ...formData, inclusion_ids: ids })
+                }
+              />
 
               <div className="flex justify-end space-x-2">
                 <Button

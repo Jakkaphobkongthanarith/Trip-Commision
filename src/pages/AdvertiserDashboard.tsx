@@ -1,3 +1,6 @@
+// ...existing imports...
+
+// Place this inside the AdvertiserDashboard component, after all hooks and functions are defined
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -157,7 +160,7 @@ const AdvertiserDashboard = () => {
   const navigate = useNavigate();
   const [userRole, setUserRole] = useState<string>("");
   const [commissions, setCommissions] = useState<Commission[]>([]);
-  const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>([]);
+  const [upcomingTrips, setUpcomingTrips] = useState<any[]>([]);
   const [discountCodes, setDiscountCodes] = useState<DiscountCode[]>([]);
   const [discountCommissions, setDiscountCommissions] = useState<
     DiscountCommission[]
@@ -181,6 +184,7 @@ const AdvertiserDashboard = () => {
 
   useEffect(() => {
     let isCancelled = false;
+    console.log("userr ->", user);
     const run = async () => {
       if (!user) return;
       setLoading(true);
@@ -209,6 +213,15 @@ const AdvertiserDashboard = () => {
 
     fetchRoleData();
   }, [user, userRole, discountSelectedMonth, discountSelectedYear]);
+
+  useEffect(() => {
+    if (!user || userRole !== "advertiser") return;
+    setLoading(true);
+    fetchUpcomingTrips().finally(() => setLoading(false));
+  }, [user, userRole]);
+
+  // Prevent fetchUpcomingTrips from being called if userRole is not 'advertiser'
+  // (already handled above, but clarify intent)
 
   const fetchUserRole = async () => {
     if (!user) return;
@@ -426,70 +439,45 @@ const AdvertiserDashboard = () => {
   };
 
   const fetchUpcomingTrips = async () => {
+    if (!user || userRole !== "advertiser") {
+      setUpcomingTrips([]);
+      return;
+    }
     try {
-      const data = await apiRequest(`/api/bookings`);
-
-      const bookingsArray = Array.isArray(data) ? data : data?.bookings || [];
-
-      if (!Array.isArray(bookingsArray) || bookingsArray.length === 0) {
-        console.log("No upcoming trips data or invalid format:", data);
-        setUpcomingTrips([]);
-        return;
-      }
-
-      const packagesData = await apiRequest(`/api/packages`);
+      // Fetch packages for the current advertiser
+      const packagesData = await apiRequest(
+        `/api/advertiser/${user.id}/packages`
+      );
       const packagesArray = Array.isArray(packagesData)
         ? packagesData
         : packagesData?.packages || [];
 
-      const packageMap = new Map();
-      packagesArray.forEach((pkg: any) => {
-        packageMap.set(pkg.id, {
-          title: pkg.title || t("common.packageTitle"),
-          location: pkg.location || t("common.packageLocation"),
-        });
+      // Filter packages with available_from within next 14 days
+      const now = new Date();
+      const in14Days = new Date(now);
+      in14Days.setDate(now.getDate() + 14);
+
+      const upcomingPackages = packagesArray.filter((pkg: any) => {
+        if (!pkg.available_from) return false;
+        const availableFrom = new Date(pkg.available_from);
+        return availableFrom >= now && availableFrom <= in14Days;
       });
 
-      const processedTrips = bookingsArray.map((trip: any) => {
-        const packageInfo = packageMap.get(trip.package_id);
-        return {
-          ...trip,
-          travel_packages: packageInfo || {
-            title: `แพคเกจ ID: ${trip.package_id?.substring(0, 8)}...`,
-            location: t("common.noPackageData"),
-          },
-          profiles: {
-            display_name: t("common.booker"),
-          },
-        };
-      });
-
-      setUpcomingTrips(processedTrips);
+      setUpcomingTrips(upcomingPackages);
     } catch (error) {
       console.error("Error fetching upcoming trips:", error);
       setUpcomingTrips([]);
     }
   };
 
-  const groupedPackages = upcomingTrips.reduce((acc: any, trip) => {
-    const packageTitle =
-      trip.travel_packages?.title || t("common.notSpecified");
-    const packageLocation =
-      trip.travel_packages?.location || t("common.notSpecified");
-
-    if (!acc[packageTitle]) {
-      acc[packageTitle] = {
-        title: packageTitle,
-        location: packageLocation,
-        package_id: trip.package_id,
-        bookings: [],
-      };
-    }
-    acc[packageTitle].bookings.push(trip);
-    return acc;
-  }, {});
-
-  const packageList = Object.values(groupedPackages);
+  // For advertiser, upcomingTrips is now a list of packages
+  const packageList = upcomingTrips.map((pkg: any) => ({
+    title: pkg.title || t("common.notSpecified"),
+    location: pkg.location || t("common.notSpecified"),
+    package_id: pkg.id,
+    available_from: pkg.available_from,
+    // bookings: [] // Not used for upcoming trips count
+  }));
 
   const handlePackageClick = async (packageInfo: any) => {
     try {
@@ -604,7 +592,26 @@ const AdvertiserDashboard = () => {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{upcomingTrips.length}</div>
+              <div className="text-2xl font-bold">
+                {userRole === "advertiser"
+                  ? packageList.length
+                  : upcomingTrips.length}
+              </div>
+              {userRole === "advertiser" && packageList.length > 0 && (
+                <div className="mt-2 text-xs text-muted-foreground">
+                  {packageList.map((pkg) => (
+                    <div key={pkg.package_id}>
+                      {pkg.title} ({t("common.availableFrom")}:{" "}
+                      {pkg.available_from
+                        ? new Date(pkg.available_from).toLocaleDateString(
+                            "th-TH"
+                          )
+                        : t("common.notSpecified")}
+                      )
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -648,24 +655,26 @@ const AdvertiserDashboard = () => {
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary">
-                          {
-                            packageInfo.bookings.filter(
-                              (booking: any) => booking.status === "confirmed"
-                            ).length
-                          }{" "}
+                          {Array.isArray(packageInfo.bookings)
+                            ? packageInfo.bookings.filter(
+                                (booking: any) => booking.status === "confirmed"
+                              ).length
+                            : 0}
                           {t("dashboard.bookings")}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {packageInfo.bookings
-                          .filter(
-                            (booking: any) => booking.status === "confirmed"
-                          )
-                          .reduce(
-                            (total: number, booking: any) =>
-                              total + booking.guest_count,
-                            0
-                          )}{" "}
+                        {Array.isArray(packageInfo.bookings)
+                          ? packageInfo.bookings
+                              .filter(
+                                (booking: any) => booking.status === "confirmed"
+                              )
+                              .reduce(
+                                (total: number, booking: any) =>
+                                  total + booking.guest_count,
+                                0
+                              )
+                          : 0}{" "}
                         {t("dashboard.people")}
                       </TableCell>
                       <TableCell>
@@ -933,7 +942,9 @@ const AdvertiserDashboard = () => {
                         <TableHead>{t("discountCodes.package")}</TableHead>
                         <TableHead>{t("discountCodes.discount")}</TableHead>
                         <TableHead>{t("discountCodes.usage")}</TableHead>
-                        <TableHead>{t("discountCodes.usagePercent")}</TableHead>
+                        <TableHead>
+                          {t("discountCodes.usagePercentage")}
+                        </TableHead>
                         <TableHead>{t("discountCodes.commission")}</TableHead>
                         <TableHead>{t("bookingModal.status")}</TableHead>
                         <TableHead>{t("discountCodes.expiry")}</TableHead>
@@ -1101,7 +1112,7 @@ const AdvertiserDashboard = () => {
               <CardContent>
                 {discountCommissions.length === 0 ? (
                   <p className="text-muted-foreground text-center py-4">
-                    {t("commission.noCommissionThisMonth")}
+                    {t("commission.noCommissionData")}
                   </p>
                 ) : (
                   <>

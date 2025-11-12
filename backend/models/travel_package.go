@@ -29,9 +29,10 @@ type TravelPackage struct {
 	
 	AdvertiserNames  string  `json:"advertiser_names" gorm:"-"`
 	
-	Advertisers []Profile `json:"advertisers,omitempty" gorm:"-"`
-	Advertiser  *Profile  `json:"advertiser,omitempty" gorm:"-"`
-	Bookings    []Booking `json:"bookings,omitempty" gorm:"foreignKey:PackageID"`
+	Advertisers []Profile       `json:"advertisers,omitempty" gorm:"-"`
+	Advertiser  *Profile        `json:"advertiser,omitempty" gorm:"-"`
+	Bookings    []Booking       `json:"bookings,omitempty" gorm:"foreignKey:PackageID"`
+	Inclusions  []InclusionType `json:"inclusions,omitempty" gorm:"many2many:package_inclusions;"`
 }
 
 type PackageAdvertiser struct {

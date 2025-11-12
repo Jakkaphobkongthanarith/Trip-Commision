@@ -15,7 +15,6 @@ type DiscountCode struct {
 	PackageID    uuid.UUID  `json:"package_id" gorm:"type:uuid;not null"`
 	DiscountValue float64 `json:"discount_value" gorm:"type:numeric(10,2);not null"`
 	DiscountType  string  `json:"discount_type" gorm:"type:text;not null;default:percentage"`
-	CommissionRate float64   `json:"commission_rate" gorm:"type:numeric(5,2);default:5.00"`
 	MaxUses        *int      `json:"max_uses" gorm:"type:integer"`
 	CurrentUses    int       `json:"current_uses" gorm:"type:integer;default:0"`
 	IsActive       *bool     `json:"is_active" gorm:"type:boolean;default:true"`
