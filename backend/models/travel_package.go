@@ -29,8 +29,8 @@ type TravelPackage struct {
 	
 	AdvertiserNames  string  `json:"advertiser_names" gorm:"-"`
 	
-	Advertisers []User    `json:"advertisers,omitempty" gorm:"-"`
-	Advertiser  *User     `json:"advertiser,omitempty" gorm:"-"`
+	Advertisers []Profile `json:"advertisers,omitempty" gorm:"-"`
+	Advertiser  *Profile  `json:"advertiser,omitempty" gorm:"-"`
 	Bookings    []Booking `json:"bookings,omitempty" gorm:"foreignKey:PackageID"`
 }
 

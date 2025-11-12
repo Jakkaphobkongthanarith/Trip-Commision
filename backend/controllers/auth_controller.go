@@ -1,32 +1,61 @@
 package controllers
 
 import (
-	"bytes"
-	"encoding/json"
-	"io"
 	"net/http"
 	"os"
+	"time"
 	"trip-trader-backend/models"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
+	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
+// JWT Claims structure
+type JWTClaims struct {
+	UserID string `json:"user_id"`
+	Email  string `json:"email"`
+	Role   string `json:"role"`
+	jwt.RegisteredClaims
+}
+
+// Generate JWT token
+func generateToken(userID, email, role string) (string, error) {
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "default-secret-key-please-change-in-production"
+	}
+
+	claims := JWTClaims{
+		UserID: userID,
+		Email:  email,
+		Role:   role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)), // 24 hours
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(jwtSecret))
+}
+
 func SignupHandler(c *gin.Context) {
 	var req struct {
-		Email       string `json:"email"`
-		Password    string `json:"password"`
+		Email       string `json:"email" binding:"required"`
+		Password    string `json:"password" binding:"required"`
 		DisplayName string `json:"display_name"`
-		Role        string `json:"role"` 
+		Role        string `json:"role"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request", "details": err.Error()})
 		return
 	}
 
+	// Set default role
 	if req.Role == "" {
-		req.Role = models.RoleCustomer 
+		req.Role = models.RoleCustomer
 	}
 	if !models.IsValidRole(req.Role) {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -36,145 +65,120 @@ func SignupHandler(c *gin.Context) {
 		return
 	}
 
-	supabaseUrl := os.Getenv("SUPABASE_URL")
-	supabaseKey := os.Getenv("SUPABASE_SERVICE_ROLE_KEY")
-	if supabaseUrl == "" || supabaseKey == "" {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Supabase env not set"})
+	db := c.MustGet("db").(*gorm.DB)
+
+	// Check if email already exists
+	var existingProfile models.Profile
+	if err := db.Where("email = ?", req.Email).First(&existingProfile).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "email already exists"})
 		return
 	}
 
-	payload := map[string]interface{}{
-		"email":    req.Email,
-		"password": req.Password,
-		"data": map[string]interface{}{
-			"display_name": req.DisplayName,
-			"role":         req.Role,
-		},
-	}
-	body, _ := json.Marshal(payload)
-
-	supaReq, _ := http.NewRequest("POST", supabaseUrl+"/auth/v1/signup", bytes.NewBuffer(body))
-	supaReq.Header.Set("apikey", supabaseKey)
-	supaReq.Header.Set("Content-Type", "application/json")
-
-	resp, err := http.DefaultClient.Do(supaReq)
+	// Hash password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "cannot reach Supabase"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to hash password"})
 		return
 	}
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(resp.Body)
 
-	if resp.StatusCode == http.StatusOK {
-		var supabaseResp map[string]interface{}
-		if err := json.Unmarshal(respBody, &supabaseResp); err == nil {
-			if user, ok := supabaseResp["user"].(map[string]interface{}); ok {
-				if userIdStr, ok := user["id"].(string); ok {
-					userID, err := uuid.Parse(userIdStr)
-					if err == nil {
-						db := c.MustGet("db").(*gorm.DB)
-						createUserRole(userID, req.Role, db)
-					}
-				}
-			}
-		}
+	// Create profile
+	profile := models.Profile{
+		Email:       req.Email,
+		Password:    string(hashedPassword),
+		DisplayName: req.DisplayName,
+		UserRole:    req.Role,
 	}
 
-	c.Data(resp.StatusCode, "application/json", respBody)
-}
-
-func createUserRole(userID uuid.UUID, role string, db *gorm.DB) error {
-	userRole := models.UserRole{
-		UserID: userID,
-		Role:   role,
+	if err := db.Create(&profile).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create user", "details": err.Error()})
+		return
 	}
-	return db.Create(&userRole).Error
+
+	// Generate JWT token
+	token, err := generateToken(profile.ID.String(), profile.Email, profile.UserRole)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
+		return
+	}
+
+	// Return user data with token
+	c.JSON(http.StatusOK, gin.H{
+		"message":      "user created successfully",
+		"access_token": token,
+		"token":        token, // For backward compatibility
+		"user": gin.H{
+			"id":           profile.ID,
+			"email":        profile.Email,
+			"display_name": profile.DisplayName,
+			"role":         profile.UserRole,
+			"created_at":   profile.CreatedAt,
+		},
+	})
 }
 
 func LoginHandler(c *gin.Context) {
 	var req struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Email    string `json:"email" binding:"required"`
+		Password string `json:"password" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request", "details": err.Error()})
 		return
 	}
 
-	supabaseUrl := os.Getenv("SUPABASE_URL")
-	supabaseKey := os.Getenv("SUPABASE_SERVICE_ROLE_KEY")
-	if supabaseUrl == "" || supabaseKey == "" {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Supabase env not set"})
-		return
-	}
+	db := c.MustGet("db").(*gorm.DB)
 
-	payload := map[string]interface{}{
-		"email":    req.Email,
-		"password": req.Password,
-	}
-	body, _ := json.Marshal(payload)
-
-	supaReq, _ := http.NewRequest("POST", supabaseUrl+"/auth/v1/token?grant_type=password", bytes.NewBuffer(body))
-	supaReq.Header.Set("apikey", supabaseKey)
-	supaReq.Header.Set("Content-Type", "application/json")
-
-	resp, err := http.DefaultClient.Do(supaReq)
-	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "cannot reach Supabase"})
-		return
-	}
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(resp.Body)
-
-	if resp.StatusCode == http.StatusOK {
-		var loginResp map[string]interface{}
-		if err := json.Unmarshal(respBody, &loginResp); err == nil {
-			if user, ok := loginResp["user"].(map[string]interface{}); ok {
-				if userIdStr, ok := user["id"].(string); ok {
-					userID, err := uuid.Parse(userIdStr)
-					if err == nil {
-						db := c.MustGet("db").(*gorm.DB)
-						var userRole models.UserRole
-						if err := db.Where("user_id = ?", userID).First(&userRole).Error; err == nil {
-							loginResp["role"] = userRole.Role
-							respBody, _ = json.Marshal(loginResp)
-						}
-					}
-				}
-			}
+	// Find user by email
+	var profile models.Profile
+	if err := db.Where("email = ?", req.Email).First(&profile).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
+			return
 		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
 	}
 
-	c.Data(resp.StatusCode, "application/json", respBody)
+	// Verify password
+	if err := bcrypt.CompareHashAndPassword([]byte(profile.Password), []byte(req.Password)); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
+		return
+	}
+
+	// Generate JWT token
+	token, err := generateToken(profile.ID.String(), profile.Email, profile.UserRole)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
+		return
+	}
+
+	// Return user data with token
+	c.JSON(http.StatusOK, gin.H{
+		"message":      "login successful",
+		"access_token": token,
+		"token":        token, // For backward compatibility
+		"user": gin.H{
+			"id":           profile.ID,
+			"email":        profile.Email,
+			"display_name": profile.DisplayName,
+			"phone":        profile.Phone,
+			"address":      profile.Address,
+			"role":         profile.UserRole,
+			"display_id":   profile.DisplayID,
+		},
+	})
 }
 
 func LogoutHandler(c *gin.Context) {
-	var req struct {
-		AccessToken string `json:"access_token"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
-		return
-	}
-
-	if req.AccessToken != "" {
-		c.JSON(http.StatusOK, gin.H{
-			"message":        "logged out successfully",
-			"token_received": true,
-		})
-	} else {
-		c.JSON(http.StatusOK, gin.H{
-			"message":        "logged out successfully",
-			"token_received": false,
-		})
-	}
-
+	// Since we're not using JWT tokens anymore, logout is client-side only
+	c.JSON(http.StatusOK, gin.H{
+		"message": "logged out successfully",
+	})
 }
 
 func GetCurrentUserRoleHandler(c *gin.Context, db *gorm.DB) {
 	c.JSON(http.StatusNotImplemented, gin.H{
 		"message": "This endpoint is deprecated. Use session storage from login response instead.",
-		"note": "Please store user role from login API response in session storage and use it instead of calling this endpoint.",
+		"note":    "Please store user role from login API response in session storage and use it instead of calling this endpoint.",
 	})
 }

@@ -113,7 +113,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, hub *utils.Hub) {
 	r.POST("/api/logout", LogoutHandler)
 
 	r.GET("/meow", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"data": "abc"})
+		c.JSON(http.StatusOK, gin.H{"data": "a"})
 	})
 
 	r.GET("/ping", func(c *gin.Context) {

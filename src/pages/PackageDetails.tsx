@@ -400,15 +400,7 @@ const PackageDetails = () => {
                     <Clock className="h-4 w-4" />
                     <span>{packageData.duration} วัน</span>
                   </div>
-                  {packageData.available_from && packageData.available_to && (
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4 text-primary" />
-                      <span className="font-medium text-primary">
-                        {format(new Date(packageData.available_from), "dd MMM")} -{" "}
-                        {format(new Date(packageData.available_to), "dd MMM yyyy")}
-                      </span>
-                    </div>
-                  )}
+
                   <div className="flex items-center gap-1">
                     <Users className="h-4 w-4" />
                     <span>เหลือที่ว่าง {availableSpots} ท่าน</span>
@@ -420,19 +412,33 @@ const PackageDetails = () => {
                 <div className="mt-4 p-4 bg-primary/10 border border-primary/20 rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
                     <Calendar className="h-5 w-5 text-primary" />
-                    <h3 className="font-semibold text-primary">ช่วงเวลาที่เปิดให้บริการ</h3>
+                    <h3 className="font-semibold text-primary">
+                      ช่วงเวลาของทริป
+                    </h3>
                   </div>
                   <div className="grid md:grid-cols-2 gap-3 text-sm">
                     <div>
-                      <span className="text-muted-foreground">วันที่เริ่ม:</span>
+                      <span className="text-muted-foreground">
+                        วันที่เริ่ม:
+                      </span>
                       <span className="ml-2 font-medium">
-                        {format(new Date(packageData.available_from), "dd MMMM yyyy", { locale: th })}
+                        {format(
+                          new Date(packageData.available_from),
+                          "dd MMMM yyyy",
+                          { locale: th }
+                        )}
                       </span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground">วันที่สิ้นสุด:</span>
+                      <span className="text-muted-foreground">
+                        วันที่สิ้นสุด:
+                      </span>
                       <span className="ml-2 font-medium">
-                        {format(new Date(packageData.available_to), "dd MMMM yyyy", { locale: th })}
+                        {format(
+                          new Date(packageData.available_to),
+                          "dd MMMM yyyy",
+                          { locale: th }
+                        )}
                       </span>
                     </div>
                   </div>
@@ -754,7 +760,7 @@ const PackageDetails = () => {
                     ? t("packageDetails.processing")
                     : availableSpots === 0
                     ? t("packageDetails.fullyBooked")
-                    : t("packageDetails.bookNowTest")}
+                    : t("details.bookNow")}
                 </Button>
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">

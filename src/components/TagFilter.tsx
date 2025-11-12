@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, memo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,90 @@ interface TagFilterProps {
   onCollapseChange?: (collapsed: boolean) => void;
   selectedTags?: string[];
 }
+
+// แยก FilterContent ออกมาเป็น component แยก
+const FilterContent = memo(
+  ({
+    t,
+    searchQuery,
+    onSearchChange,
+    selectedTags,
+    onClearAll,
+    onTagClick,
+    packages,
+    filteredTags,
+  }: {
+    t: any;
+    searchQuery: string;
+    onSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    selectedTags: string[];
+    onClearAll: () => void;
+    onTagClick: (tag: string) => void;
+    packages: any[];
+    filteredTags: { tag: string; count: number }[];
+  }) => (
+    <div className="flex flex-col h-full space-y-4">
+      <div className="relative flex-shrink-0">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+        <Input
+          placeholder={t("tags.search")}
+          value={searchQuery}
+          onChange={onSearchChange}
+          className="pl-10"
+        />
+      </div>
+
+      <div className="flex items-center justify-between flex-shrink-0">
+        <span className="text-sm font-medium">{t("tags.title")}</span>
+        {selectedTags.length > 0 && (
+          <Button variant="ghost" size="sm" onClick={onClearAll}>
+            <X className="h-4 w-4 mr-1" />
+            {t("tags.clear")}
+          </Button>
+        )}
+      </div>
+
+      <ScrollArea className="flex-1">
+        <div className="space-y-2">
+          <Button
+            variant={selectedTags.length === 0 ? "secondary" : "ghost"}
+            className="w-full justify-start"
+            onClick={() => onTagClick("")}
+          >
+            <TagIcon className="h-4 w-4 mr-2" />
+            {t("tags.all")}
+            <Badge variant="outline" className="ml-auto">
+              {packages.length}
+            </Badge>
+          </Button>
+
+          {filteredTags.length > 0 ? (
+            filteredTags.map(({ tag, count }) => (
+              <Button
+                key={tag}
+                variant={selectedTags.includes(tag) ? "secondary" : "ghost"}
+                className="w-full justify-start"
+                onClick={() => onTagClick(tag)}
+              >
+                <TagIcon className="h-4 w-4 mr-2" />
+                <span className="truncate">{tag}</span>
+                <Badge variant="outline" className="ml-auto">
+                  {count}
+                </Badge>
+              </Button>
+            ))
+          ) : (
+            <div className="text-center py-4 text-muted-foreground">
+              {t("tags.notFound")}
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+    </div>
+  )
+);
+
+FilterContent.displayName = "FilterContent";
 
 export function TagFilter({
   packages,
@@ -69,92 +153,41 @@ export function TagFilter({
     );
   }, [tagCounts, searchQuery]);
 
-  const handleTagClick = (tag: string) => {
-    if (tag === "") {
-      navigate("/packages");
-    } else {
-      const newSearchParams = new URLSearchParams(searchParams);
-
-      const currentTags = newSearchParams.getAll("tag");
-      if (currentTags.includes(tag)) {
-        newSearchParams.delete("tag");
-        currentTags
-          .filter((t) => t !== tag)
-          .forEach((t) => newSearchParams.append("tag", t));
+  const handleTagClick = useCallback(
+    (tag: string) => {
+      if (tag === "") {
+        navigate("/packages");
       } else {
-        newSearchParams.append("tag", tag);
+        const newSearchParams = new URLSearchParams(searchParams);
+
+        const currentTags = newSearchParams.getAll("tag");
+        if (currentTags.includes(tag)) {
+          newSearchParams.delete("tag");
+          currentTags
+            .filter((t) => t !== tag)
+            .forEach((t) => newSearchParams.append("tag", t));
+        } else {
+          newSearchParams.append("tag", tag);
+        }
+
+        navigate(`/packages?${newSearchParams.toString()}`);
       }
+      setOpen(false);
+    },
+    [navigate, searchParams]
+  );
 
-      navigate(`/packages?${newSearchParams.toString()}`);
-    }
-    setOpen(false);
-  };
-
-  const handleClearAll = () => {
+  const handleClearAll = useCallback(() => {
     setSearchQuery("");
     navigate("/packages");
     setOpen(false);
-  };
+  }, [navigate]);
 
-  const FilterContent = () => (
-    <div className="flex flex-col h-full space-y-4">
-      <div className="relative flex-shrink-0">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-        <Input
-          placeholder={t("tags.search")}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10"
-        />
-      </div>
-
-      <div className="flex items-center justify-between flex-shrink-0">
-        <span className="text-sm font-medium">{t("tags.title")}</span>
-        {selectedTags.length > 0 && (
-          <Button variant="ghost" size="sm" onClick={handleClearAll}>
-            <X className="h-4 w-4 mr-1" />
-            {t("tags.clear")}
-          </Button>
-        )}
-      </div>
-
-      <ScrollArea className="flex-1">
-        <div className="space-y-2">
-          <Button
-            variant={selectedTags.length === 0 ? "secondary" : "ghost"}
-            className="w-full justify-start"
-            onClick={() => handleTagClick("")}
-          >
-            <TagIcon className="h-4 w-4 mr-2" />
-            {t("tags.all")}
-            <Badge variant="outline" className="ml-auto">
-              {packages.length}
-            </Badge>
-          </Button>
-
-          {filteredTags.length > 0 ? (
-            filteredTags.map(({ tag, count }) => (
-              <Button
-                key={tag}
-                variant={selectedTags.includes(tag) ? "secondary" : "ghost"}
-                className="w-full justify-start"
-                onClick={() => handleTagClick(tag)}
-              >
-                <TagIcon className="h-4 w-4 mr-2" />
-                <span className="truncate">{tag}</span>
-                <Badge variant="outline" className="ml-auto">
-                  {count}
-                </Badge>
-              </Button>
-            ))
-          ) : (
-            <div className="text-center py-4 text-muted-foreground">
-              {t("tags.notFound")}
-            </div>
-          )}
-        </div>
-      </ScrollArea>
-    </div>
+  const handleSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setSearchQuery(e.target.value);
+    },
+    []
   );
 
   return (
@@ -198,7 +231,16 @@ export function TagFilter({
 
           {!isCollapsed && (
             <CardContent className="flex-1 overflow-hidden">
-              <FilterContent />
+              <FilterContent
+                t={t}
+                searchQuery={searchQuery}
+                onSearchChange={handleSearchChange}
+                selectedTags={selectedTags}
+                onClearAll={handleClearAll}
+                onTagClick={handleTagClick}
+                packages={packages}
+                filteredTags={filteredTags}
+              />
             </CardContent>
           )}
 
@@ -241,13 +283,22 @@ export function TagFilter({
               )}
             </Button>
           </SheetTrigger>
-          <SheetContent side="bottom" className="h-96">
-            <SheetHeader>
+          <SheetContent side="bottom" className="h-[85vh] flex flex-col">
+            <SheetHeader className="flex-shrink-0">
               <SheetTitle>{t("tags.title")}</SheetTitle>
               <SheetDescription>เลือกหมวดหมู่เพื่อกรองแพคเกจ</SheetDescription>
             </SheetHeader>
-            <div className="mt-4">
-              <FilterContent />
+            <div className="mt-4 flex-1 overflow-hidden">
+              <FilterContent
+                t={t}
+                searchQuery={searchQuery}
+                onSearchChange={handleSearchChange}
+                selectedTags={selectedTags}
+                onClearAll={handleClearAll}
+                onTagClick={handleTagClick}
+                packages={packages}
+                filteredTags={filteredTags}
+              />
             </div>
           </SheetContent>
         </Sheet>

@@ -28,23 +28,21 @@ func (dc *DiscountCodeController) GetAllDiscountCodes(c *gin.Context) {
 
 	var result []gin.H
 	for _, code := range discountCodes {
-		advertiserName := ""
-		if code.Advertiser.Profile != nil && code.Advertiser.Profile.DisplayName != "" {
-			advertiserName = code.Advertiser.Profile.DisplayName
-		} else {
-			advertiserName = code.Advertiser.Email
+		advertiserName := code.Advertiser.Email
+		if code.Advertiser.DisplayName != "" {
+			advertiserName = code.Advertiser.DisplayName
 		}
-		
+
 		result = append(result, gin.H{
 			"id":              code.ID,
-			"code":           code.Code,
-			"advertiser_id":  code.AdvertiserID,
+			"code":            code.Code,
+			"advertiser_id":   code.AdvertiserID,
 			"advertiser_name": advertiserName,
-			"discount_value": code.DiscountValue,
-			"discount_type":  code.DiscountType,
+			"discount_value":  code.DiscountValue,
+			"discount_type":   code.DiscountType,
 			"commission_rate": code.CommissionRate,
-			"is_active":      code.IsActive,
-			"created_at":     code.CreatedAt,
+			"is_active":       code.IsActive,
+			"created_at":      code.CreatedAt,
 		})
 	}
 
@@ -136,14 +134,14 @@ func (dc *DiscountCodeController) CreateDiscountCodeForAdvertiser(c *gin.Context
 		return
 	}
 
-	var advertiser models.User
-	if err := dc.DB.Preload("Profile").First(&advertiser, advertiserID).Error; err != nil {
+	// Check if advertiser exists and has advertiser role
+	var advertiser models.Profile
+	if err := dc.DB.Where("id = ?", advertiserID).First(&advertiser).Error; err != nil {
 		c.JSON(404, gin.H{"error": "Advertiser not found"})
 		return
 	}
 
-	var userRole models.UserRole
-	if err := dc.DB.Where("user_id = ? AND role = ?", advertiserID, "advertiser").First(&userRole).Error; err != nil {
+	if advertiser.UserRole != "advertiser" {
 		c.JSON(403, gin.H{"error": "User is not an advertiser"})
 		return
 	}
@@ -155,8 +153,8 @@ func (dc *DiscountCodeController) CreateDiscountCodeForAdvertiser(c *gin.Context
 	}
 
 	advertiserName := advertiser.Email
-	if advertiser.Profile != nil && advertiser.Profile.DisplayName != "" {
-		advertiserName = advertiser.Profile.DisplayName
+	if advertiser.DisplayName != "" {
+		advertiserName = advertiser.DisplayName
 	}
 
 	code := models.GenerateDiscountCode(advertiserName, req.DiscountValue)
@@ -578,11 +576,8 @@ func (dc *DiscountCodeController) GetCommissionsByAdvertiser(c *gin.Context) {
 }
 
 func (dc *DiscountCodeController) GetAllAdvertisers(c *gin.Context) {
-	var advertisers []models.User
-	if err := dc.DB.Joins("JOIN public.user_roles ON auth.users.id = public.user_roles.user_id").
-		Where("public.user_roles.role = ?", "advertiser").
-		Preload("Profile").
-		Find(&advertisers).Error; err != nil {
+	var advertisers []models.Profile
+	if err := dc.DB.Where("user_role = ?", "advertiser").Find(&advertisers).Error; err != nil {
 		c.JSON(500, gin.H{"error": "Failed to fetch advertisers"})
 		return
 	}
@@ -590,10 +585,10 @@ func (dc *DiscountCodeController) GetAllAdvertisers(c *gin.Context) {
 	var result []gin.H
 	for _, advertiser := range advertisers {
 		advertiserName := advertiser.Email
-		if advertiser.Profile != nil && advertiser.Profile.DisplayName != "" {
-			advertiserName = advertiser.Profile.DisplayName
+		if advertiser.DisplayName != "" {
+			advertiserName = advertiser.DisplayName
 		}
-		
+
 		result = append(result, gin.H{
 			"id":           advertiser.ID,
 			"email":        advertiser.Email,

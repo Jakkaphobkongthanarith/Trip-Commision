@@ -128,7 +128,7 @@ func (nc *NotificationController) BroadcastNotification(c *gin.Context) {
 		return
 	}
 
-	var users []models.User
+	var users []models.Profile
 	if err := nc.db.Find(&users).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get users"})
 		return

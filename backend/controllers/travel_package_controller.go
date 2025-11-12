@@ -203,6 +203,12 @@ func UpdatePackageHandler(c *gin.Context, db *gorm.DB) {
 		updateData["discount_percentage"] = discountPercentage
 	}
 	
+	// Handle is_active boolean field
+	if isActive, ok := requestData["is_active"].(bool); ok {
+		updateData["is_active"] = isActive
+		fmt.Printf("Updating is_active to: %v\n", isActive)
+	}
+	
 	if availableFrom, ok := requestData["available_from"].(string); ok {
 		if availableFrom != "" {
 			updateData["available_from"] = availableFrom
@@ -271,10 +277,6 @@ func UpdatePackageHandler(c *gin.Context, db *gorm.DB) {
 					
 					fmt.Printf("Relationship created successfully\n")
 				}
-				
-				if advertiserUUID, err := uuid.Parse(advertiserIds[0]); err == nil {
-					updateData["advertiser_id"] = advertiserUUID
-				}
 			}
 		}
 	}
@@ -286,7 +288,17 @@ func UpdatePackageHandler(c *gin.Context, db *gorm.DB) {
 	}
 	
 	var updatedPkg models.TravelPackage
-	db.Where("id = ?", packageUUID).Preload("Advertiser").Preload("Advertisers").First(&updatedPkg)
+	db.Where("id = ?", packageUUID).First(&updatedPkg)
+	
+	// Load advertisers via many-to-many relationship
+	var advertisers []models.Profile
+	db.Table("package_advertisers").
+		Select("profiles.*").
+		Joins("JOIN profiles ON profiles.id = package_advertisers.advertiser_id").
+		Where("package_advertisers.travel_package_id = ?", packageUUID).
+		Find(&advertisers)
+	updatedPkg.Advertisers = advertisers
+	
 	convertTagsToArray(&updatedPkg)
 	
 	c.JSON(200, updatedPkg)
@@ -383,6 +395,12 @@ func UpdatePackageAdvertisersHandler(c *gin.Context, db *gorm.DB) {
 			c.JSON(400, gin.H{"error": "Invalid advertiser ID format"})
 			return
 		}
+
+		var profile models.Profile
+		if err := db.Where("id = ? AND user_role = ?", advertiserUUID, "advertiser").First(&profile).Error; err != nil {
+			c.JSON(400, gin.H{"error": "Advertiser not found or invalid role"})
+			return
+		}
 		
 		relationship := models.PackageAdvertiser{
 			TravelPackageID: packageUUID,
@@ -390,21 +408,9 @@ func UpdatePackageAdvertisersHandler(c *gin.Context, db *gorm.DB) {
 		}
 		
 		if err := db.Create(&relationship).Error; err != nil {
-			c.JSON(500, gin.H{"error": "Failed to create advertiser relationship"})
+			c.JSON(500, gin.H{"error": "Failed to create advertiser relationship", "details": err.Error()})
 			return
 		}
-	}
-	
-	var primaryAdvertiserID *uuid.UUID
-	if len(updateData.AdvertiserIds) > 0 {
-		if advertiserUUID, err := uuid.Parse(updateData.AdvertiserIds[0]); err == nil {
-			primaryAdvertiserID = &advertiserUUID
-		}
-	}
-	
-	if err := db.Model(&pkg).Update("advertiser_id", primaryAdvertiserID).Error; err != nil {
-		c.JSON(500, gin.H{"error": "Failed to update primary advertiser"})
-		return
 	}
 	
 	c.JSON(200, gin.H{"message": "Package advertisers updated successfully"})

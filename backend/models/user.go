@@ -1,5 +1,8 @@
 package models
 
+// User และ UserRole models ไม่ใช้แล้ว - ย้ายทุกอย่างไป public.profiles
+
+/*
 import (
 	"database/sql/driver"
 	"encoding/json"
@@ -15,7 +18,7 @@ func (j *JSONMap) Scan(value interface{}) error {
 		*j = make(JSONMap)
 		return nil
 	}
-	
+
 	var bytes []byte
 	switch v := value.(type) {
 	case []byte:
@@ -26,12 +29,12 @@ func (j *JSONMap) Scan(value interface{}) error {
 		*j = make(JSONMap)
 		return nil
 	}
-	
+
 	if len(bytes) == 0 {
 		*j = make(JSONMap)
 		return nil
 	}
-	
+
 	return json.Unmarshal(bytes, j)
 }
 
@@ -65,6 +68,16 @@ type UserRole struct {
 	UpdatedAt time.Time `json:"updated_at" gorm:"type:timestamp with time zone;autoUpdateTime"`
 }
 
+func (User) TableName() string {
+	return "auth.users"
+}
+
+func (UserRole) TableName() string {
+	return "public.user_roles"
+}
+*/
+
+// Constants สำหรับ roles - ย้ายไว้ใน models แล้ว ใช้ร่วมกันได้
 const (
 	RoleCustomer   = "customer"
 	RoleAdvertiser = "advertiser"
@@ -82,12 +95,4 @@ func IsValidRole(role string) bool {
 		}
 	}
 	return false
-}
-
-func (User) TableName() string {
-	return "auth.users"
-}
-
-func (UserRole) TableName() string {
-	return "public.user_roles"
 }

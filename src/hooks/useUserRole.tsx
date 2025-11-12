@@ -5,6 +5,7 @@ export const useUserRole = () => {
   const { user, isAuthenticated } = useAuth();
 
   const userRole = user?.role || "";
+  console.log("user", user);
   const loading = false;
 
   return {

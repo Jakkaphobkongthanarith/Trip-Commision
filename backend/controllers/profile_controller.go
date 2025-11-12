@@ -24,14 +24,14 @@ func GetProfileByUserIdHandler(c *gin.Context, db *gorm.DB) {
 	var profile models.Profile
 
 	fmt.Println("=== DEBUG: GetProfileByUserIdHandler ===")
-	fmt.Println("Searching for profile with user_id:", userId)
+	fmt.Println("Searching for profile with id:", userId)
 
-	result := db.Where("user_id = ?", userId).First(&profile)
+	result := db.Where("id = ?", userId).First(&profile)
 	if result.Error != nil {
 		fmt.Println("Error:", result.Error.Error())
 		c.JSON(404, gin.H{
 			"error":     "Profile not found",
-			"user_id":   userId,
+			"id":        userId,
 			"sql_error": result.Error.Error(),
 		})
 		return
@@ -64,15 +64,15 @@ func UpsertProfileHandler(c *gin.Context, db *gorm.DB) {
 	fmt.Println("=== DEBUG: UpsertProfileHandler ===")
 	fmt.Println("User ID:", userId)
 	fmt.Println("Profile Data:", profileData)
-	
+
 	var profile models.Profile
-	
-	result := db.Where("user_id = ?", userUUID).First(&profile)
-	
+
+	result := db.Where("id = ?", userUUID).First(&profile)
+
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
 			profile = models.Profile{
-				UserID: userUUID,
+				ID: userUUID,
 			}
 			fmt.Println("Creating new profile...")
 		} else {

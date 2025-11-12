@@ -6,41 +6,27 @@ import (
 	"trip-trader-backend/models"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
- 
-type UserForQuery struct {
-	ID               string    `json:"id" gorm:"column:id"`
-	Email            string    `json:"email" gorm:"column:email"`
-	Phone            *string   `json:"phone" gorm:"column:phone"`
-	EmailConfirmedAt *time.Time `json:"email_confirmed_at" gorm:"column:email_confirmed_at"`
-	LastSignInAt     *time.Time `json:"last_sign_in_at" gorm:"column:last_sign_in_at"`
-	CreatedAt        time.Time `json:"created_at" gorm:"column:created_at"`
-	UpdatedAt        time.Time `json:"updated_at" gorm:"column:updated_at"`
-	Role             *models.UserRole `json:"role" gorm:"foreignKey:UserID;references:ID"`
-	Profile          *models.Profile  `json:"profile" gorm:"foreignKey:UserID;references:ID"`
-}
- 
-func (UserForQuery) TableName() string {
-	return "auth.users"
-}
- 
+
+// UserResponse represents the user data returned to client
 type UserResponse struct {
-	ID               string         `json:"id"`
-	Email            string         `json:"email"`
-	Phone            *string        `json:"phone"`
-	EmailConfirmedAt *time.Time     `json:"email_confirmed_at"`
-	LastSignInAt     *time.Time     `json:"last_sign_in_at"`
-	CreatedAt        time.Time      `json:"created_at"`
-	UpdatedAt        time.Time      `json:"updated_at"`
-	Role             *models.UserRole `json:"role"`
-	Profile          *models.Profile  `json:"profile"`
+	ID          string    `json:"id"`
+	Email       string    `json:"email"`
+	DisplayName string    `json:"display_name"`
+	Phone       string    `json:"phone"`
+	Address     string    `json:"address"`
+	UserRole    string    `json:"user_role"`
+	DisplayID   int       `json:"display_id"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 func GetAllUsersHandler(c *gin.Context, db *gorm.DB) {
-	var users []UserForQuery
+	var profiles []models.Profile
 
-	err := db.Preload("Role").Preload("Profile").Find(&users).Error
+	err := db.Find(&profiles).Error
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to fetch users",
@@ -49,26 +35,72 @@ func GetAllUsersHandler(c *gin.Context, db *gorm.DB) {
 		return
 	}
 
+	// Convert to response format
 	var userResponses []UserResponse
-	for _, user := range users {
+	for _, profile := range profiles {
 		userResponses = append(userResponses, UserResponse{
-			ID:               user.ID,
-			Email:            user.Email,
-			Phone:            user.Phone,
-			EmailConfirmedAt: user.EmailConfirmedAt,
-			LastSignInAt:     user.LastSignInAt,
-			CreatedAt:        user.CreatedAt,
-			UpdatedAt:        user.UpdatedAt,
-			Role:             user.Role,
-			Profile:          user.Profile,
+			ID:          profile.ID.String(),
+			Email:       profile.Email,
+			DisplayName: profile.DisplayName,
+			Phone:       profile.Phone,
+			Address:     profile.Address,
+			UserRole:    profile.UserRole,
+			DisplayID:   profile.DisplayID,
+			CreatedAt:   profile.CreatedAt,
+			UpdatedAt:   profile.UpdatedAt,
 		})
 	}
 
 	c.JSON(http.StatusOK, userResponses)
 }
- 
+
 func UpdateUserRoleHandler(c *gin.Context, db *gorm.DB) {
-	c.JSON(200, gin.H{"message": "UpdateUserRole - Not implemented yet"})
+	userId := c.Param("userId")
+	
+	var req struct {
+		Role string `json:"role" binding:"required"`
+	}
+	
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request", "details": err.Error()})
+		return
+	}
+	
+	// Validate role
+	if !models.IsValidRole(req.Role) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":       "invalid role",
+			"valid_roles": models.ValidRoles(),
+		})
+		return
+	}
+	
+	userUUID, err := uuid.Parse(userId)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID format"})
+		return
+	}
+
+	// Update user role in profiles table
+	result := db.Model(&models.Profile{}).
+		Where("id = ?", userUUID).
+		Update("user_role", req.Role)
+	
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update role", "details": result.Error.Error()})
+		return
+	}
+	
+	if result.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+	
+	c.JSON(http.StatusOK, gin.H{
+		"message": "role updated successfully",
+		"user_id": userId,
+		"role":    req.Role,
+	})
 }
 
 func GetAllBookingsHandler(c *gin.Context, db *gorm.DB) {
@@ -90,7 +122,6 @@ func GetBookingsByPackageHandler(c *gin.Context, db *gorm.DB) {
 	c.JSON(200, gin.H{"message": "GetBookingsByPackage - Not implemented yet", "data": []interface{}{}})
 }
 
-
 func GetCommissionsHandler(c *gin.Context, db *gorm.DB) {
 	type CommissionResult struct {
 		ID                   string    `gorm:"column:id"`
@@ -104,7 +135,7 @@ func GetCommissionsHandler(c *gin.Context, db *gorm.DB) {
 	}
 
 	var commissions []CommissionResult
-	
+
 	err := db.Table("commissions c").
 		Select(`c.id,
 				c.booking_id,
@@ -117,7 +148,7 @@ func GetCommissionsHandler(c *gin.Context, db *gorm.DB) {
 		Joins("LEFT JOIN bookings b ON c.booking_id = b.id").
 		Order("c.created_at DESC").
 		Find(&commissions).Error
-	
+
 	if err != nil {
 		c.JSON(500, gin.H{
 			"error":   "Failed to fetch commissions",
@@ -125,6 +156,6 @@ func GetCommissionsHandler(c *gin.Context, db *gorm.DB) {
 		})
 		return
 	}
-	
+
 	c.JSON(200, commissions)
 }

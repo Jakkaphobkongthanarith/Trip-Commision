@@ -53,9 +53,11 @@ type RecentPackage struct {
 func (mc *ManagerController) GetDashboardStats(c *gin.Context) {
 	var stats DashboardStats
 
-	mc.DB.Model(&models.UserRole{}).Where("role != ?", "manager").Count(&stats.TotalUsers)
+	// Count all users except managers
+	mc.DB.Model(&models.Profile{}).Where("user_role != ?", "manager").Count(&stats.TotalUsers)
 
-	mc.DB.Model(&models.UserRole{}).Where("role = ?", "advertiser").Count(&stats.TotalAdvertisers)
+	// Count advertisers
+	mc.DB.Model(&models.Profile{}).Where("user_role = ?", "advertiser").Count(&stats.TotalAdvertisers)
 
 	mc.DB.Model(&models.TravelPackage{}).Count(&stats.TotalPackages)
 
@@ -150,15 +152,15 @@ func (mc *ManagerController) GetRecentPackages(c *gin.Context) {
 
 	for _, pkg := range travelPackages {
 		advertiserName := "ไม่ระบุ"
-		
+
 		if len(pkg.Advertisers) > 0 {
 			var names []string
 			for _, advertiser := range pkg.Advertisers {
-				if advertiser.Profile != nil && advertiser.Profile.DisplayName != "" {
-					names = append(names, advertiser.Profile.DisplayName)
+				if advertiser.DisplayName != "" {
+					names = append(names, advertiser.DisplayName)
 				}
 			}
-			
+
 			if len(names) > 0 {
 				if len(names) == 1 {
 					advertiserName = names[0]
@@ -188,16 +190,16 @@ func (mc *ManagerController) GetUserStatistics(c *gin.Context) {
 	}
 
 	var userStats []UserStats
-	
-	err := mc.DB.Table("user_roles").
-		Select("role, COUNT(*) as count").
-		Where("role != ?", "manager").
-		Group("role").
+
+	err := mc.DB.Table("profiles").
+		Select("user_role as role, COUNT(*) as count").
+		Where("user_role != ?", "manager").
+		Group("user_role").
 		Find(&userStats).Error
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to fetch user statistics",
+			"error":   "Failed to fetch user statistics",
 			"details": err.Error(),
 		})
 		return

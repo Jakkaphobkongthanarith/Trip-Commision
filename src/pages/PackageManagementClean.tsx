@@ -65,6 +65,7 @@ interface Package {
   available_to: string | null;
   max_guests: number;
   discount_percentage: number;
+  is_active?: boolean;
 }
 
 interface Booking {
@@ -635,6 +636,45 @@ export default function PackageManagement() {
       toast({
         title: "เกิดข้อผิดพลาด",
         description: "ไม่สามารถลบแพคเกจได้",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleToggleActive = async (pkg: Package) => {
+    const newStatus = pkg.is_active === false ? true : false;
+    const action = newStatus ? "เปิดใช้งาน" : "ปิดใช้งาน";
+
+    if (!confirm(`คุณแน่ใจหรือไม่ที่จะ${action}แพคเกจนี้?`)) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/packages/${pkg.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          is_active: newStatus,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Toggle failed:", errorData);
+        throw new Error("Failed to toggle package status");
+      }
+
+      toast({
+        title: "สำเร็จ",
+        description: `${action}แพคเกจเรียบร้อยแล้ว`,
+      });
+
+      fetchPackages();
+    } catch (error) {
+      console.error("Error toggling package:", error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: `ไม่สามารถ${action}แพคเกจได้`,
         variant: "destructive",
       });
     }
@@ -1211,6 +1251,14 @@ export default function PackageManagement() {
                     onClick={() => handleEdit(pkg)}
                   >
                     <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant={pkg.is_active === false ? "default" : "secondary"}
+                    size="sm"
+                    onClick={() => handleToggleActive(pkg)}
+                    title={pkg.is_active === false ? "เปิดใช้งาน" : "ปิดใช้งาน"}
+                  >
+                    {pkg.is_active === false ? "เปิด" : "ปิด"}
                   </Button>
                   <Button
                     variant="outline"

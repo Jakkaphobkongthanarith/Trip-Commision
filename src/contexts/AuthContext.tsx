@@ -101,10 +101,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const updateUser = async (userData: Partial<User>) => {
     if (user) {
+      console.log("Updating user with data:", user);
       const updatedUser = { ...user, ...userData } as User;
       setUser(updatedUser);
 
       const isPersistent = !!localStorage.getItem("userId");
+      console.log("userData", userData);
       if (userData.email)
         setStoredValue("userEmail", userData.email, isPersistent);
       if (userData.role)
@@ -206,7 +208,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       });
 
       const token = response?.access_token || response?.token;
-      const userRole = response?.role || role;
+      const userRole = response?.user?.role || response?.role || role; // แก้ไข: ดึงจาก user.role ก่อน
 
       if (response && token) {
         const newUser = {
@@ -278,7 +280,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       });
 
       const token = response?.access_token || response?.token;
-      const userRole = response?.role;
+      const userRole = response?.user?.role || response?.role; // แก้ไข: ดึงจาก user.role ก่อน
 
       if (response && token) {
         const loggedInUser = {

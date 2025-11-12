@@ -290,14 +290,13 @@ export default {
   "auth.signingUp": "กำลังสมัครสมาชิก...",
 
   // TravelPackageCard
-  "travelCard.viewDetails": "View Details",
-  "travelCard.fullyBooked": "Fully Booked",
+  "travelCard.viewDetails": "ดูรายละเอียด",
+  "travelCard.fullyBooked": "จองเต็มแล้ว",
 
   // Profile
-  "profile.minute": "minute",
-  "profile.second": "second",
-  "profile.packageNotSpecified": "Package not specified",
-
+  "profile.minute": "นาที",
+  "profile.second": "วินาที",
+  "profile.packageNotSpecified": "ไม่ระบุแพคเกจ",
 
   // AdminDashboard
   "admin.error": "เกิดข้อผิดพลาด",

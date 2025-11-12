@@ -23,7 +23,7 @@ type DiscountCode struct {
 	CreatedAt      time.Time `json:"created_at" gorm:"type:timestamp with time zone;not null;default:now()"`
 	UpdatedAt      time.Time `json:"updated_at" gorm:"type:timestamp with time zone;not null;default:now()"`
 	
-	Advertiser User          `json:"advertiser,omitempty" gorm:"-"`
+	Advertiser Profile       `json:"advertiser,omitempty" gorm:"foreignKey:AdvertiserID;references:ID"`
 	Package    TravelPackage `json:"package,omitempty" gorm:"foreignKey:PackageID"`
 }
 
@@ -60,7 +60,7 @@ type Commission struct {
 	CreatedAt            time.Time  `json:"created_at" gorm:"type:timestamp with time zone;not null;default:now()"`
 	UpdatedAt            time.Time  `json:"updated_at" gorm:"type:timestamp with time zone;not null;default:now()"`
 	
-	Advertiser   User         `json:"advertiser,omitempty" gorm:"foreignKey:AdvertiserID"`
+	Advertiser   Profile      `json:"advertiser,omitempty" gorm:"foreignKey:AdvertiserID;references:ID"`
 	Booking      Booking      `json:"booking,omitempty" gorm:"foreignKey:BookingID"`
 	DiscountCode DiscountCode `json:"discount_code,omitempty" gorm:"foreignKey:DiscountCodeID"`
 }

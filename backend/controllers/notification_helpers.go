@@ -153,11 +153,9 @@ func SendGlobalDiscountCodeNotification(globalCode models.GlobalDiscountCode, db
 		discountText = fmt.Sprintf("฿%.0f", globalCode.DiscountValue)
 	}
 
- 
-	var users []models.User
+	var users []models.Profile
 	db.Find(&users)
 
- 
 	var notifications []models.Notification
 	for _, user := range users {
 		notification := models.Notification{
