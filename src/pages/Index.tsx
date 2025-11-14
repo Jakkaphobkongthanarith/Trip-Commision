@@ -96,12 +96,13 @@ const Index = () => {
       <section className="relative pt-16 pb-16 px-6">
         <div className="container mx-auto text-center">
           <div className="max-w-4xl mx-auto mb-12">
-            <h1 className="text-5xl md:text-6xl font-bold mb-6">
-              <span className="bg-sunset-gradient bg-clip-text text-transparent">
-                {t("hero.discover")}
-              </span>
-              <span className="text-foreground"> {t("hero.journey")}</span>
-              <br />
+            <h1 className="text-5xl md:text-6xl font-bold mb-6 mb-">
+              <div className="mb-4">
+                <span className="bg-sunset-gradient bg-clip-text text-transparent">
+                  {t("hero.discover")}
+                </span>
+                <span className="text-foreground"> {t("hero.journey")}</span>
+              </div>
               <span className="bg-sunset-gradient bg-clip-text text-transparent">
                 {t("hero.unique")}
               </span>

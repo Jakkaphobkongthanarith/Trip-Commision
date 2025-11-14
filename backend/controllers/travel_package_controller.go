@@ -457,66 +457,17 @@ func GetPackageAdvertisersHandler(c *gin.Context, db *gorm.DB) {
 }
 
 func DeletePackageHandler(c *gin.Context, db *gorm.DB) {
-	packageID := c.Param("id")
-	
-	packageUUID, err := uuid.Parse(packageID)
-	if err != nil {
-		c.JSON(400, gin.H{"error": "Invalid package ID format"})
-		return
-	}
-	
-	tx := db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-	
-	var pkg models.TravelPackage
-	if err := tx.First(&pkg, packageUUID).Error; err != nil {
-		tx.Rollback()
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(404, gin.H{"error": "Package not found"})
-		} else {
-			c.JSON(500, gin.H{"error": "Failed to find package"})
-		}
-		return
-	}
-	
-	if pkg.IsActive != nil && !*pkg.IsActive {
-		tx.Rollback()
-		c.JSON(400, gin.H{"error": "Package is already deactivated"})
-		return
-	}
-	
-	falseValue := false
-	if err := tx.Model(&models.DiscountCode{}).
-		Where("package_id = ? AND is_active = ?", packageUUID, true).
-		Update("is_active", &falseValue).Error; err != nil {
-		tx.Rollback()
-		c.JSON(500, gin.H{"error": "Failed to deactivate discount codes"})
-		return
-	}
-	
-	if err := tx.Model(&models.TravelPackage{}).
-		Where("id = ?", packageUUID).
-		Update("is_active", &falseValue).Error; err != nil {
-		tx.Rollback()
-		c.JSON(500, gin.H{"error": "Failed to deactivate package"})
-		return
-	}
-	
-	if err := tx.Commit().Error; err != nil {
-		c.JSON(500, gin.H{"error": "Failed to commit transaction"})
-		return
-	}
-	
-	c.JSON(200, gin.H{
-		"message": "Package deactivated successfully",
-		"note": "Package and related discount codes have been deactivated but preserved in database",
-	})
-	
-	c.JSON(200, gin.H{"message": "Package deleted successfully"})
+    packageID := c.Param("id")
+    var pkg models.TravelPackage
+    if err := db.First(&pkg, "id = ?", packageID).Error; err != nil {
+        c.JSON(404, gin.H{"error": "Package not found"})
+        return
+    }
+    if err := db.Delete(&pkg).Error; err != nil {
+        c.JSON(500, gin.H{"error": "Failed to delete package"})
+        return
+    }
+    c.JSON(200, gin.H{"message": "Package deleted"})
 }
 
 
