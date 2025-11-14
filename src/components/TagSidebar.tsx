@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Sidebar,
@@ -17,7 +18,8 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Search, Tag as TagIcon } from "lucide-react";
-
+import thTranslations from "@/locales/th";
+import enTranslations from "@/locales/en";
 interface TagSidebarProps {
   packages: any[];
 }
@@ -29,6 +31,7 @@ export function TagSidebar({ packages }: TagSidebarProps) {
   const selectedTag = searchParams.get("tag");
   const [searchQuery, setSearchQuery] = useState("");
 
+  const { t } = useLanguage();
   const tagCounts = useMemo(() => {
     const counts: Record<string, number> = {};
 
@@ -70,7 +73,7 @@ export function TagSidebar({ packages }: TagSidebarProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <TagIcon className="h-5 w-5 text-primary" />
-            <h2 className="font-semibold text-lg">หมวดหมู่</h2>
+            <h2 className="font-semibold text-lg">{t("tags.title")}</h2>
           </div>
           <SidebarTrigger className="hover:bg-muted ml-auto" />
         </div>

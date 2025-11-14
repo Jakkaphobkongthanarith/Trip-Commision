@@ -208,7 +208,9 @@ export function TagFilter({
               {!isCollapsed && (
                 <CardTitle className="flex items-center gap-2">
                   <Filter className="h-5 w-5" />
-                  {t("tags.title")}
+                  <span className="break-words whitespace-normal">
+                    {t("tags.title")}
+                  </span>
                 </CardTitle>
               )}
               <Button
@@ -241,29 +243,6 @@ export function TagFilter({
                 packages={packages}
                 filteredTags={filteredTags}
               />
-            </CardContent>
-          )}
-
-          {/* Collapsed state content */}
-          {isCollapsed && (
-            <CardContent className="p-2 flex-1 flex flex-col justify-start">
-              <div className="flex flex-col items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleCollapseToggle}
-                  className="w-full p-2"
-                  title="ขยาย sidebar"
-                >
-                  <Filter className="h-4 w-4" />
-                </Button>
-                {selectedTags.length > 0 && (
-                  <div
-                    className="w-2 h-2 bg-primary rounded-full"
-                    title={`กรองด้วย: ${selectedTags.join(", ")}`}
-                  />
-                )}
-              </div>
             </CardContent>
           )}
         </Card>
