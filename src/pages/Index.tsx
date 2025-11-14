@@ -17,7 +17,7 @@ const Index = () => {
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [visibleCount, setVisibleCount] = useState(9);
+  const [visibleCount, setVisibleCount] = useState(11);
 
   const normalizeTags = (tags: any): string[] => {
     if (!tags) return [];
@@ -68,7 +68,7 @@ const Index = () => {
   };
 
   useEffect(() => {
-    setVisibleCount(9);
+    setVisibleCount(12);
   }, [selectedTag]);
 
   useEffect(() => {
@@ -87,7 +87,7 @@ const Index = () => {
   };
   const clearFilter = () => {
     setSelectedTag(null);
-    setVisibleCount(9);
+    setVisibleCount(12);
   };
 
   return (
